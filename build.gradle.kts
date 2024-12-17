@@ -1,5 +1,12 @@
+import org.jetbrains.gradle.ext.Application
+import org.jetbrains.gradle.ext.runConfigurations
+import org.jetbrains.gradle.ext.settings
+
 plugins {
-    id("java")
+    application
+    java
+    idea
+    alias(libs.plugins.idea.ext) apply true
 }
 
 group = "net.modgarden"
@@ -12,12 +19,16 @@ java {
 
 repositories {
     mavenCentral()
+    maven {
+        name = "Reposilite Snapshots"
+        url = uri("https://repo.reposilite.com/snapshots")
+    }
 }
 
 dependencies {
-	implementation(libs.javalin.get())
-	implementation(libs.jackson.databind.get())
-	implementation(libs.logback.get())
+	implementation(libs.javalin)
+	implementation(libs.jackson.databind)
+	implementation(libs.logback)
 }
 
 tasks {
@@ -37,4 +48,20 @@ tasks {
 			expand(expandProps)
 		}
 	}
+}
+
+application {
+    mainClass = "net.modgarden.backend.ModGardenBackend"
+}
+
+idea {
+    project {
+        settings.runConfigurations {
+            create("Run", Application::class.java) {
+                mainClass = "net.modgarden.backend.ModGardenBackend"
+                moduleName = project.idea.module.name + ".main"
+                includeProvidedDependencies = true
+            }
+        }
+    }
 }
