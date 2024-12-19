@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
+import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -35,7 +36,8 @@ public class ModGardenBackend {
 
     public static void main(String[] args) {
         try {
-            createDatabaseFile("database.db");
+            if (createDatabaseFile("database.db"))
+                LOG.info("Created database file.");
         } catch (IOException ex) {
             LOG.error("Failed to create database file.", ex);
         }
@@ -70,15 +72,16 @@ public class ModGardenBackend {
     }
 
     public static void dropTempFile() {
-        File databaseFile = new File("./temp.db");
-        if (databaseFile.delete())
-            LOG.info("Delted temporary database file.");
+        try {
+            Files.deleteIfExists(new File("./temp.db").toPath());
+        } catch (IOException ex) {
+            LOG.error("Failed to delete temporary database file.", ex);
+        }
     }
 
-    private static void createDatabaseFile(String fileName) throws IOException {
+    private static boolean createDatabaseFile(String fileName) throws IOException {
         File databaseFile = new File("./" + fileName);
-        if (databaseFile.createNewFile())
-            LOG.info("Created new database file.");
+        return databaseFile.createNewFile();
     }
 
 	private static void getLandingJson(Context ctx) {

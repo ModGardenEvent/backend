@@ -87,6 +87,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
     }
 
     private <T> ResultSet createValue(T value, String dataType, boolean key) {
+        ResultSet resultSet;
         createTempTable();
         try (Connection connection = ModGardenBackend.createTempDatabaseConnection();
              Statement statement = connection.createStatement()) {
@@ -96,19 +97,19 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
             CachedRowSet rowSet = RowSetProvider.newFactory().createCachedRowSet();
             rowSet.populate(result);
             result.close();
-
-            dropTempTable();
             if (dataType.equals("TEXT") && key) {
                 // We need to do this because there is no way to detect whether
                 // a created value is a key or not.
-                return new ResultSetComparableStringWrapper(rowSet, (String) value);
+                resultSet = new ResultSetComparableStringWrapper(rowSet, (String) value);
             } else
-                return rowSet;
+                resultSet = rowSet;
         }
         catch (SQLException ex) {
             dropTempTable();
             throw new RuntimeException(ex);
         }
+        dropTempTable();
+        return resultSet;
     }
 
     @Override
@@ -119,10 +120,11 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
 
     @Override
     public DataResult<ResultSet> mergeToMap(ResultSet map, ResultSet key, ResultSet value) {
+        DataResult<ResultSet> dataResult;
+        createTempTable();
         try (Connection connection = ModGardenBackend.createTempDatabaseConnection();
              Statement statement = connection.createStatement();
              map; key; value) {
-            createTempTable();
 
             CachedRowSet returnSet = RowSetProvider.newFactory().createCachedRowSet();
 
@@ -164,13 +166,13 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
             ResultSet tempSet = statement.executeQuery("SELECT " + String.join(",", keyList) + " from temp");
             returnSet.populate(tempSet);
             tempSet.close();
-            dropTempTable();
-            return DataResult.success(returnSet);
+            dataResult = DataResult.success(returnSet);
         } catch (SQLException ex) {
-            dropTempTable();
             ModGardenBackend.LOG.error("Exception merging results to database map.", ex);
-            return DataResult.error(() -> "Exception merging results to database map.");
+            dataResult = DataResult.error(() -> "Exception merging results to database map.");
         }
+        dropTempTable();
+        return dataResult;
     }
 
     @Override
