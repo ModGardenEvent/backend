@@ -19,16 +19,21 @@ java {
 
 repositories {
     mavenCentral()
-    maven {
+    maven("https://repo.reposilite.com/snapshots") {
         name = "Reposilite Snapshots"
-        url = uri("https://repo.reposilite.com/snapshots")
     }
+    maven("https://repo.glaremasters.me/repository/public/") {
+        name = "GlareMasters"
+    }
+
 }
 
 dependencies {
+    implementation(libs.dfu)
+    implementation(libs.httpclient)
 	implementation(libs.javalin)
-	implementation(libs.jackson.databind)
-	implementation(libs.logback)
+    implementation(libs.logback)
+    implementation(libs.sqlite)
 }
 
 tasks {
@@ -58,6 +63,7 @@ idea {
     project {
         settings.runConfigurations {
             create("Run", Application::class.java) {
+                workingDirectory = "${rootProject.projectDir}/run"
                 mainClass = "net.modgarden.backend.ModGardenBackend"
                 moduleName = project.idea.module.name + ".main"
                 includeProvidedDependencies = true

@@ -1,14 +1,18 @@
 [versions]
+dfu = "8.0.16"
+httpclient = "5.4.1"
 javalin = "6.3.1-SNAPSHOT"
-jackson = "2.17.2"
 logback = "1.5.12"
+sqlite = "3.47.1.0"
 
 idea_ext = "1.1.9"
 
 [libraries]
+dfu = { group = "com.mojang", name = "datafixerupper", version.ref = "dfu" }
+httpclient = { group = "org.apache.httpcomponents.client5", name = "httpclient5", version.ref = "httpclient" }
 javalin = { group = "io.javalin", name = "javalin", version.ref = "javalin" }
-jackson_databind = { group = "com.fasterxml.jackson.core", name = "jackson-databind", version.ref = "jackson" }
 logback = { group = "ch.qos.logback", name = "logback-classic", version.ref = "logback" }
+sqlite = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqlite" }
 
 [plugins]
 idea_ext = { id = "org.jetbrains.gradle.plugin.idea-ext", version.ref = "idea_ext" }
