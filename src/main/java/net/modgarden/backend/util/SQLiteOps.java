@@ -67,8 +67,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
 
             return outOps.createNumeric(input.getInt(1));
         } catch (SQLException ex) {
-            ModGardenBackend.LOG.error("Exception converting database. ", ex);
-            throw new RuntimeException("Exception converting database.");
+            throw new RuntimeException(ex);
         }
     }
 
@@ -117,8 +116,8 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
                 else
                     prepared.setObject(1, value);
                 prepared.execute();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
             }
             ResultSet result = statement.executeQuery("SELECT value FROM temp");
             CachedRowSet rowSet = RowSetProvider.newFactory().createCachedRowSet();
@@ -313,8 +312,8 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
             }
 
             return rowSet;
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
         }
     }
 
@@ -326,8 +325,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
             rowSet.populate(input);
             return rowSet;
         } catch (SQLException ex) {
-            ModGardenBackend.LOG.error("Failed to remove from database. ", ex);
-            throw new RuntimeException("Failed to remove from database.");
+            throw new RuntimeException(ex);
         }
     }
 
