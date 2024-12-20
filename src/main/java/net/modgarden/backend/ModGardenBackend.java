@@ -13,7 +13,7 @@ import net.modgarden.backend.data.Landing;
 import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
-import net.modgarden.backend.data.profile.GlobalMinecraftAccount;
+import net.modgarden.backend.data.profile.MinecraftAccount;
 import net.modgarden.backend.data.profile.User;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -24,14 +24,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -40,6 +36,7 @@ public class ModGardenBackend {
     private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
     private static Landing landing = null;
 
+    public static final String SAFE_URL_REGEX = "[a-zA-Z0-9!@$()`.+,_\"-]+";;
     private static final int DATABASE_SCHEMA_VERSION = 1;
 
     public static void main(String[] args) {
@@ -56,6 +53,7 @@ public class ModGardenBackend {
         CODEC_REGISTRY.put(Landing.class, Landing.CODEC);
         CODEC_REGISTRY.put(BackendError.class, BackendError.CODEC);
         CODEC_REGISTRY.put(Event.class, Event.DIRECT_CODEC);
+        CODEC_REGISTRY.put(MinecraftAccount.class, MinecraftAccount.DIRECT_CODEC);
         CODEC_REGISTRY.put(Project.class, Project.DIRECT_CODEC);
         CODEC_REGISTRY.put(User.class, User.DIRECT_CODEC);
 
@@ -65,21 +63,11 @@ public class ModGardenBackend {
         app.get("/event/{event}", Event::getEvent);
         app.get("/project/{project}", Project::getProject);
         app.get("/submission/{submission}", Submission::getSubmission);
-        app.get("/mcaccount/{mcaccount}", GlobalMinecraftAccount::getAccount);
+        app.get("/mcaccount/{mcaccount}", MinecraftAccount::getAccount);
+        app.error(422, ModGardenBackend::handleError);
 		app.error(404, ModGardenBackend::handleError);
 		app.start(7070);
 		LOG.info("Mod Garden Backend Started!");
-
-        JsonArray jsonArray = new JsonArray();
-        jsonArray.add(new JsonPrimitive("cd21c753-fc8d-493a-a65c-25184613402e"));
-        try (Connection connection = createDatabaseConnection();
-             PreparedStatement statement = connection.prepareStatement("UPDATE users SET minecraft_accounts=? WHERE id=?")) {
-            statement.setBytes(1, jsonArray.toString().getBytes(StandardCharsets.UTF_8));
-            statement.setString(2, "289whrg4");
-            statement.execute();
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     public static Connection createDatabaseConnection() throws SQLException {
@@ -93,9 +81,7 @@ public class ModGardenBackend {
             statement.addBatch("CREATE TABLE IF NOT EXISTS users (" +
                     "id TEXT PRIMARY KEY," +
                     "discord_id TEXT," +
-                    "modrinth_id TEXT," +
-                    "projects BLOB," +
-                    "minecraft_accounts BLOB)");
+                    "modrinth_id TEXT)");
             statement.addBatch("CREATE TABLE IF NOT EXISTS events (" +
                     "id TEXT PRIMARY KEY," +
                     "slug TEXT," +
@@ -156,7 +142,7 @@ public class ModGardenBackend {
 	}
 
 	private static void handleError(Context ctx) {
-		ctx.json(new BackendError(ctx.status().toString(), ctx.result()));
+		ctx.json(new BackendError(ctx.status().getMessage(), ctx.result()));
 	}
 
     private static JsonMapper createDFUMapper() {

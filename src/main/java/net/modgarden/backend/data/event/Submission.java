@@ -12,8 +12,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Date;
+import java.util.Locale;
 
 public record Submission(String id,
                          String projectId,
@@ -25,11 +25,15 @@ public record Submission(String id,
             Event.CODEC.fieldOf("event").forGetter(Submission::event),
             ExtraCodecs.DATE.fieldOf("submitted_at").forGetter(Submission::submittedAt)
     ).apply(inst, Submission::new));
-    public static final Codec<Submission> CODEC = Codec.STRING.xmap(Submission::query, Submission::id);
 
     public static void getSubmission(Context ctx) {
         String path = ctx.pathParam("submission");
-        Submission submission = query(path);
+        if (!path.matches(ModGardenBackend.SAFE_URL_REGEX)) {
+            ctx.result("Illegal characters in path '" + path + "'.");
+            ctx.status(422);
+            return;
+        }
+        Submission submission = query(path.toLowerCase(Locale.ROOT));
         if (submission == null) {
             ModGardenBackend.LOG.error("Could not find submission '{}'.", path);
             ctx.result("Could not find submission '" + path + "'.");
@@ -37,19 +41,22 @@ public record Submission(String id,
             return;
         }
 
-        ctx.json(ctx.jsonMapper().fromJsonString(DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, submission).getOrThrow().toString(), Event.class));
+        ctx.json(ctx.jsonMapper().fromJsonString(DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, submission).getOrThrow().toString(), Submission.class));
     }
 
     public static Submission query(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              PreparedStatement prepared = connection.prepareStatement("SELECT * FROM submissions WHERE id=?")) {
             prepared.setString(1, id);
-            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, prepared.executeQuery()).getOrThrow().getFirst();
+            ResultSet result = prepared.executeQuery();
+            if (result == null)
+                return null;
+            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Failed to decode submission from result set. ", ex);;
             return null;
         } catch (SQLException ex) {
-            throw new NullPointerException("Could not find submission inside database.");
+            return null;
         }
     }
 }

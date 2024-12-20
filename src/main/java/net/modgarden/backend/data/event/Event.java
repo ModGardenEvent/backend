@@ -11,27 +11,31 @@ import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Date;
-import java.util.List;
+import java.util.Locale;
 
 public record Event(String id,
                     String slug,
                     String displayName,
-                    Date startDate,
-                    List<Submission> submissions) {
+                    Date startDate) {
     public static final Codec<Event> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Event::id),
             Codec.STRING.fieldOf("slug").forGetter(Event::slug),
             Codec.STRING.fieldOf("display_name").forGetter(Event::displayName),
-            ExtraCodecs.DATE.fieldOf("date").forGetter(Event::startDate),
-            Codec.withAlternative(Submission.DIRECT_CODEC, Submission.CODEC).listOf().optionalFieldOf("submissions", List.of()).forGetter(Event::submissions)
+            ExtraCodecs.DATE.fieldOf("start_date").forGetter(Event::startDate)
     ).apply(inst, Event::new)));
     public static final Codec<Event> CODEC = Codec.STRING.xmap(Event::queryFromId, Event::id);
 
     public static void getEvent(Context ctx) {
         String path = ctx.pathParam("event");
-        Event event = query(path);
+        if (!path.matches(ModGardenBackend.SAFE_URL_REGEX)) {
+            ctx.result("Illegal characters in path '" + path + "'.");
+            ctx.status(422);
+            return;
+        }
+        Event event = query(path.toLowerCase(Locale.ROOT));
         if (event == null) {
             ModGardenBackend.LOG.error("Could not find event '{}'.", path);
             ctx.result("Could not find event '" + path + "'.");
@@ -74,12 +78,15 @@ public record Event(String id,
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              PreparedStatement prepared = connection.prepareStatement("SELECT * FROM submissions WHERE slug=?")) {
             prepared.setString(1, slug);
-            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, prepared.executeQuery()).getOrThrow().getFirst();
+            ResultSet result = prepared.executeQuery();
+            if (result == null)
+                return null;
+            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Failed to decode event from result set. ", ex);;
             return null;
         } catch (SQLException ex) {
-            throw new NullPointerException("Could not find event inside database.");
+            return null;
         }
     }
 }
