@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -76,9 +77,9 @@ public record User(String id,
 
     private static User queryFromId(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             Statement statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-             ResultSet resultSet = statement.executeQuery("SELECT * FROM users WHERE id='" + id + "'")) {
-            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, resultSet).getOrThrow().getFirst();
+             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM users WHERE id=?")) {
+            prepared.setString(1, id);
+            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, prepared.executeQuery()).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
             logException(ex);
             return null;
@@ -89,9 +90,9 @@ public record User(String id,
 
     private static User queryFromDiscordId(String discordId) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             Statement statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-             ResultSet resultSet = statement.executeQuery("SELECT * FROM users WHERE discord_id='" + discordId + "'")) {
-            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, resultSet).getOrThrow().getFirst();
+             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM users WHERE discord_id=?")) {
+            prepared.setString(1, discordId);
+            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, prepared.executeQuery()).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
             logException(ex);
             return null;
@@ -102,9 +103,9 @@ public record User(String id,
 
     private static User queryFromModrinthId(String modrinthId) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             Statement statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-             ResultSet resultSet = statement.executeQuery("SELECT * FROM users WHERE modrinth_id='" + modrinthId + "'")) {
-            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, resultSet).getOrThrow().getFirst();
+             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM users WHERE modrinth_id=?")) {
+            prepared.setString(1, modrinthId);
+            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, prepared.executeQuery()).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
             logException(ex);
             return null;
@@ -116,17 +117,7 @@ public record User(String id,
     private static User queryFromModrinthUsername(String modrinthUsername) {
         try {
             String modrinthId = getUserModrinthId(modrinthUsername);
-
-            try (Connection connection = ModGardenBackend.createDatabaseConnection();
-                 Statement statement = connection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
-                 ResultSet resultSet = statement.executeQuery("SELECT * FROM users WHERE modrinth_id='" + modrinthId + "'")) {
-                return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, resultSet).getOrThrow().getFirst();
-            } catch (SQLException e) {
-                return null;
-            }
-        } catch (IllegalStateException ex) {
-            logException(ex);
-            return null;
+            return queryFromModrinthId(modrinthId);
         } catch (IOException ex) {
             return null;
         }

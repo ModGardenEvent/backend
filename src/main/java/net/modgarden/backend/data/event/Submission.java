@@ -9,6 +9,7 @@ import net.modgarden.backend.util.ExtraCodecs;
 import net.modgarden.backend.util.SQLiteOps;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -40,16 +41,15 @@ public record Submission(String id,
     }
 
     public static Submission query(String id) {
-        String query = "SELECT * FROM submissions WHERE id='" + id + "'";
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(query)) {
-            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, resultSet).getOrThrow().getFirst();
+             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM submissions WHERE id=?")) {
+            prepared.setString(1, id);
+            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, prepared.executeQuery()).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Failed to decode submission from result set. ", ex);;
             return null;
         } catch (SQLException ex) {
-            throw new NullPointerException("Could not find project inside project database.");
+            throw new NullPointerException("Could not find submission inside database.");
         }
     }
 }

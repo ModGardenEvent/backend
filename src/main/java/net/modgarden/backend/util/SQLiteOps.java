@@ -12,11 +12,14 @@ import net.modgarden.backend.ModGardenBackend;
 import javax.sql.rowset.CachedRowSet;
 import javax.sql.rowset.RowSetProvider;
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -105,7 +108,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
     private <T> ResultSet createValue(T value, String dataType, boolean key) {
         ResultSet resultSet;
         createTempTable();
-        try (Connection connection = ModGardenBackend.createTempDatabaseConnection();
+        try (Connection connection = createTempDatabaseConnection();
              Statement statement = connection.createStatement()) {
             statement.execute("ALTER TABLE temp ADD COLUMN value " + dataType);
             try (PreparedStatement prepared = connection.prepareStatement("REPLACE INTO temp (value) VALUES (?)")) {
@@ -164,7 +167,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
     public DataResult<ResultSet> mergeToMap(ResultSet map, ResultSet key, ResultSet value) {
         DataResult<ResultSet> dataResult;
         createTempTable();
-        try (Connection connection = ModGardenBackend.createTempDatabaseConnection();
+        try (Connection connection = createTempDatabaseConnection();
              Statement statement = connection.createStatement();
              map; key; value) {
 
@@ -328,24 +331,31 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
         }
     }
 
+    private static Connection createTempDatabaseConnection() throws SQLException {
+        try {
+            new File("./temp.db").createNewFile();
+        } catch (IOException ex) {
+            ModGardenBackend.LOG.error("Failed to create temporary database file.", ex);
+        }
+        String url = "jdbc:sqlite:temp.db";
+        return DriverManager.getConnection(url);
+    }
+
+    private static void dropTempTable() {
+        try {
+            Files.deleteIfExists(new File("./temp.db").toPath());
+        } catch (IOException ex) {
+            ModGardenBackend.LOG.error("Failed to delete temporary database file.", ex);
+        }
+    }
+
     private void createTempTable() {
         String createStatement = "CREATE TABLE IF NOT EXISTS temp (_temp_primary INTEGER PRIMARY KEY)";
-        try(Connection connection = ModGardenBackend.createTempDatabaseConnection();
+        try(Connection connection = createTempDatabaseConnection();
             Statement statement = connection.createStatement()) {
             statement.execute(createStatement);
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Failed to create database connection.", ex);
         }
-    }
-
-    private void dropTempTable() {
-        String createStatement = "DROP TABLE IF EXISTS temp";
-        try(Connection connection = ModGardenBackend.createTempDatabaseConnection();
-            Statement statement = connection.createStatement()) {
-            statement.execute(createStatement);
-        } catch (SQLException ex) {
-            ModGardenBackend.LOG.error("Failed to drop database connection.", ex);
-        }
-        ModGardenBackend.dropTempFile();
     }
 }

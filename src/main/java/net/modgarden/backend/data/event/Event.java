@@ -10,9 +10,8 @@ import net.modgarden.backend.util.SQLiteOps;
 import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.Date;
 import java.util.List;
 
@@ -59,30 +58,28 @@ public record Event(String id,
     }
 
     public static Event queryFromId(String id) {
-        String query = "SELECT * FROM events WHERE id='" + id + "'";
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(query);) {
-            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, resultSet).getOrThrow().getFirst();
+             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM submissions WHERE id=?")) {
+            prepared.setString(1, id);
+            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, prepared.executeQuery()).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
-            ModGardenBackend.LOG.error("Failed to decode event from result set. ", ex);;
+            ModGardenBackend.LOG.error("Failed to decode submission from result set. ", ex);;
             return null;
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        } catch (SQLException ex) {
+            throw new NullPointerException("Could not find project inside project database.");
         }
     }
 
     public static Event queryFromSlug(String slug) {
-        String query = "SELECT * FROM events WHERE slug='" + slug + "'";
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(query)) {
-            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, resultSet).getOrThrow().getFirst();
-        }  catch (IllegalStateException ex) {
+             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM submissions WHERE slug=?")) {
+            prepared.setString(1, slug);
+            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, prepared.executeQuery()).getOrThrow().getFirst();
+        } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Failed to decode event from result set. ", ex);;
             return null;
-        }catch (SQLException e) {
-            throw new RuntimeException(e);
+        } catch (SQLException ex) {
+            throw new NullPointerException("Could not find event inside database.");
         }
     }
 }

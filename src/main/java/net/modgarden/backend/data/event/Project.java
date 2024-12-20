@@ -9,9 +9,8 @@ import net.modgarden.backend.data.profile.User;
 import net.modgarden.backend.util.SQLiteOps;
 
 import java.sql.Connection;
-import java.sql.ResultSet;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.List;
 
 public record Project(String id,
@@ -40,11 +39,10 @@ public record Project(String id,
     }
 
     public static Project query(String id) {
-        String query = "SELECT * FROM projects WHERE id='" + id + "'";
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             Statement statement = connection.createStatement();
-             ResultSet resultSet = statement.executeQuery(query)) {
-            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, resultSet).getOrThrow().getFirst();
+             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM projects WHERE id=?")) {
+            prepared.setString(1, id);
+            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, prepared.executeQuery()).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Failed to decode project from result set. ", ex);;
             return null;

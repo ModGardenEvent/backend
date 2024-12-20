@@ -13,6 +13,7 @@ import net.modgarden.backend.data.Landing;
 import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
+import net.modgarden.backend.data.profile.GlobalMinecraftAccount;
 import net.modgarden.backend.data.profile.User;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -43,7 +44,7 @@ public class ModGardenBackend {
 
     public static void main(String[] args) {
         try {
-            if (createDatabaseFile("database.db")) {
+            if (new File("./database.db").createNewFile()) {
                 LOG.info("Successfuly created database file.");
                 createDatabaseContents();
             }
@@ -62,8 +63,9 @@ public class ModGardenBackend {
 		app.get("", ModGardenBackend::getLandingJson);
         app.get("/user/{user}", User::getUser);
         app.get("/event/{event}", Event::getEvent);
-        app.get("/project/{project}", Submission::getSubmission);
+        app.get("/project/{project}", Project::getProject);
         app.get("/submission/{submission}", Submission::getSubmission);
+        app.get("/mcaccount/{mcaccount}", GlobalMinecraftAccount::getAccount);
 		app.error(404, ModGardenBackend::handleError);
 		app.start(7070);
 		LOG.info("Mod Garden Backend Started!");
@@ -83,29 +85,6 @@ public class ModGardenBackend {
     public static Connection createDatabaseConnection() throws SQLException {
         String url = "jdbc:sqlite:database.db";
         return DriverManager.getConnection(url);
-    }
-
-    public static Connection createTempDatabaseConnection() throws SQLException {
-        try {
-            createDatabaseFile("temp.db");
-        } catch (IOException ex) {
-            LOG.error("Failed to create temporary database file.", ex);
-        }
-        String url = "jdbc:sqlite:temp.db";
-        return DriverManager.getConnection(url);
-    }
-
-    public static void dropTempFile() {
-        try {
-            Files.deleteIfExists(new File("./temp.db").toPath());
-        } catch (IOException ex) {
-            LOG.error("Failed to delete temporary database file.", ex);
-        }
-    }
-
-    private static boolean createDatabaseFile(String fileName) throws IOException {
-        File databaseFile = new File("./" + fileName);
-        return databaseFile.createNewFile();
     }
 
     private static void createDatabaseContents() {
