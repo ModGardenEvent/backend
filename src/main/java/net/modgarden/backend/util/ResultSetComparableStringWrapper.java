@@ -23,12 +23,22 @@ import java.util.Calendar;
 import java.util.Map;
 
 public class ResultSetComparableStringWrapper implements ResultSet {
-    private String key;
-    private ResultSet resultSet;
+    private final String key;
+    private final ResultSet resultSet;
 
-    public ResultSetComparableStringWrapper(ResultSet value, String key) throws SQLException {
-        this.resultSet = value;
-        this.key = key;
+    public ResultSetComparableStringWrapper(ResultSet value) throws SQLException {
+        try (value) {
+            if (value.next())
+                key = value.getString(1);
+            else
+                key = null;
+            value.beforeFirst();
+            resultSet = value;
+        }
+    }
+
+    public String key() {
+        return key;
     }
 
     @Override

@@ -1,12 +1,21 @@
 package net.modgarden.backend.util;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
+import com.mojang.serialization.JsonOps;
 import net.modgarden.backend.ModGardenBackend;
 
 import javax.sql.rowset.CachedRowSet;
 import javax.sql.rowset.RowSetProvider;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -36,7 +45,28 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
 
     @Override
     public <U> U convertTo(DynamicOps<U> outOps, ResultSet input) {
-        return convertMap(outOps, input);
+        try {
+            int columnCount = input.getMetaData().getColumnCount();
+            if (columnCount > 1) {
+                return convertMap(outOps, input);
+            }
+            if (input.getMetaData().getColumnTypeName(1).equals("BLOB")) {
+                JsonElement element = JsonParser.parseReader(new InputStreamReader(new ByteArrayInputStream((byte[])input.getObject(1))));
+                if (element.isJsonArray())
+                    return convertList(outOps, input);
+            }
+
+            if (input.getMetaData().getColumnTypeName(1).equals("TEXT"))
+                return outOps.createString(input.getString(1));
+
+            if (input.getMetaData().getColumnTypeName(1).equals("REAL"))
+                return outOps.createNumeric(input.getDouble(1));
+
+            return outOps.createNumeric(input.getInt(1));
+        } catch (SQLException ex) {
+            ModGardenBackend.LOG.error("Exception converting database. ", ex);
+            throw new RuntimeException("Exception converting database.");
+        }
     }
 
     @Override
@@ -47,7 +77,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
     @Override
     public ResultSet createNumeric(Number i) {
         boolean isInt = i.doubleValue() % 1 == 0;
-        return createValue(isInt ? i.longValue() : i.doubleValue(), isInt ? "INTEGER" : "REAL", true);
+        return createValue(isInt ? i.longValue() : i.doubleValue(), isInt ? "INTEGER" : "REAL", false);
     }
 
     @Override
@@ -57,32 +87,18 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
 
     @Override
     public ResultSet createString(String value) {
-        return createValue("'" + value + "'", "TEXT", true);
+        return createValue(value, "TEXT", true);
     }
 
     private <T> DataResult<T> getValue(ResultSet input) {
         try {
-            T value = null;
-            while (input.next()) {
-                for (int i = 1; i <= input.getMetaData().getColumnCount(); ++i) {
-                    if (input.getMetaData().getColumnType(i) != 0)
-                        value = (T) input.getObject(i);
-                }
-            }
+            input.next();
+            T value = input instanceof ResultSetComparableStringWrapper wrapper ? (T) wrapper.key() : (T) input.getObject(1);
             if (value == null)
                 return DataResult.error(() -> "Value not found.");
             return DataResult.success(value);
         } catch (SQLException ex) {
             return DataResult.error(() -> "Exception when obtaining value. " + ex.getMessage());
-        }
-    }
-
-    private <T> DataResult<T> getValueAtIndex(ResultSet input, int index) {
-        try {
-            T obj = (T) input.getObject(index);
-            return DataResult.success(obj);
-        } catch (SQLException ex) {
-            return DataResult.error(() -> "Exception when obtaining value from index. " + ex.getMessage());
         }
     }
 
@@ -92,7 +108,15 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
         try (Connection connection = ModGardenBackend.createTempDatabaseConnection();
              Statement statement = connection.createStatement()) {
             statement.execute("ALTER TABLE temp ADD COLUMN value " + dataType);
-            statement.execute("REPLACE INTO temp (value) VALUES (" + value + ")");
+            try (PreparedStatement prepared = connection.prepareStatement("REPLACE INTO temp (value) VALUES (?)")) {
+                if (dataType.equals("BLOB") && value instanceof InputStream stream)
+                    prepared.setBytes(1, stream.readAllBytes());
+                else
+                    prepared.setObject(1, value);
+                prepared.execute();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
             ResultSet result = statement.executeQuery("SELECT value FROM temp");
             CachedRowSet rowSet = RowSetProvider.newFactory().createCachedRowSet();
             rowSet.populate(result);
@@ -100,7 +124,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
             if (dataType.equals("TEXT") && key) {
                 // We need to do this because there is no way to detect whether
                 // a created value is a key or not.
-                resultSet = new ResultSetComparableStringWrapper(rowSet, (String) value);
+                resultSet = new ResultSetComparableStringWrapper(rowSet);
             } else
                 resultSet = rowSet;
         }
@@ -114,8 +138,26 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
 
     @Override
     public DataResult<ResultSet> mergeToList(ResultSet list, ResultSet value) {
-        // TODO
-        return DataResult.success(EMPTY);
+        DataResult<ResultSet> dataResult;
+        try(list; value) {
+            if ((list == empty() || list.next()) && value.next()) {
+                JsonElement element;
+                if (list == empty()) {
+                    element = new JsonArray();
+                } else
+                    element = JsonParser.parseReader(new InputStreamReader(new ByteArrayInputStream((byte[])list.getObject(1))));
+                if (!element.isJsonArray())
+                    throw new SQLException("Initial value is not a list.");
+                JsonArray array = element.getAsJsonArray();
+                array.add(JsonParser.parseReader(new InputStreamReader(new ByteArrayInputStream((byte[])value.getObject(1)))));
+                dataResult = DataResult.success(createValue(array.toString().getBytes(StandardCharsets.UTF_8), "BLOB", false));
+            } else
+                dataResult = DataResult.error(() -> "Either list or value was empty.");
+        } catch (SQLException ex) {
+            ModGardenBackend.LOG.error("Failed merging results to database list. ", ex);
+            dataResult = DataResult.error(() -> "Failed merging results to database list.");
+        }
+        return dataResult;
     }
 
     @Override
@@ -182,8 +224,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
             while (input.next()) {
                 for (int i = 1; i <= input.getMetaData().getColumnCount(); ++i) {
                     String columnName = input.getMetaData().getColumnName(i);
-                    String columnTypeName = input.getMetaData().getColumnTypeName(i);
-                    ResultSet value = columnTypeName.equals("TEXT") ? createValue("'" + input.getString(i) + "'", "TEXT", false) : createNumeric(columnTypeName.equals("INTEGER") ? input.getInt(i) : input.getDouble(i));
+                    ResultSet value = mapToResultSet(input, i);
                     pairs.add(Pair.of(createString(columnName), value));
                 }
             }
@@ -194,9 +235,43 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
         }
     }
 
+    private ResultSet mapToResultSet(ResultSet input, int columnIndex) throws SQLException {
+        String columnTypeName = input.getMetaData().getColumnTypeName(columnIndex);
+
+        if (input.getObject(columnIndex) == null)
+            return createValue(null, "NULL", false);
+
+        if (columnTypeName.equals("BLOB"))
+            return createValue(input.getBinaryStream(columnIndex), "BLOB", false);
+
+        if (columnTypeName.equals("TEXT"))
+            return createValue(input.getString(columnIndex), "TEXT", false);
+
+        return createNumeric(columnTypeName.equals("INTEGER") ? input.getInt(columnIndex) : input.getDouble(columnIndex));
+    }
+
     @Override
     public DataResult<Stream<ResultSet>> getStream(ResultSet input) {
-        return DataResult.success(Stream.of());
+        try(input) {
+            if (input.next()) {
+                if (input == empty() || input.getObject(1) == null)
+                    return DataResult.success(Stream.of());
+                JsonElement element = JsonParser.parseReader(new InputStreamReader(new ByteArrayInputStream((byte[])input.getObject(1))));
+                DataResult<Stream<JsonElement>> jsonElement = JsonOps.INSTANCE.getStream(element);
+                if (jsonElement.isError())
+                    return jsonElement.map(json -> null);
+                List<ResultSet> resultSets = new ArrayList<>();
+                for (JsonElement element1 : jsonElement.getOrThrow().toList()) {
+                    ResultSet converted = JsonOps.INSTANCE.convertTo(this, element1);
+                    resultSets.add(converted);
+                }
+                return DataResult.success(resultSets.stream());
+            }
+            return DataResult.error(() -> "Input did not have next.");
+        } catch (SQLException ex) {
+            ModGardenBackend.LOG.error("Exception collecting results from database list.", ex);
+            return DataResult.error(() -> "Exception collecting results from database list.");
+        }
     }
 
     @Override
@@ -222,12 +297,27 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
 
     @Override
     public ResultSet createList(Stream<ResultSet> input) {
-        // TODO
-        return EMPTY;
+        List<ResultSet> list = input.toList();
+
+        try {
+            CachedRowSet rowSet = RowSetProvider.newFactory().createCachedRowSet();
+
+            if (list.isEmpty())
+                return empty();
+
+            for (ResultSet result : list) {
+                mergeToList(rowSet, result);
+            }
+
+            return rowSet;
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public ResultSet remove(ResultSet input, String key) {
+        // FIXME: This.
         try (input) {
             CachedRowSet rowSet = RowSetProvider.newFactory().createCachedRowSet();
             rowSet.populate(input);
