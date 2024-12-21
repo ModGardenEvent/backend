@@ -41,7 +41,7 @@ public record Submission(String id,
             return;
         }
 
-        ctx.json(ctx.jsonMapper().fromJsonString(DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, submission).getOrThrow().toString(), Submission.class));
+        ctx.json(submission);
     }
 
     public static Submission query(String id) {

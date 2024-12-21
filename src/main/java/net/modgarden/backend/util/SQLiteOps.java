@@ -2,6 +2,7 @@ package net.modgarden.backend.util;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.DataResult;
@@ -11,12 +12,8 @@ import net.modgarden.backend.ModGardenBackend;
 
 import javax.sql.rowset.CachedRowSet;
 import javax.sql.rowset.RowSetProvider;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -53,14 +50,15 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
             if (columnCount > 1) {
                 return convertMap(outOps, input);
             }
-            if (input.getMetaData().getColumnTypeName(1).equals("BLOB")) {
-                JsonElement element = JsonParser.parseReader(new InputStreamReader(new ByteArrayInputStream((byte[])input.getObject(1))));
-                if (element.isJsonArray())
-                    return convertList(outOps, input);
-            }
 
-            if (input.getMetaData().getColumnTypeName(1).equals("TEXT"))
+            if (input.getMetaData().getColumnTypeName(1).equals("TEXT")) {
+                try {
+                    JsonElement element = JsonParser.parseString(input.getString(1));
+                    if (element.isJsonArray())
+                        return convertList(outOps, input);
+                } catch (JsonParseException ignored) {}
                 return outOps.createString(input.getString(1));
+            }
 
             if (input.getMetaData().getColumnTypeName(1).equals("REAL"))
                 return outOps.createNumeric(input.getDouble(1));
@@ -95,7 +93,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
     private <T> DataResult<T> getValue(ResultSet input) {
         try {
             input.next();
-            T value = input instanceof ResultSetComparableStringWrapper wrapper ? (T) wrapper.key() : (T) input.getObject(1);
+            T value = (T) input.getObject(1);
             if (value == null)
                 return DataResult.error(() -> "Value not found.");
             return DataResult.success(value);
@@ -108,16 +106,14 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
         ResultSet resultSet;
         createTempTable();
         try (Connection connection = createTempDatabaseConnection();
-             Statement statement = connection.createStatement()) {
+             Statement statement = connection.createStatement();) {
             statement.execute("ALTER TABLE temp ADD COLUMN value " + dataType);
-            try (PreparedStatement prepared = connection.prepareStatement("REPLACE INTO temp (value) VALUES (?)")) {
-                if (dataType.equals("BLOB") && value instanceof InputStream stream)
-                    prepared.setBytes(1, stream.readAllBytes());
+            try (PreparedStatement replacePrepared = connection.prepareStatement("REPLACE INTO temp (value) VALUES (?)")) {
+                if (dataType.equals("TEXT") && value instanceof JsonArray array)
+                    replacePrepared.setObject(1, array.toString());
                 else
-                    prepared.setObject(1, value);
-                prepared.execute();
-            } catch (IOException ex) {
-                throw new RuntimeException(ex);
+                    replacePrepared.setObject(1, value);
+                replacePrepared.execute();
             }
             ResultSet result = statement.executeQuery("SELECT value FROM temp");
             CachedRowSet rowSet = RowSetProvider.newFactory().createCachedRowSet();
@@ -129,6 +125,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
                 resultSet = new ResultSetComparableStringWrapper(rowSet);
             } else
                 resultSet = rowSet;
+            statement.execute("ALTER TABLE temp DROP COLUMN value");
         }
         catch (SQLException ex) {
             dropTempTable();
@@ -147,14 +144,14 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
                 if (list == empty()) {
                     element = new JsonArray();
                 } else
-                    element = JsonParser.parseReader(new InputStreamReader(new ByteArrayInputStream((byte[])list.getObject(1))));
+                    element = JsonParser.parseString(list.getString(1));
                 if (!element.isJsonArray())
                     throw new SQLException("Initial value is not a list.");
                 JsonArray array = element.getAsJsonArray();
-                array.add(JsonParser.parseReader(new InputStreamReader(new ByteArrayInputStream((byte[])value.getObject(1)))));
-                dataResult = DataResult.success(createValue(array.toString().getBytes(StandardCharsets.UTF_8), "BLOB", false));
+                array.add(JsonParser.parseString(value.getString(1)));
+                dataResult = DataResult.success(createValue(array, "TEXT", false));
             } else
-                dataResult = DataResult.error(() -> "Either list or value was empty.");
+                dataResult = DataResult.error(() -> "Attempted to insert empty value into list.");
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Failed merging results to database list. ", ex);
             dataResult = DataResult.error(() -> "Failed merging results to database list.");
@@ -177,19 +174,18 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
 
             if (map != empty()) {
                 map.beforeFirst();
-                // This method should only ever be used on one row.
-                // As such, we can ignore making the map do more than it should.
                 while (map.next()) {
                     for (int i = 1; i <= map.getMetaData().getColumnCount(); ++i) {
                         String keyString = map.getMetaData().getColumnName(i);
                         keyList.add(keyString);
                         valueList.add(map.getObject(i));
 
-                        statement.executeUpdate("ALTER TABLE temp ADD COLUMN " + keyString + " " + map.getMetaData().getColumnTypeName(i));
-                        PreparedStatement preparedStatement = connection.prepareStatement("REPLACE INTO temp (_temp_primary," + String.join(",", keyList) + ") VALUES (0," + valueList.stream().map(object -> "?").collect(Collectors.joining(",")) + ")");
-                        for (int j = 1; j <= valueList.size(); ++j)
-                            preparedStatement.setObject(j, valueList.get(j - 1));
-                        preparedStatement.execute();
+                        statement.execute("ALTER TABLE temp ADD COLUMN " + keyString + " " + map.getMetaData().getColumnTypeName(i));
+                        try (PreparedStatement replacePrepared = connection.prepareStatement("REPLACE INTO temp (_temp_primary," + String.join(",", keyList) + ") VALUES (0," + valueList.stream().map(object -> "?").collect(Collectors.joining(",")) + ")")) {
+                            for (int j = 1; j <= valueList.size(); ++j)
+                                replacePrepared.setObject(j, valueList.get(j - 1));
+                            replacePrepared.execute();
+                        }
                     }
                 }
             }
@@ -200,14 +196,15 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
                 keyList.add(keyString);
                 valueList.add(value.getObject(1));
 
-                statement.executeUpdate("ALTER TABLE temp ADD COLUMN " + keyString + " " + value.getMetaData().getColumnTypeName(1));
-                PreparedStatement preparedStatement = connection.prepareStatement("REPLACE INTO temp (_temp_primary," + String.join(",", keyList) + ") VALUES (0," + valueList.stream().map(object -> "?").collect(Collectors.joining(",")) + ")");
-                for (int i = 1; i <= valueList.size(); ++i)
-                    preparedStatement.setObject(i, valueList.get(i - 1));
-                preparedStatement.execute();
+                statement.execute("ALTER TABLE temp ADD COLUMN " + keyString + " " + value.getMetaData().getColumnTypeName(1));
+                    try (PreparedStatement replacePrepared = connection.prepareStatement("REPLACE INTO temp (_temp_primary," + String.join(",", keyList) + ") VALUES (0," + valueList.stream().map(object -> "?").collect(Collectors.joining(",")) + ")")) {
+                        for (int j = 1; j <= valueList.size(); ++j)
+                            replacePrepared.setObject(j, valueList.get(j - 1));
+                        replacePrepared.execute();
+                    }
             }
 
-            ResultSet tempSet = statement.executeQuery("SELECT " + String.join(",", keyList) + " from temp");
+            ResultSet tempSet = statement.executeQuery("SELECT " + String.join(",", keyList) + " FROM temp");
             returnSet.populate(tempSet);
             tempSet.close();
             dataResult = DataResult.success(returnSet);
@@ -223,7 +220,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
     public DataResult<Stream<Pair<ResultSet, ResultSet>>> getMapValues(ResultSet input) {
         List<Pair<ResultSet, ResultSet>> pairs = new ArrayList<>();
         try (input) {
-            while (input.next()) {
+            if (input.next()) {
                 for (int i = 1; i <= input.getMetaData().getColumnCount(); ++i) {
                     String columnName = input.getMetaData().getColumnName(i);
                     ResultSet value = mapToResultSet(input, i);
@@ -243,11 +240,15 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
         if (input.getObject(columnIndex) == null)
             return createValue(null, "NULL", false);
 
-        if (columnTypeName.equals("BLOB"))
-            return createValue(input.getBinaryStream(columnIndex), "BLOB", false);
-
-        if (columnTypeName.equals("TEXT"))
-            return createValue(input.getString(columnIndex), "TEXT", false);
+        try {
+            if (columnTypeName.equals("TEXT")) {
+                String columnString = input.getString(columnIndex);
+                JsonElement json = JsonParser.parseString(columnString);
+                if (json.isJsonArray())
+                    return createValue(json, "TEXT", false);
+                return createValue(input.getString(columnIndex), "TEXT", false);
+            }
+        } catch (JsonParseException | SQLException ignored) {}
 
         return createNumeric(columnTypeName.equals("INTEGER") ? input.getInt(columnIndex) : input.getDouble(columnIndex));
     }
@@ -255,10 +256,10 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
     @Override
     public DataResult<Stream<ResultSet>> getStream(ResultSet input) {
         try(input) {
-            if (input.next()) {
+            if (input == empty() || input.next()) {
                 if (input == empty() || input.getObject(1) == null)
                     return DataResult.success(Stream.of());
-                JsonElement element = JsonParser.parseReader(new InputStreamReader(new ByteArrayInputStream((byte[])input.getObject(1))));
+                JsonElement element = JsonParser.parseString(input.getString(1));
                 DataResult<Stream<JsonElement>> jsonElement = JsonOps.INSTANCE.getStream(element);
                 if (jsonElement.isError())
                     return jsonElement.map(json -> null);
@@ -281,12 +282,15 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
         try {
             List<Pair<ResultSet, ResultSet>> list = map.toList();
 
-            CachedRowSet rowSet = RowSetProvider.newFactory().createCachedRowSet();
+            ResultSet rowSet = empty();
+
+            if (list.isEmpty())
+                return empty();
 
             for (Pair<ResultSet, ResultSet> result : list) {
                 try (ResultSet first = result.getFirst();
                      ResultSet second = result.getSecond()) {
-                    mergeToMap(rowSet, first, second);
+                    rowSet = mergeToMap(rowSet, first, second).getOrThrow();
                 }
             }
 
@@ -301,20 +305,16 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
     public ResultSet createList(Stream<ResultSet> input) {
         List<ResultSet> list = input.toList();
 
-        try {
-            CachedRowSet rowSet = RowSetProvider.newFactory().createCachedRowSet();
+        ResultSet rowSet = empty();
 
-            if (list.isEmpty())
-                return empty();
-
-            for (ResultSet result : list) {
-                mergeToList(rowSet, result);
-            }
-
+        if (list.isEmpty())
             return rowSet;
-        } catch (SQLException ex) {
-            throw new RuntimeException(ex);
+
+        for (ResultSet result : list) {
+            rowSet = mergeToList(rowSet, result).getOrThrow();
         }
+
+        return rowSet;
     }
 
     @Override

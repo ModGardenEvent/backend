@@ -27,13 +27,13 @@ public class ResultSetComparableStringWrapper implements ResultSet {
     private final ResultSet resultSet;
 
     public ResultSetComparableStringWrapper(ResultSet value) throws SQLException {
-        try (value) {
-            if (value.next())
-                key = value.getString(1);
-            else
-                key = null;
-            value.beforeFirst();
+        try {
+            value.next();
+            key = value.getString(1);
             resultSet = value;
+            value.beforeFirst();
+        } catch (SQLException ex) {
+            throw new RuntimeException(ex);
         }
     }
 
@@ -53,6 +53,11 @@ public class ResultSetComparableStringWrapper implements ResultSet {
     @Override
     public int hashCode() {
         return key.hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "CachedRowSetImpl[" + key + "]";
     }
 
     @Override

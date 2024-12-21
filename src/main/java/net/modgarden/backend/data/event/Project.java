@@ -39,7 +39,7 @@ public record Project(String id,
             return;
         }
 
-        ctx.json(ctx.jsonMapper().fromJsonString(DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, project).getOrThrow().toString(), Project.class));
+        ctx.json(project);
     }
 
     public static Project query(String id) {

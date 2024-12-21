@@ -26,6 +26,7 @@ import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
@@ -53,9 +54,9 @@ public class ModGardenBackend {
         CODEC_REGISTRY.put(Landing.class, Landing.CODEC);
         CODEC_REGISTRY.put(BackendError.class, BackendError.CODEC);
         CODEC_REGISTRY.put(Event.class, Event.DIRECT_CODEC);
-        CODEC_REGISTRY.put(MinecraftAccount.class, MinecraftAccount.DIRECT_CODEC);
+        CODEC_REGISTRY.put(MinecraftAccount.class, MinecraftAccount.CODEC);
         CODEC_REGISTRY.put(Project.class, Project.DIRECT_CODEC);
-        CODEC_REGISTRY.put(User.class, User.DIRECT_CODEC);
+        CODEC_REGISTRY.put(User.class, User.FULL_CODEC);
 
 		Javalin app = Javalin.create(config -> config.jsonMapper(createDFUMapper()));
 		app.get("", ModGardenBackend::getLandingJson);
@@ -103,7 +104,8 @@ public class ModGardenBackend {
                     ")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS minecraft_accounts (" +
                     "uuid TEXT PRIMARY KEY," +
-                    "verified_to TEXT)");
+                    "verified_to TEXT," +
+                    "verified INTEGER)");
             statement.executeBatch();
         } catch (SQLException ex) {
             LOG.error("Failed to create database tables. ", ex);
@@ -115,10 +117,12 @@ public class ModGardenBackend {
     private static void updateSchemaVersion() {
         try (Connection connection = createDatabaseConnection();
              Statement statement = connection.createStatement()) {
-            statement.addBatch("CREATE TABLE IF NOT EXISTS schema_version (" +
-                    "id INTEGER PRIMARY KEY)");
+            statement.addBatch("CREATE TABLE IF NOT EXISTS schema_version (id INTEGER PRIMARY KEY)");
             statement.addBatch("DELETE FROM schema_version");
-            statement.addBatch("INSERT INTO schema_version VALUES (" + DATABASE_SCHEMA_VERSION + ")");
+            try (PreparedStatement prepared = connection.prepareStatement("INSERT INTO schema_version VALUES (?)")) {
+                prepared.setInt(1, DATABASE_SCHEMA_VERSION);
+                prepared.execute();
+            }
         } catch (SQLException ex) {
             LOG.error("Failed to update database schema version. ", ex);
             return;

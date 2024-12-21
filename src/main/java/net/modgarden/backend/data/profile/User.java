@@ -21,19 +21,31 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
 public record User(String id,
                    String discordId,
-                   Optional<String> modrinthId) {
+                   Optional<String> modrinthId,
+                   List<MinecraftAccount.UserInstance> mcAccounts) {
     public static final Codec<User> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
             Codec.STRING.fieldOf("discord_id").forGetter(User::discordId),
             Codec.STRING.optionalFieldOf("modrinth_id").forGetter(User::modrinthId)
     ).apply(inst, User::new)));
+    public static final Codec<User> FULL_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
+            Codec.STRING.fieldOf("id").forGetter(User::id),
+            Codec.STRING.fieldOf("discord_id").forGetter(User::discordId),
+            Codec.STRING.optionalFieldOf("modrinth_id").forGetter(User::modrinthId),
+            MinecraftAccount.UserInstance.CODEC.listOf().optionalFieldOf("minecraft_accounts", List.of()).forGetter(User::mcAccounts)
+    ).apply(inst, User::new)));
     public static final Codec<User> CODEC = Codec.STRING.xmap(User::queryFromId, User::id);
     private static final String USER_URL_REGEX = "(discord:|modrinth:)?" + ModGardenBackend.SAFE_URL_REGEX;
+
+    public User(String id, String discordId, Optional<String> modrinthId) {
+        this(id, discordId, modrinthId, List.of());
+    }
 
     public static void getUser(Context ctx) {
         String path = ctx.pathParam("user");
@@ -52,7 +64,7 @@ public record User(String id,
         }
 
         ModGardenBackend.LOG.info("Successfully queried user from path {}.", path);
-        ctx.json(ctx.jsonMapper().fromJsonString(DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, user).getOrThrow().toString(), User.class));
+        ctx.json(user);
     }
 
     @Nullable
@@ -76,57 +88,45 @@ public record User(String id,
     }
 
     private static User queryFromId(String id) {
-        try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM users WHERE id=?")) {
-            prepared.setString(1, id);
-            ResultSet result = prepared.executeQuery();
-            if (result == null)
-                return null;
-            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
-        } catch (IllegalStateException ex) {
-            logException(ex);
-            return null;
-        } catch (SQLException e) {
-            return null;
-        }
+        return innerQuery("id=?", id);
     }
 
     private static User queryFromDiscordId(String discordId) {
-        try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM users WHERE discord_id=?")) {
-            prepared.setString(1, discordId);
-            ResultSet result = prepared.executeQuery();
-            if (result == null)
-                return null;
-            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
-        } catch (IllegalStateException ex) {
-            logException(ex);
-            return null;
-        } catch (SQLException e) {
-            return null;
-        }
+        return innerQuery("discord_id=?", discordId);
     }
 
     private static User queryFromModrinthId(String modrinthId) {
-        try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM users WHERE modrinth_id=?")) {
-            prepared.setString(1, modrinthId);
-            ResultSet result = prepared.executeQuery();
-            if (result == null)
-                return null;
-            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
-        } catch (IllegalStateException ex) {
-            logException(ex);
-            return null;
-        } catch (SQLException e) {
-            return null;
-        }
+        return innerQuery("modrinth_id=?", modrinthId);
     }
 
     private static User queryFromModrinthUsername(String modrinthUsername) {
         try {
             return queryFromModrinthId(getUserModrinthId(modrinthUsername));
         } catch (IOException ex) {
+            return null;
+        }
+    }
+
+    private static User innerQuery(String whereStatement, String id) {
+        try (Connection connection = ModGardenBackend.createDatabaseConnection();
+             PreparedStatement prepared = connection.prepareStatement("SELECT " +
+                     "user.*," +
+                     "json_group_array(" +
+                        "json_object(" +
+                            "'uuid', mcacc.uuid," +
+                            "'verified', mcacc.verified" +
+                        ")" +
+                     ") AS minecraft_accounts " +
+                     "FROM users user " +
+                     "INNER JOIN minecraft_accounts mcacc, json_each(linked_to) json " +
+                     "ON json.value = user.id " +
+                     "WHERE user." + whereStatement)) {
+            prepared.setString(1, id);
+            ResultSet result = prepared.executeQuery();
+            if (result == null)
+                return null;
+            return FULL_CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
+        } catch (SQLException e) {
             return null;
         }
     }
@@ -144,9 +144,5 @@ public record User(String id,
                  }
             });
         }
-    }
-
-    private static void logException(IllegalStateException ex) {
-        ModGardenBackend.LOG.error("Failed to decode user from result set. ", ex);
     }
 }

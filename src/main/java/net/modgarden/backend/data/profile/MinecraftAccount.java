@@ -28,7 +28,7 @@ import java.util.UUID;
 public record MinecraftAccount(UUID uuid,
                                List<String> linkedTo,
                                boolean verified) {
-    public static final Codec<MinecraftAccount> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
+    public static final Codec<MinecraftAccount> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             ExtraCodecs.UUID_CODEC.fieldOf("uuid").forGetter(MinecraftAccount::uuid),
             Codec.STRING.listOf().fieldOf("linked_to").forGetter(MinecraftAccount::linkedTo),
             Codec.BOOL.fieldOf("verified").forGetter(MinecraftAccount::verified)
@@ -49,7 +49,7 @@ public record MinecraftAccount(UUID uuid,
             return;
         }
 
-        ctx.json(ctx.jsonMapper().fromJsonString(DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, account).getOrThrow().toString(), MinecraftAccount.class));
+        ctx.json(account);
     }
 
     public static MinecraftAccount query(String path) {
@@ -94,12 +94,19 @@ public record MinecraftAccount(UUID uuid,
             ResultSet result = prepared.executeQuery();
             if (result == null)
                 return null;
-            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
+            return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Failed to decode minecraft account from result set. ", ex);;
             return null;
         } catch (SQLException ex) {
             return null;
         }
+    }
+
+    public record UserInstance(UUID uuid, boolean verified) {
+        public static final Codec<UserInstance> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+                ExtraCodecs.UUID_CODEC.fieldOf("uuid").forGetter(UserInstance::uuid),
+                Codec.BOOL.fieldOf("verified").forGetter(UserInstance::verified)
+        ).apply(inst, UserInstance::new));
     }
 }

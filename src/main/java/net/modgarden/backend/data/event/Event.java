@@ -43,7 +43,7 @@ public record Event(String id,
             return;
         }
 
-        ctx.json(ctx.jsonMapper().fromJsonString(DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, event).getOrThrow().toString(), Event.class));
+        ctx.json(event);
     }
 
     @Nullable
