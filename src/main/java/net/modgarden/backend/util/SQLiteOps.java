@@ -257,7 +257,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
     public DataResult<Stream<ResultSet>> getStream(ResultSet input) {
         try(input) {
             if (input == empty() || input.next()) {
-                if (input == empty() || input.getObject(1) == null)
+                if (input == empty() || !(input.getObject(1) instanceof String))
                     return DataResult.success(Stream.of());
                 JsonElement element = JsonParser.parseString(input.getString(1));
                 DataResult<Stream<JsonElement>> jsonElement = JsonOps.INSTANCE.getStream(element);

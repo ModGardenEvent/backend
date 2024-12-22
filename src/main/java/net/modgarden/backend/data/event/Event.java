@@ -63,8 +63,11 @@ public record Event(String id,
 
     public static Event queryFromId(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM submissions WHERE id=?")) {
+             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM events WHERE id=?")) {
             prepared.setString(1, id);
+            ResultSet resultSet = prepared.executeQuery();
+            if (resultSet == null)
+                return null;
             return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, prepared.executeQuery()).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Failed to decode submission from result set. ", ex);;

@@ -1,7 +1,6 @@
 package net.modgarden.backend.data.event;
 
 import com.mojang.serialization.Codec;
-import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
@@ -16,13 +15,16 @@ import java.util.List;
 import java.util.Locale;
 
 public record Project(String id,
+                      String modrinthId,
                       String attributedTo,
                       List<User> authors) {
     public static final Codec<Project> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Project::id),
+            Codec.STRING.fieldOf("modrinth_id").forGetter(Project::modrinthId),
             Codec.STRING.fieldOf("attributed_to").forGetter(Project::attributedTo),
             User.CODEC.listOf().optionalFieldOf("authors", List.of()).forGetter(Project::authors)
     ).apply(inst, Project::new)));
+    public static final Codec<Project> CODEC = Codec.STRING.xmap(Project::innerQuery, Project::id);
 
     public static void getProject(Context ctx) {
         String path = ctx.pathParam("project");
@@ -31,7 +33,8 @@ public record Project(String id,
             ctx.status(422);
             return;
         }
-        Project project = query(path.toLowerCase(Locale.ROOT));
+        // TODO: Allow Modrinth as a service.
+        Project project = innerQuery(path.toLowerCase(Locale.ROOT));
         if (project == null) {
             ModGardenBackend.LOG.error("Could not find project '{}'.", path);
             ctx.result("Could not find project '" + path + "'.");
@@ -42,7 +45,7 @@ public record Project(String id,
         ctx.json(project);
     }
 
-    public static Project query(String id) {
+    private static Project innerQuery(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              PreparedStatement prepared = connection.prepareStatement("SELECT * FROM projects WHERE id=?")) {
             prepared.setString(1, id);

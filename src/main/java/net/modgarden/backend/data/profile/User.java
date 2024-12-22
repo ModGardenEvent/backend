@@ -3,10 +3,11 @@ package net.modgarden.backend.data.profile;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
-import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.data.event.Event;
+import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.util.SQLiteOps;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -27,23 +28,18 @@ import java.util.Optional;
 public record User(String id,
                    String discordId,
                    Optional<String> modrinthId,
-                   List<MinecraftAccount.UserInstance> mcAccounts) {
-    public static final Codec<User> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
-            Codec.STRING.fieldOf("id").forGetter(User::id),
-            Codec.STRING.fieldOf("discord_id").forGetter(User::discordId),
-            Codec.STRING.optionalFieldOf("modrinth_id").forGetter(User::modrinthId)
-    ).apply(inst, User::new)));
+                   List<Project> projects,
+                   List<Event> events,
+                   List<MinecraftAccount.UserInstance> minecraftAccounts) {
     public static final Codec<User> FULL_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
             Codec.STRING.fieldOf("discord_id").forGetter(User::discordId),
             Codec.STRING.optionalFieldOf("modrinth_id").forGetter(User::modrinthId),
-            MinecraftAccount.UserInstance.CODEC.listOf().optionalFieldOf("minecraft_accounts", List.of()).forGetter(User::mcAccounts)
+            Project.CODEC.listOf().optionalFieldOf("projects", List.of()).forGetter(User::projects),
+            Event.CODEC.listOf().optionalFieldOf("events", List.of()).forGetter(User::events),
+            MinecraftAccount.UserInstance.CODEC.listOf().optionalFieldOf("minecraft_accounts", List.of()).forGetter(User::minecraftAccounts)
     ).apply(inst, User::new)));
     public static final Codec<User> CODEC = Codec.STRING.xmap(User::queryFromId, User::id);
-
-    public User(String id, String discordId, Optional<String> modrinthId) {
-        this(id, discordId, modrinthId, List.of());
-    }
 
     public static void getUser(Context ctx) {
         String path = ctx.pathParam("user");
@@ -116,32 +112,7 @@ public record User(String id,
 
     private static User innerQuery(String whereStatement, String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement("SELECT " +
-                     "user.*, (CASE " +
-                     "WHEN (mcacc.uuid NOT NULL) " +
-                     "THEN " +
-                        "json_group_array(" +
-                            "json_object(" +
-                                "'uuid', mcacc.uuid," +
-                                "'verified', mcacc.verified" +
-                            ") " +
-                        ") " +
-                     "ELSE " +
-                        "json_array()" +
-                     "END) AS minecraft_accounts " +
-                     "FROM users user " +
-                     "LEFT OUTER JOIN minecraft_accounts mcacc " +
-                        "ON CASE " +
-                            "WHEN linked_to NOT NULL " +
-                            "THEN " +
-                                "EXISTS (" +
-                                    "SELECT * " +
-                                    "FROM json_each(mcacc.linked_to) " +
-                                    "WHERE json_each.value = user.id " +
-                                ") " +
-                            "ELSE FALSE " +
-                        "END " +
-                     "WHERE user." + whereStatement)) {
+             PreparedStatement prepared = connection.prepareStatement(selectStatement(whereStatement))) {
             prepared.setString(1, id);
             ResultSet result = prepared.executeQuery();
             if (result == null)
@@ -168,5 +139,47 @@ public record User(String id,
                  }
             });
         }
+    }
+
+    private static String selectStatement(String whereStatement) {
+        return "SELECT\n" +
+                "user.*," +
+                "(" +
+                "SELECT json_group_array(" +
+                    "project.id " +
+                ") " +
+                "FROM projects project, json_each(project.authors)\n" +
+                "WHERE json_each.value = user.id\n" +
+                ") AS projects, " +
+                "(" +
+                "SELECT json_group_array(\n" +
+                    "submission.event\n" +
+                ")" +
+                "FROM submissions submission\n" +
+                "WHERE submission.project_id = project.id\n" +
+                ") AS events," +
+                "(" +
+                "SELECT json_group_array(\n" +
+                    "json_object(\n" +
+                        "'uuid', mcacc.uuid,\n" +
+                        "'verified', mcacc.verified\n" +
+                    ")" +
+                ") " +
+                "FROM minecraft_accounts mcacc, json_each(mcacc.linked_to) " +
+                "WHERE json_each.value = user.id" +
+                ") AS minecraft_accounts " +
+                "FROM users user " +
+                "FULL JOIN projects project " +
+                    "ON CASE " +
+                        "WHEN authors NOT NULL " +
+                        "THEN " +
+                            "EXISTS (" +
+                                "SELECT * " +
+                                "FROM json_each(project.authors) " +
+                                "WHERE json_each.value = user.id " +
+                            ")" +
+                        "ELSE FALSE " +
+                    "END " +
+                "WHERE user." + whereStatement;
     }
 }

@@ -1,7 +1,6 @@
 package net.modgarden.backend.data.event;
 
 import com.mojang.serialization.Codec;
-import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
@@ -17,11 +16,13 @@ import java.util.Locale;
 
 public record Submission(String id,
                          String projectId,
+                         String modrinthVersionId,
                          Event event,
                          Date submittedAt) {
     public static final Codec<Submission> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Submission::id),
             Codec.STRING.fieldOf("project_id").forGetter(Submission::projectId),
+            Codec.STRING.fieldOf("modrinth_version_id").forGetter(Submission::modrinthVersionId),
             Event.CODEC.fieldOf("event").forGetter(Submission::event),
             ExtraCodecs.DATE.fieldOf("submitted_at").forGetter(Submission::submittedAt)
     ).apply(inst, Submission::new));
@@ -33,7 +34,7 @@ public record Submission(String id,
             ctx.status(422);
             return;
         }
-        Submission submission = query(path.toLowerCase(Locale.ROOT));
+        Submission submission = innerQuery(path.toLowerCase(Locale.ROOT));
         if (submission == null) {
             ModGardenBackend.LOG.error("Could not find submission '{}'.", path);
             ctx.result("Could not find submission '" + path + "'.");
@@ -44,7 +45,7 @@ public record Submission(String id,
         ctx.json(submission);
     }
 
-    public static Submission query(String id) {
+    public static Submission innerQuery(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              PreparedStatement prepared = connection.prepareStatement("SELECT * FROM submissions WHERE id=?")) {
             prepared.setString(1, id);
