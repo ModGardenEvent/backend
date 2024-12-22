@@ -169,7 +169,7 @@ public record User(String id,
                 "WHERE json_each.value = user.id" +
                 ") AS minecraft_accounts " +
                 "FROM users user " +
-                "FULL JOIN projects project " +
+                "LEFT JOIN projects project " +
                     "ON CASE " +
                         "WHEN authors NOT NULL " +
                         "THEN " +
