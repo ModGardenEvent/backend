@@ -35,7 +35,6 @@ import java.util.Map;
 public class ModGardenBackend {
 	public static final Logger LOG = LoggerFactory.getLogger("Mod Garden Backend");
     private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
-    private static Landing landing = null;
 
     public static final String SAFE_URL_REGEX = "[a-zA-Z0-9!@$()`.+,_\"-]+";;
     private static final int DATABASE_SCHEMA_VERSION = 1;
@@ -59,14 +58,14 @@ public class ModGardenBackend {
         CODEC_REGISTRY.put(User.class, User.FULL_CODEC);
 
 		Javalin app = Javalin.create(config -> config.jsonMapper(createDFUMapper()));
-		app.get("", ModGardenBackend::getLandingJson);
-        app.get("/user/{user}", User::getUser);
-        app.get("/event/{event}", Event::getEvent);
-        app.get("/project/{project}", Project::getProject);
-        app.get("/submission/{submission}", Submission::getSubmission);
-        app.get("/mcaccount/{mcaccount}", MinecraftAccount::getAccount);
-        app.error(422, ModGardenBackend::handleError);
-		app.error(404, ModGardenBackend::handleError);
+		app.get("", Landing::getLandingJson);
+        app.get("/users/{user}", User::getUser);
+        app.get("/events/{event}", Event::getEvent);
+        app.get("/projects/{project}", Project::getProject);
+        app.get("/submissions/{submission}", Submission::getSubmission);
+        app.get("/mcaccounts/{mcaccount}", MinecraftAccount::getAccount);
+        app.error(404, BackendError::handleError);
+        app.error(422, BackendError::handleError);
 		app.start(7070);
 		LOG.info("Mod Garden Backend Started!");
     }
@@ -129,25 +128,6 @@ public class ModGardenBackend {
         }
         LOG.info("Updated database schema version.");
     }
-
-	private static void getLandingJson(Context ctx) {
-        if (landing == null) {
-            InputStream landingFile = ModGardenBackend.class.getResourceAsStream("/landing.json");
-            if (landingFile == null) {
-                LOG.error("Could not find 'landing.json' resource file.");
-                ctx.result("Could not find landing file.");
-                ctx.status(404);
-                return;
-            }
-            landing = ctx.jsonMapper().fromJsonStream(landingFile, Landing.class);
-        }
-
-		ctx.json(landing);
-	}
-
-	private static void handleError(Context ctx) {
-		ctx.json(new BackendError(ctx.status().getMessage(), ctx.result()));
-	}
 
     private static JsonMapper createDFUMapper() {
         return new JsonMapper() {

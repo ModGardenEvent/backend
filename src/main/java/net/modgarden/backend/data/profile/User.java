@@ -22,7 +22,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 
 public record User(String id,
@@ -41,7 +40,6 @@ public record User(String id,
             MinecraftAccount.UserInstance.CODEC.listOf().optionalFieldOf("minecraft_accounts", List.of()).forGetter(User::mcAccounts)
     ).apply(inst, User::new)));
     public static final Codec<User> CODEC = Codec.STRING.xmap(User::queryFromId, User::id);
-    private static final String USER_URL_REGEX = "(discord:|modrinth:)?" + ModGardenBackend.SAFE_URL_REGEX;
 
     public User(String id, String discordId, Optional<String> modrinthId) {
         this(id, discordId, modrinthId, List.of());
@@ -49,40 +47,46 @@ public record User(String id,
 
     public static void getUser(Context ctx) {
         String path = ctx.pathParam("user");
-        if (!path.matches(USER_URL_REGEX)) {
+        String service = ctx.queryParam("service");
+        if (!path.matches(ModGardenBackend.SAFE_URL_REGEX)) {
             ctx.result("Illegal characters in path '" + path + "'.");
             ctx.status(422);
             return;
         }
 
-        User user = query(path.toLowerCase(Locale.ROOT));
+        String serviceEndString = switch (service) {
+            case "modrinth" -> "Modrinth";
+            case "discord" -> "Discord";
+            case null, default -> "Mod Garden";
+        };
+
+        User user = query(path, service);
         if (user == null) {
             ModGardenBackend.LOG.error("Could not find user '{}'.", path);
-            ctx.result("Could not find user '" + path + "'.");
+            ctx.result("Could not find user '" + path + "' from service '" + serviceEndString + "'.");
             ctx.status(404);
             return;
         }
-
-        ModGardenBackend.LOG.info("Successfully queried user from path {}.", path);
+        ModGardenBackend.LOG.info("Successfully queried user from path '{}' from service '{}'.", path, serviceEndString);
         ctx.json(user);
     }
 
     @Nullable
-    public static User query(String path) {
-        User user = queryFromModrinthUsername(path);
+    public static User query(String path,
+                             @Nullable String service) {
+        User user = null;
 
-        if (user == null)
+        if (service == null || "modgarden".equalsIgnoreCase(service))
             user = queryFromId(path);
 
-        if (user == null && path.startsWith("discord:")) {
-            path = path.substring(8);
-            user = queryFromDiscordId(path);
+        if ("modrinth".equalsIgnoreCase(service)) {
+            user = queryFromModrinthUsername(path);
+            if (user == null)
+                user = queryFromModrinthId(path);
         }
 
-        if (user == null && path.startsWith("modrinth:")) {
-            path = path.substring(9);
-            user = queryFromModrinthId(path);
-        }
+        if ("discord".equalsIgnoreCase(service))
+            user = queryFromDiscordId(path);
 
         return user;
     }
@@ -101,7 +105,10 @@ public record User(String id,
 
     private static User queryFromModrinthUsername(String modrinthUsername) {
         try {
-            return queryFromModrinthId(getUserModrinthId(modrinthUsername));
+            String usernameToId = getUserModrinthId(modrinthUsername);
+            if (usernameToId == null)
+                return null;
+            return queryFromModrinthId(usernameToId);
         } catch (IOException ex) {
             return null;
         }
@@ -110,23 +117,40 @@ public record User(String id,
     private static User innerQuery(String whereStatement, String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              PreparedStatement prepared = connection.prepareStatement("SELECT " +
-                     "user.*," +
-                     "json_group_array(" +
-                        "json_object(" +
-                            "'uuid', mcacc.uuid," +
-                            "'verified', mcacc.verified" +
-                        ")" +
-                     ") AS minecraft_accounts " +
+                     "user.*, (CASE " +
+                     "WHEN (mcacc.uuid NOT NULL) " +
+                     "THEN " +
+                        "json_group_array(" +
+                            "json_object(" +
+                                "'uuid', mcacc.uuid," +
+                                "'verified', mcacc.verified" +
+                            ") " +
+                        ") " +
+                     "ELSE " +
+                        "json_array()" +
+                     "END) AS minecraft_accounts " +
                      "FROM users user " +
-                     "INNER JOIN minecraft_accounts mcacc, json_each(linked_to) json " +
-                     "ON json.value = user.id " +
+                     "LEFT OUTER JOIN minecraft_accounts mcacc " +
+                        "ON CASE " +
+                            "WHEN linked_to NOT NULL " +
+                            "THEN " +
+                                "EXISTS (" +
+                                    "SELECT * " +
+                                    "FROM json_each(mcacc.linked_to) " +
+                                    "WHERE json_each.value = user.id " +
+                                ") " +
+                            "ELSE FALSE " +
+                        "END " +
                      "WHERE user." + whereStatement)) {
             prepared.setString(1, id);
             ResultSet result = prepared.executeQuery();
             if (result == null)
                 return null;
             return FULL_CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
-        } catch (SQLException e) {
+        } catch (IllegalStateException ex) {
+            ModGardenBackend.LOG.error("Could not decode user. ", ex);
+            return null;
+        } catch (SQLException ex) {
             return null;
         }
     }
