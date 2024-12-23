@@ -90,15 +90,15 @@ public record User(String id,
     }
 
     private static User queryFromId(String id) {
-        return innerQuery("id=?", id);
+        return innerQuery("id = ?", id);
     }
 
     private static User queryFromDiscordId(String discordId) {
-        return innerQuery("discord_id=?", discordId);
+        return innerQuery("discord_id = ?", discordId);
     }
 
     private static User queryFromModrinthId(String modrinthId) {
-        return innerQuery("modrinth_id=?", modrinthId);
+        return innerQuery("modrinth_id = ?", modrinthId);
     }
 
     private static User queryFromModrinthUsername(String modrinthUsername) {

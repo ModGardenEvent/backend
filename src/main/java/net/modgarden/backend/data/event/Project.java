@@ -22,7 +22,7 @@ public record Project(String id,
     public static final Codec<Project> CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Project::id),
             Codec.STRING.fieldOf("modrinth_id").forGetter(Project::modrinthId),
-            Codec.STRING.fieldOf("attributed_to").forGetter(Project::attributedTo),
+            User.ID_CODEC.fieldOf("attributed_to").forGetter(Project::attributedTo),
             User.ID_CODEC.listOf().optionalFieldOf("authors", List.of()).forGetter(Project::authors)
     ).apply(inst, Project::new)));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(Project::validate);
@@ -35,7 +35,7 @@ public record Project(String id,
             return;
         }
         // TODO: Allow Modrinth as a service.
-        Project project = innerQuery(path.toLowerCase(Locale.ROOT));
+        Project project = innerQuery(path);
         if (project == null) {
             ModGardenBackend.LOG.error("Could not find project '{}'.", path);
             ctx.result("Could not find project '" + path + "'.");
@@ -48,7 +48,7 @@ public record Project(String id,
 
     private static Project innerQuery(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM projects WHERE id = ?")) {
+             PreparedStatement prepared = connection.prepareStatement(selectStatement("id = ?"))) {
             prepared.setString(1, id);
             ResultSet result = prepared.executeQuery();
             if (result == null)
@@ -60,6 +60,25 @@ public record Project(String id,
         } catch (SQLException ex) {
             return null;
         }
+    }
+
+    private static String selectStatement(String whereStatement) {
+        return "SELECT " +
+                "p.id, " +
+                "p.modrinth_id, " +
+                "p.attributed_to, " +
+                "CASE " +
+                "WHEN a.user_id NOT NULL THEN json_group_array(DISTINCT a.user_id) " +
+                "ELSE json_array() " +
+                "END AS authors " +
+                "FROM " +
+                "projects p " +
+                "LEFT JOIN " +
+                "project_authors a ON p.id = a.project_id " +
+                "WHERE " +
+                "p." + whereStatement + " " +
+                "GROUP BY " +
+                "p.id, p.modrinth_id, p.attributed_to";
     }
 
     private static DataResult<String> validate(String id) {
