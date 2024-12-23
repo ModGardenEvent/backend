@@ -2,7 +2,6 @@ package net.modgarden.backend.data.event;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
-import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
