@@ -52,10 +52,10 @@ public class ModGardenBackend {
 
         CODEC_REGISTRY.put(Landing.class, Landing.CODEC);
         CODEC_REGISTRY.put(BackendError.class, BackendError.CODEC);
-        CODEC_REGISTRY.put(Event.class, Event.DIRECT_CODEC);
+        CODEC_REGISTRY.put(Event.class, Event.CODEC);
         CODEC_REGISTRY.put(MinecraftAccount.class, MinecraftAccount.CODEC);
-        CODEC_REGISTRY.put(Project.class, Project.DIRECT_CODEC);
-        CODEC_REGISTRY.put(User.class, User.FULL_CODEC);
+        CODEC_REGISTRY.put(Project.class, Project.CODEC);
+        CODEC_REGISTRY.put(User.class, User.CODEC);
 
 		Javalin app = Javalin.create(config -> config.jsonMapper(createDFUMapper()));
 		app.get("", Landing::getLandingJson);

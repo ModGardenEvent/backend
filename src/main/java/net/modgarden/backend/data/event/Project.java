@@ -1,6 +1,7 @@
 package net.modgarden.backend.data.event;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
@@ -17,14 +18,14 @@ import java.util.Locale;
 public record Project(String id,
                       String modrinthId,
                       String attributedTo,
-                      List<User> authors) {
-    public static final Codec<Project> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
+                      List<String> authors) {
+    public static final Codec<Project> CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Project::id),
             Codec.STRING.fieldOf("modrinth_id").forGetter(Project::modrinthId),
             Codec.STRING.fieldOf("attributed_to").forGetter(Project::attributedTo),
-            User.CODEC.listOf().optionalFieldOf("authors", List.of()).forGetter(Project::authors)
+            User.ID_CODEC.listOf().optionalFieldOf("authors", List.of()).forGetter(Project::authors)
     ).apply(inst, Project::new)));
-    public static final Codec<Project> CODEC = Codec.STRING.xmap(Project::innerQuery, Project::id);
+    public static final Codec<String> ID_CODEC = Codec.STRING.validate(Project::validate);
 
     public static void getProject(Context ctx) {
         String path = ctx.pathParam("project");
@@ -47,17 +48,30 @@ public record Project(String id,
 
     private static Project innerQuery(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM projects WHERE id=?")) {
+             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM projects WHERE id = ?")) {
             prepared.setString(1, id);
             ResultSet result = prepared.executeQuery();
             if (result == null)
                 return null;
-            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
+            return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Failed to decode project from result set. ", ex);;
             return null;
         } catch (SQLException ex) {
             return null;
         }
+    }
+
+    private static DataResult<String> validate(String id) {
+        try (Connection connection = ModGardenBackend.createDatabaseConnection();
+             PreparedStatement prepared = connection.prepareStatement("SELECT 1 FROM projects WHERE id = ?")) {
+            prepared.setString(1, id);
+            ResultSet result = prepared.executeQuery();
+            if (result != null && result.getBoolean(1))
+                return DataResult.success(id);
+        } catch (SQLException ex) {
+            ModGardenBackend.LOG.error("Exception in SQL query.", ex);
+        }
+        return DataResult.error(() -> "Failed to get project with id '" + id + "'.");
     }
 }

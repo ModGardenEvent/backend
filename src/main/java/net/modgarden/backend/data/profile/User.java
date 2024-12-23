@@ -3,6 +3,7 @@ package net.modgarden.backend.data.profile;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
@@ -23,23 +24,24 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 public record User(String id,
                    String discordId,
                    Optional<String> modrinthId,
-                   List<Project> projects,
-                   List<Event> events,
+                   List<String> projects,
+                   List<String> events,
                    List<MinecraftAccount.UserInstance> minecraftAccounts) {
-    public static final Codec<User> FULL_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
+    public static final Codec<User> CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
             Codec.STRING.fieldOf("discord_id").forGetter(User::discordId),
             Codec.STRING.optionalFieldOf("modrinth_id").forGetter(User::modrinthId),
-            Project.CODEC.listOf().optionalFieldOf("projects", List.of()).forGetter(User::projects),
-            Event.CODEC.listOf().optionalFieldOf("events", List.of()).forGetter(User::events),
+            Project.ID_CODEC.listOf().optionalFieldOf("projects", List.of()).forGetter(User::projects),
+            Event.ID_CODEC.listOf().optionalFieldOf("events", List.of()).forGetter(User::events),
             MinecraftAccount.UserInstance.CODEC.listOf().optionalFieldOf("minecraft_accounts", List.of()).forGetter(User::minecraftAccounts)
     ).apply(inst, User::new)));
-    public static final Codec<User> CODEC = Codec.STRING.xmap(User::queryFromId, User::id);
+    public static final Codec<String> ID_CODEC = Codec.STRING.validate(User::validate);
 
     public static void getUser(Context ctx) {
         String path = ctx.pathParam("user");
@@ -72,17 +74,17 @@ public record User(String id,
                              @Nullable String service) {
         User user = null;
 
-        if (service == null || "modgarden".equalsIgnoreCase(service))
-            user = queryFromId(path);
-
         if ("modrinth".equalsIgnoreCase(service)) {
-            user = queryFromModrinthUsername(path);
+            user = queryFromModrinthUsername(path.toLowerCase(Locale.ROOT));
             if (user == null)
                 user = queryFromModrinthId(path);
         }
 
         if ("discord".equalsIgnoreCase(service))
             user = queryFromDiscordId(path);
+
+        if (user == null)
+            user = queryFromId(path);
 
         return user;
     }
@@ -117,7 +119,7 @@ public record User(String id,
             ResultSet result = prepared.executeQuery();
             if (result == null)
                 return null;
-            return FULL_CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
+            return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Could not decode user. ", ex);
             return null;
@@ -125,6 +127,19 @@ public record User(String id,
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
             return null;
         }
+    }
+
+    private static DataResult<String> validate(String id) {
+        try (Connection connection = ModGardenBackend.createDatabaseConnection();
+             PreparedStatement prepared = connection.prepareStatement("SELECT 1 FROM users WHERE id = ?")) {
+            prepared.setString(1, id);
+            ResultSet result = prepared.executeQuery();
+            if (result != null && result.getBoolean(1))
+                return DataResult.success(id);
+        } catch (SQLException ex) {
+            ModGardenBackend.LOG.error("Exception in SQL query.", ex);
+        }
+        return DataResult.error(() -> "Failed to get user with id '" + id + "'.");
     }
 
     private static String getUserModrinthId(String modrinthUsername) throws IOException {
