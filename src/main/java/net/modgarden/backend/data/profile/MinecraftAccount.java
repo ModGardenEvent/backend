@@ -3,7 +3,6 @@ package net.modgarden.backend.data.profile;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
-import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
@@ -21,16 +20,15 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
 public record MinecraftAccount(UUID uuid,
-                               List<String> linkedTo,
+                               String userId,
                                boolean verified) {
     public static final Codec<MinecraftAccount> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             ExtraCodecs.UUID_CODEC.fieldOf("uuid").forGetter(MinecraftAccount::uuid),
-            Codec.STRING.listOf().fieldOf("linked_to").forGetter(MinecraftAccount::linkedTo),
+            Codec.STRING.fieldOf("user_id").forGetter(MinecraftAccount::userId),
             Codec.BOOL.fieldOf("verified").forGetter(MinecraftAccount::verified)
     ).apply(inst, MinecraftAccount::new));
 

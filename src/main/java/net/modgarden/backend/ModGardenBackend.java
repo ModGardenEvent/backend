@@ -79,32 +79,49 @@ public class ModGardenBackend {
         try (Connection connection = createDatabaseConnection();
              Statement statement = connection.createStatement()) {
             statement.addBatch("CREATE TABLE IF NOT EXISTS users (" +
-                    "id TEXT PRIMARY KEY," +
-                    "discord_id TEXT," +
-                    "modrinth_id TEXT)");
+                        "id TEXT UNIQUE NOT NULL," +
+                        "discord_id TEXT UNIQUE NOT NULL," +
+                        "modrinth_id TEXT UNIQUE," +
+                        "PRIMARY KEY(id)" +
+                    ")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS events (" +
-                    "id TEXT PRIMARY KEY," +
-                    "slug TEXT," +
-                    "display_name TEXT," +
-                    "start_date TEXT," +
-                    "submissions BLOB" +
+                        "id TEXT UNIQUE NOT NULL," +
+                        "slug TEXT UNIQUE NOT NULL," +
+                        "display_name TEXT NOT NULL," +
+                        "start_date INTEGER NOT NULL," +
+                        "PRIMARY KEY (id)" +
                     ")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS projects (" +
-                    "id TEXT PRIMARY KEY," +
-                    "attributed_to TEXT," +
-                    "authors BLOB," +
-                    "events BLOB" +
+                        "id TEXT UNIQUE NOT NULL," +
+                        "modrinth_id TEXT UNIQUE NOT NULL," +
+                        "attributed_to TEXT NOT NULL," +
+                        "FOREIGN KEY (attributed_to) REFERENCES users(id)," +
+                        "PRIMARY KEY (id)" +
+                    ")");
+            statement.addBatch("CREATE TABLE IF NOT EXISTS project_authors (" +
+                        "project_id TEXT NOT NULL," +
+                        "user_id TEXT NOT NULL," +
+                        "FOREIGN KEY (project_id) REFERENCES projects(id)," +
+                        "FOREIGN KEY (user_id) REFERENCES users(id)," +
+                        "PRIMARY KEY (project_id, user_id)" +
                     ")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS submissions (" +
-                    "id TEXT PRIMARY KEY," +
-                    "project_id TEXT," +
-                    "event TEXT," +
-                    "submitted_at TEXT" +
+                        "id TEXT UNIQUE NOT NULL," +
+                        "project_id TEXT NOT NULL," +
+                        "event TEXT NOT NULL," +
+                        "modrinth_version_id TEXT NOT NULL," +
+                        "submitted_at INTEGER NOT NULL," +
+                        "FOREIGN KEY (project_id) REFERENCES projects(id)," +
+                        "FOREIGN KEY (event) REFERENCES events(id)," +
+                        "PRIMARY KEY(id)" +
                     ")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS minecraft_accounts (" +
-                    "uuid TEXT PRIMARY KEY," +
-                    "verified_to TEXT," +
-                    "verified INTEGER)");
+                        "uuid TEXT UNIQUE NOT NULL," +
+                        "user_id TEXT NOT NULL," +
+                        "verified INTEGER NOT NULL DEFAULT 0," +
+                        "FOREIGN KEY (user_id) REFERENCES users(id)," +
+                        "PRIMARY KEY (uuid)" +
+                    ")");
             statement.executeBatch();
         } catch (SQLException ex) {
             LOG.error("Failed to create database tables. ", ex);
@@ -116,9 +133,10 @@ public class ModGardenBackend {
     private static void updateSchemaVersion() {
         try (Connection connection = createDatabaseConnection();
              Statement statement = connection.createStatement()) {
-            statement.addBatch("CREATE TABLE IF NOT EXISTS schema_version (id INTEGER PRIMARY KEY)");
-            statement.addBatch("DELETE FROM schema_version");
-            try (PreparedStatement prepared = connection.prepareStatement("INSERT INTO schema_version VALUES (?)")) {
+            statement.addBatch("CREATE TABLE IF NOT EXISTS schema (version INTEGER NOT NULL, PRIMARY KEY(version))");
+            statement.addBatch("DELETE FROM schema");
+            statement.executeBatch();
+            try (PreparedStatement prepared = connection.prepareStatement("INSERT INTO schema VALUES (?)")) {
                 prepared.setInt(1, DATABASE_SCHEMA_VERSION);
                 prepared.execute();
             }

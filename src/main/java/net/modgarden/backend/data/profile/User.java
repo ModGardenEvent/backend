@@ -122,6 +122,7 @@ public record User(String id,
             ModGardenBackend.LOG.error("Could not decode user. ", ex);
             return null;
         } catch (SQLException ex) {
+            ModGardenBackend.LOG.error("Exception in SQL query.", ex);
             return null;
         }
     }
@@ -142,44 +143,35 @@ public record User(String id,
     }
 
     private static String selectStatement(String whereStatement) {
-        return "SELECT\n" +
-                "user.*," +
-                "(" +
-                "SELECT json_group_array(" +
-                    "project.id " +
-                ") " +
-                "FROM projects project, json_each(project.authors)\n" +
-                "WHERE json_each.value = user.id\n" +
-                ") AS projects, " +
-                "(" +
-                "SELECT json_group_array(\n" +
-                    "submission.event\n" +
-                ")" +
-                "FROM submissions submission\n" +
-                "WHERE submission.project_id = project.id\n" +
-                ") AS events," +
-                "(" +
-                "SELECT json_group_array(\n" +
-                    "json_object(\n" +
-                        "'uuid', mcacc.uuid,\n" +
-                        "'verified', mcacc.verified\n" +
-                    ")" +
-                ") " +
-                "FROM minecraft_accounts mcacc, json_each(mcacc.linked_to) " +
-                "WHERE json_each.value = user.id" +
-                ") AS minecraft_accounts " +
-                "FROM users user " +
-                "LEFT JOIN projects project " +
-                    "ON CASE " +
-                        "WHEN authors NOT NULL " +
-                        "THEN " +
-                            "EXISTS (" +
-                                "SELECT * " +
-                                "FROM json_each(project.authors) " +
-                                "WHERE json_each.value = user.id " +
-                            ")" +
-                        "ELSE FALSE " +
-                    "END " +
-                "WHERE user." + whereStatement;
+        return "SELECT " +
+                    "u.id, " +
+                    "u.discord_id, " +
+                    "u.modrinth_id, " +
+                    "CASE " +
+                        "WHEN p.id NOT NULL THEN json_group_array(DISTINCT p.id) " +
+                        "ELSE json_array() " +
+                    "END AS projects, " +
+                    "CASE " +
+                        "WHEN e.id NOT NULL THEN json_group_array(DISTINCT e.id) " +
+                        "ELSE json_array() " +
+                    "END AS events, " +
+                    "CASE " +
+                        "WHEN ma.uuid NOT NULL THEN json_group_array(json_object('uuid', ma.uuid, 'verified', ma.verified)) " +
+                        "ELSE json_array() " +
+                    "END AS minecraft_accounts " +
+                "FROM " +
+                    "users u " +
+                "LEFT JOIN " +
+                    "projects p, project_authors a ON u.id = a.user_id AND p.id = a.project_id " +
+                "LEFT JOIN " +
+                    "submissions s ON p.id = s.project_id " +
+                "LEFT JOIN " +
+                    "events e ON s.event = e.id " +
+                "LEFT JOIN " +
+                    "minecraft_accounts ma ON u.id = ma.user_id " +
+                "WHERE " +
+                    "u." + whereStatement + " " +
+                "GROUP BY " +
+                    "u.id, u.discord_id, u.modrinth_id";
     }
 }
