@@ -89,6 +89,7 @@ public class ModGardenBackend {
                         "id TEXT UNIQUE NOT NULL," +
                         "slug TEXT UNIQUE NOT NULL," +
                         "display_name TEXT NOT NULL," +
+                        "description TEXT NOT NULL," +
                         "start_date INTEGER NOT NULL," +
                         "PRIMARY KEY (id)" +
                     ")");

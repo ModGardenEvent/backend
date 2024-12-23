@@ -19,11 +19,13 @@ import java.util.Locale;
 public record Event(String id,
                     String slug,
                     String displayName,
+                    String description,
                     Date startDate) {
     public static final Codec<Event> CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Event::id),
             Codec.STRING.fieldOf("slug").forGetter(Event::slug),
             Codec.STRING.fieldOf("display_name").forGetter(Event::displayName),
+            Codec.STRING.fieldOf("description").forGetter(Event::description),
             ExtraCodecs.DATE.fieldOf("start_date").forGetter(Event::startDate)
     ).apply(inst, Event::new)));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(Event::validate);
