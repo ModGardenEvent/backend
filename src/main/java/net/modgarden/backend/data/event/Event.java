@@ -49,17 +49,12 @@ public record Event(String id,
 
     @Nullable
     public static Event query(String path) {
-        Event user = null;
+        Event event = queryFromSlug(path.toLowerCase(Locale.ROOT));
 
-        try {
-            user = queryFromSlug(path.toLowerCase(Locale.ROOT));
-        } catch (RuntimeException ignored) {}
+        if (event == null)
+            event = queryFromId(path);
 
-        try {
-            user = queryFromId(path);
-        } catch (RuntimeException ignored) {}
-
-        return user;
+        return event;
     }
 
     public static Event queryFromId(String id) {
@@ -80,7 +75,7 @@ public record Event(String id,
 
     public static Event queryFromSlug(String slug) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM submissions WHERE slug=?")) {
+             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM events WHERE slug=?")) {
             prepared.setString(1, slug);
             ResultSet result = prepared.executeQuery();
             if (result == null)

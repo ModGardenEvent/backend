@@ -12,18 +12,17 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Date;
-import java.util.Locale;
 
 public record Submission(String id,
                          String projectId,
+                         String event,
                          String modrinthVersionId,
-                         Event event,
                          Date submittedAt) {
-    public static final Codec<Submission> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
+    public static final Codec<Submission> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Submission::id),
             Codec.STRING.fieldOf("project_id").forGetter(Submission::projectId),
+            Event.ID_CODEC.fieldOf("event").forGetter(Submission::event),
             Codec.STRING.fieldOf("modrinth_version_id").forGetter(Submission::modrinthVersionId),
-            Event.CODEC.fieldOf("event").forGetter(Submission::event),
             ExtraCodecs.DATE.fieldOf("submitted_at").forGetter(Submission::submittedAt)
     ).apply(inst, Submission::new));
 
@@ -34,7 +33,7 @@ public record Submission(String id,
             ctx.status(422);
             return;
         }
-        Submission submission = innerQuery(path.toLowerCase(Locale.ROOT));
+        Submission submission = innerQuery(path);
         if (submission == null) {
             ModGardenBackend.LOG.error("Could not find submission '{}'.", path);
             ctx.result("Could not find submission '" + path + "'.");
@@ -47,12 +46,12 @@ public record Submission(String id,
 
     public static Submission innerQuery(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM submissions WHERE id=?")) {
+             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM submissions WHERE id = ?")) {
             prepared.setString(1, id);
             ResultSet result = prepared.executeQuery();
             if (result == null)
                 return null;
-            return DIRECT_CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
+            return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Failed to decode submission from result set. ", ex);;
             return null;
