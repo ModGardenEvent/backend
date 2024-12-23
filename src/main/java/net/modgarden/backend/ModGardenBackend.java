@@ -1,12 +1,9 @@
 package net.modgarden.backend;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
-import com.google.gson.JsonPrimitive;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 import io.javalin.Javalin;
-import io.javalin.http.Context;
 import io.javalin.json.JsonMapper;
 import net.modgarden.backend.data.BackendError;
 import net.modgarden.backend.data.Landing;
