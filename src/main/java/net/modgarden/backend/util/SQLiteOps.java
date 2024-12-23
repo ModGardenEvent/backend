@@ -247,8 +247,6 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
                 if (json.isJsonArray())
                     return createValue(json, "TEXT", false);
             }
-        } catch (SQLException ex) {
-            ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         } catch (JsonParseException ignored) {}
 
         if (columnTypeName.equals("TEXT"))
