@@ -60,34 +60,34 @@ public record Event(String id,
 
     public static Event queryFromId(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM events WHERE id=?")) {
+             PreparedStatement prepared = connection.prepareStatement(selectStatement("id = ?"))) {
             prepared.setString(1, id);
-            ResultSet resultSet = prepared.executeQuery();
-            if (resultSet == null)
+            ResultSet result = prepared.executeQuery();
+            if (!result.isBeforeFirst())
                 return null;
-            return CODEC.decode(SQLiteOps.INSTANCE, prepared.executeQuery()).getOrThrow().getFirst();
+            return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
-            ModGardenBackend.LOG.error("Failed to decode submission from result set. ", ex);;
-            return null;
+            ModGardenBackend.LOG.error("Failed to decode submission from result set. ", ex);
         } catch (SQLException ex) {
-            throw new NullPointerException("Could not find project inside project database.");
+            ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         }
+        return null;
     }
 
     public static Event queryFromSlug(String slug) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM events WHERE slug=?")) {
+             PreparedStatement prepared = connection.prepareStatement(selectStatement("slug = ?"))) {
             prepared.setString(1, slug);
             ResultSet result = prepared.executeQuery();
-            if (result == null)
+            if (!result.isBeforeFirst())
                 return null;
             return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
-            ModGardenBackend.LOG.error("Failed to decode event from result set. ", ex);;
-            return null;
+            ModGardenBackend.LOG.error("Failed to decode event from result set. ", ex);
         } catch (SQLException ex) {
-            return null;
+            ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         }
+        return null;
     }
 
     private static DataResult<String> validate(String id) {
@@ -101,5 +101,20 @@ public record Event(String id,
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         }
         return DataResult.error(() -> "Failed to get event with id '" + id + "'.");
+    }
+
+    private static String selectStatement(String whereStatement) {
+        return "SELECT " +
+                "e.id, " +
+                "e.slug, " +
+                "e.display_name, " +
+                "e.description, " +
+                "e.start_date " +
+                "FROM " +
+                "events e " +
+                "WHERE " +
+                "e." + whereStatement + " " +
+                "GROUP BY " +
+                "e.id, e.slug, e.display_name, e.description, e.start_date";
     }
 }

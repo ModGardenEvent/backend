@@ -246,9 +246,13 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
                 JsonElement json = JsonParser.parseString(columnString);
                 if (json.isJsonArray())
                     return createValue(json, "TEXT", false);
-                return createValue(input.getString(columnIndex), "TEXT", false);
             }
-        } catch (JsonParseException | SQLException ignored) {}
+        } catch (SQLException ex) {
+            ModGardenBackend.LOG.error("Exception in SQL query.", ex);
+        } catch (JsonParseException ignored) {}
+
+        if (columnTypeName.equals("TEXT"))
+            return createValue(input.getString(columnIndex), "TEXT", false);
 
         return createNumeric(columnTypeName.equals("INTEGER") ? input.getInt(columnIndex) : input.getDouble(columnIndex));
     }

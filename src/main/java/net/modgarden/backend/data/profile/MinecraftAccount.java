@@ -90,15 +90,15 @@ public record MinecraftAccount(UUID uuid,
              PreparedStatement prepared = connection.prepareStatement("SELECT * FROM minecraft_accounts WHERE uuid=?")) {
             prepared.setString(1, uuid);
             ResultSet result = prepared.executeQuery();
-            if (result == null)
+            if (!result.isBeforeFirst())
                 return null;
             return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
-            ModGardenBackend.LOG.error("Failed to decode minecraft account from result set. ", ex);;
-            return null;
+            ModGardenBackend.LOG.error("Failed to decode minecraft account from result set. ", ex);
         } catch (SQLException ex) {
-            return null;
+            ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         }
+        return null;
     }
 
     public record UserInstance(UUID uuid, boolean verified) {

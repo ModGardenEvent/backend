@@ -122,11 +122,10 @@ public record User(String id,
             return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Could not decode user. ", ex);
-            return null;
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
-            return null;
         }
+        return null;
     }
 
     private static DataResult<String> validate(String id) {

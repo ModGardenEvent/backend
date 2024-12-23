@@ -49,14 +49,14 @@ public record Submission(String id,
              PreparedStatement prepared = connection.prepareStatement("SELECT * FROM submissions WHERE id = ?")) {
             prepared.setString(1, id);
             ResultSet result = prepared.executeQuery();
-            if (result == null)
+            if (!result.isBeforeFirst())
                 return null;
             return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Failed to decode submission from result set. ", ex);;
-            return null;
         } catch (SQLException ex) {
-            return null;
+            ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         }
+        return null;
     }
 }
