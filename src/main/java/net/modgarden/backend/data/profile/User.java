@@ -7,8 +7,10 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.data.award.AwardInstance;
 import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Project;
+import net.modgarden.backend.util.ExtraCodecs;
 import net.modgarden.backend.util.SQLiteOps;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -26,21 +28,24 @@ import java.sql.SQLException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.UUID;
 
 public record User(String id,
                    String discordId,
                    Optional<String> modrinthId,
                    List<String> projects,
                    List<String> events,
-                   List<MinecraftAccount.UserInstance> minecraftAccounts) {
-    public static final Codec<User> CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
+                   List<UUID> minecraftAccounts,
+                   List<AwardInstance.UserValues> awards) {
+    public static final Codec<User> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
             Codec.STRING.fieldOf("discord_id").forGetter(User::discordId),
             Codec.STRING.optionalFieldOf("modrinth_id").forGetter(User::modrinthId),
             Project.ID_CODEC.listOf().optionalFieldOf("projects", List.of()).forGetter(User::projects),
             Event.ID_CODEC.listOf().optionalFieldOf("events", List.of()).forGetter(User::events),
-            MinecraftAccount.UserInstance.CODEC.listOf().optionalFieldOf("minecraft_accounts", List.of()).forGetter(User::minecraftAccounts)
-    ).apply(inst, User::new)));
+            ExtraCodecs.UUID_CODEC.listOf().optionalFieldOf("minecraft_accounts", List.of()).forGetter(User::minecraftAccounts),
+            AwardInstance.UserValues.CODEC.listOf().optionalFieldOf("awards", List.of()).forGetter(User::awards)
+    ).apply(inst, User::new));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(User::validate);
 
     public static void getUser(Context ctx) {
@@ -117,7 +122,7 @@ public record User(String id,
              PreparedStatement prepared = connection.prepareStatement(selectStatement(whereStatement))) {
             prepared.setString(1, id);
             ResultSet result = prepared.executeQuery();
-            if (result == null)
+            if (!result.isBeforeFirst())
                 return null;
             return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
@@ -170,9 +175,13 @@ public record User(String id,
                         "ELSE json_array() " +
                     "END AS events, " +
                     "CASE " +
-                        "WHEN ma.uuid NOT NULL THEN json_group_array(json_object('uuid', ma.uuid, 'verified', ma.verified)) " +
+                        "WHEN ma.uuid NOT NULL THEN json_group_array(DISTINCT ma.uuid) " +
                         "ELSE json_array() " +
-                    "END AS minecraft_accounts " +
+                    "END AS minecraft_accounts, " +
+                    "CASE " +
+                        "WHEN ai.award_id NOT NULL THEN json_group_array(DISTINCT json_object('award_id', ai.award_id, 'additional_tooltip', ai.additional_tooltip)) " +
+                        "ELSE json_array() " +
+                    "END AS awards " +
                 "FROM " +
                     "users u " +
                 "LEFT JOIN " +
@@ -183,6 +192,8 @@ public record User(String id,
                     "events e ON s.event = e.id " +
                 "LEFT JOIN " +
                     "minecraft_accounts ma ON u.id = ma.user_id " +
+                "LEFT JOIN " +
+                    "award_instances ai ON u.id = ai.awarded_to " +
                 "WHERE " +
                     "u." + whereStatement + " " +
                 "GROUP BY " +

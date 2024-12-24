@@ -24,12 +24,10 @@ import java.util.Locale;
 import java.util.UUID;
 
 public record MinecraftAccount(UUID uuid,
-                               String userId,
-                               boolean verified) {
+                               String userId) {
     public static final Codec<MinecraftAccount> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             ExtraCodecs.UUID_CODEC.fieldOf("uuid").forGetter(MinecraftAccount::uuid),
-            Codec.STRING.fieldOf("user_id").forGetter(MinecraftAccount::userId),
-            Codec.BOOL.fieldOf("verified").forGetter(MinecraftAccount::verified)
+            Codec.STRING.fieldOf("user_id").forGetter(MinecraftAccount::userId)
     ).apply(inst, MinecraftAccount::new));
 
     public static void getAccount(Context ctx) {
@@ -99,12 +97,5 @@ public record MinecraftAccount(UUID uuid,
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         }
         return null;
-    }
-
-    public record UserInstance(UUID uuid, boolean verified) {
-        public static final Codec<UserInstance> CODEC = RecordCodecBuilder.create(inst -> inst.group(
-                ExtraCodecs.UUID_CODEC.fieldOf("uuid").forGetter(UserInstance::uuid),
-                Codec.BOOL.fieldOf("verified").forGetter(UserInstance::verified)
-        ).apply(inst, UserInstance::new));
     }
 }

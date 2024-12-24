@@ -7,6 +7,7 @@ import io.javalin.Javalin;
 import io.javalin.json.JsonMapper;
 import net.modgarden.backend.data.BackendError;
 import net.modgarden.backend.data.Landing;
+import net.modgarden.backend.data.award.Award;
 import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
@@ -49,6 +50,7 @@ public class ModGardenBackend {
 
         CODEC_REGISTRY.put(Landing.class, Landing.CODEC);
         CODEC_REGISTRY.put(BackendError.class, BackendError.CODEC);
+        CODEC_REGISTRY.put(Award.class, Award.CODEC);
         CODEC_REGISTRY.put(Event.class, Event.CODEC);
         CODEC_REGISTRY.put(MinecraftAccount.class, MinecraftAccount.CODEC);
         CODEC_REGISTRY.put(Project.class, Project.CODEC);
@@ -57,11 +59,12 @@ public class ModGardenBackend {
 
 		Javalin app = Javalin.create(config -> config.jsonMapper(createDFUMapper()));
 		app.get("", Landing::getLandingJson);
-        app.get("/users/{user}", User::getUser);
+        app.get("/awards/{award}", Award::getAwardType);
         app.get("/events/{event}", Event::getEvent);
+        app.get("/mcaccounts/{mcaccount}", MinecraftAccount::getAccount);
         app.get("/projects/{project}", Project::getProject);
         app.get("/submissions/{submission}", Submission::getSubmission);
-        app.get("/mcaccounts/{mcaccount}", MinecraftAccount::getAccount);
+        app.get("/users/{user}", User::getUser);
         app.error(404, BackendError::handleError);
         app.error(422, BackendError::handleError);
 		app.start(7070);
@@ -117,9 +120,21 @@ public class ModGardenBackend {
             statement.addBatch("CREATE TABLE IF NOT EXISTS minecraft_accounts (" +
                         "uuid TEXT UNIQUE NOT NULL," +
                         "user_id TEXT NOT NULL," +
-                        "verified INTEGER NOT NULL DEFAULT 0," +
                         "FOREIGN KEY (user_id) REFERENCES users(id)," +
                         "PRIMARY KEY (uuid)" +
+                    ")");
+            statement.addBatch("CREATE TABLE IF NOT EXISTS awards (" +
+                        "id TEXT UNIQUE NOT NULL," +
+                        "display_name TEXT NOT NULL," +
+                        "discord_emote TEXT NOT NULL," +
+                        "tooltip TEXT," +
+                        "PRIMARY KEY (id)" +
+                    ")");
+            statement.addBatch("CREATE TABLE IF NOT EXISTS award_instances (" +
+                        "award_id TEXT NOT NULL," +
+                        "awarded_to TEXT NOT NULL," +
+                        "additional_tooltip TEXT," +
+                        "PRIMARY KEY (award_id, awarded_to)" +
                     ")");
             statement.executeBatch();
         } catch (SQLException ex) {
