@@ -53,11 +53,11 @@ public record Award(String id,
              PreparedStatement prepared = connection.prepareStatement("SELECT * FROM awards WHERE " + whereStatement)) {
             prepared.setString(1, id);
             ResultSet result = prepared.executeQuery();
-            if (result == null)
+            if (!result.isBeforeFirst())
                 return null;
             return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
-            ModGardenBackend.LOG.error("Could not decode user. ", ex);
+            ModGardenBackend.LOG.error("Could not decode award. ", ex);
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         }
