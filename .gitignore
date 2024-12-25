@@ -44,3 +44,5 @@ bin/
 ### Custom
 /.idea
 /run
+
+.env
