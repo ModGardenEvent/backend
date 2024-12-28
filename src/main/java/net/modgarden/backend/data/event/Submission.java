@@ -41,6 +41,7 @@ public record Submission(String id,
             return;
         }
 
+        ModGardenBackend.LOG.info("Successfully queried submission from path '{}'", path);
         ctx.json(submission);
     }
 

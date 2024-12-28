@@ -45,6 +45,7 @@ public record Event(String id,
             return;
         }
 
+        ModGardenBackend.LOG.info("Successfully queried event from path '{}'", path);
         ctx.json(event);
     }
 

@@ -46,6 +46,7 @@ public record MinecraftAccount(UUID uuid,
             return;
         }
 
+        ModGardenBackend.LOG.info("Successfully queried minecraft account from path '{}'", path);
         ctx.json(account);
     }
 
