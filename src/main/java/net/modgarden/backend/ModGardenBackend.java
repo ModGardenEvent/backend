@@ -3,6 +3,7 @@ package net.modgarden.backend;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
+import io.github.cdimascio.dotenv.Dotenv;
 import io.javalin.Javalin;
 import io.javalin.json.JsonMapper;
 import net.modgarden.backend.data.BackendError;
@@ -13,6 +14,8 @@ import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.profile.MinecraftAccount;
 import net.modgarden.backend.data.profile.User;
+import net.modgarden.backend.oauth.OAuthService;
+import net.modgarden.backend.oauth.client.GithubOAuthClient;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
+import java.net.http.HttpClient;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -33,6 +37,10 @@ import java.util.Map;
 public class ModGardenBackend {
 	public static final Logger LOG = LoggerFactory.getLogger("Mod Garden Backend");
     private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
+
+	public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
+
+	public static final Dotenv DOTENV = Dotenv.load();
 
     public static final String SAFE_URL_REGEX = "[a-zA-Z0-9!@$()`.+,_\"-]+";;
     private static final int DATABASE_SCHEMA_VERSION = 1;
@@ -48,7 +56,14 @@ public class ModGardenBackend {
             LOG.error("Failed to create database file.", ex);
         }
 
-        CODEC_REGISTRY.put(Landing.class, Landing.CODEC);
+		var gh = (GithubOAuthClient) OAuthService.GITHUB.authenticate();
+		try {
+			LOG.info(gh.get("app"));
+		} catch (IOException | InterruptedException ex) {
+			LOG.error("Failed to get app.", ex);
+		}
+
+		CODEC_REGISTRY.put(Landing.class, Landing.CODEC);
         CODEC_REGISTRY.put(BackendError.class, BackendError.CODEC);
         CODEC_REGISTRY.put(Award.class, Award.CODEC);
         CODEC_REGISTRY.put(Event.class, Event.CODEC);

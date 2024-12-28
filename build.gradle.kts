@@ -34,6 +34,10 @@ dependencies {
 	implementation(libs.javalin)
     implementation(libs.logback)
     implementation(libs.sqlite)
+	implementation(libs.dotenv)
+	implementation(libs.jwt.api)
+	implementation(libs.jwt.impl)
+	implementation(libs.jwt.gson)
 }
 
 tasks {

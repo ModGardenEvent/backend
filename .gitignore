@@ -45,4 +45,4 @@ bin/
 /.idea
 /run
 
-.env
+run/.env

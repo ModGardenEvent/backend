@@ -4,6 +4,8 @@ httpclient = "5.4.1"
 javalin = "6.3.1-SNAPSHOT"
 logback = "1.5.12"
 sqlite = "3.47.1.0"
+dotenv = "2.3.0"
+jwt = "0.11.5"
 
 idea_ext = "1.1.9"
 
@@ -13,6 +15,10 @@ httpclient = { group = "org.apache.httpcomponents.client5", name = "httpclient5"
 javalin = { group = "io.javalin", name = "javalin", version.ref = "javalin" }
 logback = { group = "ch.qos.logback", name = "logback-classic", version.ref = "logback" }
 sqlite = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqlite" }
+dotenv = { group = "io.github.cdimascio", name = "dotenv-java", version.ref = "dotenv" }
+jwt_api = { group = "io.jsonwebtoken", name = "jjwt-api", version.ref = "jwt" }
+jwt_impl = { group = "io.jsonwebtoken", name = "jjwt-impl", version.ref = "jwt" }
+jwt_gson = { group = "io.jsonwebtoken", name = "jjwt-gson", version.ref = "jwt" }
 
 [plugins]
 idea_ext = { id = "org.jetbrains.gradle.plugin.idea-ext", version.ref = "idea_ext" }
