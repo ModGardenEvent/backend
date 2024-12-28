@@ -1,6 +1,5 @@
 [versions]
 dfu = "8.0.16"
-httpclient = "5.4.1"
 javalin = "6.3.1-SNAPSHOT"
 logback = "1.5.12"
 sqlite = "3.47.1.0"
@@ -11,7 +10,6 @@ idea_ext = "1.1.9"
 
 [libraries]
 dfu = { group = "com.mojang", name = "datafixerupper", version.ref = "dfu" }
-httpclient = { group = "org.apache.httpcomponents.client5", name = "httpclient5", version.ref = "httpclient" }
 javalin = { group = "io.javalin", name = "javalin", version.ref = "javalin" }
 logback = { group = "ch.qos.logback", name = "logback-classic", version.ref = "logback" }
 sqlite = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqlite" }

@@ -1,6 +1,6 @@
 package net.modgarden.backend.data.profile;
 
-import com.google.gson.JsonObject;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
@@ -12,15 +12,14 @@ import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.util.ExtraCodecs;
 import net.modgarden.backend.util.SQLiteOps;
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.core5.http.ClassicHttpRequest;
-import org.apache.hc.core5.http.io.support.ClassicRequestBuilder;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -112,7 +111,7 @@ public record User(String id,
             if (usernameToId == null)
                 return null;
             return queryFromModrinthId(usernameToId);
-        } catch (IOException ex) {
+        } catch (IOException | InterruptedException ex) {
             return null;
         }
     }
@@ -146,18 +145,17 @@ public record User(String id,
         return DataResult.error(() -> "Failed to get user with id '" + id + "'.");
     }
 
-    private static String getUserModrinthId(String modrinthUsername) throws IOException {
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            ClassicHttpRequest request = ClassicRequestBuilder.get("https://api.modrinth.com/v2/user/" + modrinthUsername).build();
-            return httpClient.execute(request, response -> {
-                if (response.getCode() != 200)
-                    return null;
-                 InputStream stream = response.getEntity().getContent();
-                 try (InputStreamReader reader = new InputStreamReader(stream)) {
-                     JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
-                     return json.getAsJsonPrimitive("id").getAsString();
-                 }
-            });
+    private static String getUserModrinthId(String modrinthUsername) throws IOException, InterruptedException {
+        var req = HttpRequest.newBuilder(URI.create("https://api.modrinth.com/v2/user/" + modrinthUsername))
+                .build();
+        HttpResponse<InputStream> stream = ModGardenBackend.HTTP_CLIENT.send(req, HttpResponse.BodyHandlers.ofInputStream());
+        if (stream.statusCode() != 200)
+            return null;
+        try (InputStreamReader reader = new InputStreamReader(stream.body())) {
+            JsonElement element = JsonParser.parseReader(reader);
+            if (!element.isJsonObject())
+                return null;
+            return element.getAsJsonObject().getAsJsonPrimitive("id").toString();
         }
     }
 

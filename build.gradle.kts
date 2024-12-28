@@ -30,7 +30,6 @@ repositories {
 
 dependencies {
     implementation(libs.dfu)
-    implementation(libs.httpclient)
 	implementation(libs.javalin)
     implementation(libs.logback)
     implementation(libs.sqlite)
