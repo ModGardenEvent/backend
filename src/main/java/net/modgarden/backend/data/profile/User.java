@@ -155,7 +155,7 @@ public record User(String id,
             JsonElement element = JsonParser.parseReader(reader);
             if (!element.isJsonObject())
                 return null;
-            return element.getAsJsonObject().getAsJsonPrimitive("id").toString();
+            return element.getAsJsonObject().getAsJsonPrimitive("id").getAsString();
         }
     }
 
