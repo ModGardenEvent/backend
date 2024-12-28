@@ -50,7 +50,7 @@ public enum OAuthService {
 	}
 
 	@NotNull
-	public OAuthClient authenticate() {
-		return AUTH_SUPPLIER.authenticate(CLIENT_ID);
+	public <T extends OAuthClient> T authenticate() {
+		return (T) AUTH_SUPPLIER.authenticate(CLIENT_ID);
 	}
 }

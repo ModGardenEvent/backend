@@ -56,7 +56,7 @@ public class ModGardenBackend {
             LOG.error("Failed to create database file.", ex);
         }
 
-		var gh = (GithubOAuthClient) OAuthService.GITHUB.authenticate();
+		GithubOAuthClient gh = OAuthService.GITHUB.authenticate();
 		try {
 			LOG.info(gh.get("app"));
 		} catch (IOException | InterruptedException ex) {
