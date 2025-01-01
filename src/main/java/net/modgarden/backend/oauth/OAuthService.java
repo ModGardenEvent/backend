@@ -2,6 +2,7 @@ package net.modgarden.backend.oauth;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import net.modgarden.backend.oauth.client.DiscordOAuthClient;
 import net.modgarden.backend.oauth.client.OAuthClientSupplier;
 import net.modgarden.backend.oauth.client.OAuthClient;
 import net.modgarden.backend.oauth.client.GithubOAuthClient;
@@ -18,6 +19,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.Date;
 
 public enum OAuthService {
+    DISCORD("1305609404837527612", OAuthService::authenticateDiscord),
 	GITHUB("Iv23li4vLb7sDuZOiRmf", OAuthService::authenticateGithub);
 
 	private final String CLIENT_ID;
@@ -28,6 +30,11 @@ public enum OAuthService {
 		CLIENT_ID = clientId;
 		AUTH_SUPPLIER = supplier;
 	}
+
+    @NotNull
+    static OAuthClient authenticateDiscord(String clientId) {
+        return new DiscordOAuthClient(clientId);
+    }
 
 	@NotNull
 	static OAuthClient authenticateGithub(String clientId) {

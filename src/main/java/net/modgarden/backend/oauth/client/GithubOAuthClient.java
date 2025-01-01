@@ -12,6 +12,7 @@ public record GithubOAuthClient(String jwt) implements OAuthClient {
 	public static final String ACCEPT = "application/vnd.github+json";
 	public static final String API_VERSION = "2022-11-28";
 
+    @Override
 	public String get(String endpoint) throws IOException, InterruptedException {
 		var req = HttpRequest.newBuilder(URI.create(API_URL + endpoint))
 				.header("Accept", ACCEPT)

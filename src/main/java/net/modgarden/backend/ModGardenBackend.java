@@ -1,5 +1,6 @@
 package net.modgarden.backend;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
@@ -15,7 +16,6 @@ import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.profile.MinecraftAccount;
 import net.modgarden.backend.data.profile.User;
 import net.modgarden.backend.oauth.OAuthService;
-import net.modgarden.backend.oauth.client.GithubOAuthClient;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +56,7 @@ public class ModGardenBackend {
             LOG.error("Failed to create database file.", ex);
         }
 
-		GithubOAuthClient gh = OAuthService.GITHUB.authenticate();
+		var gh = OAuthService.GITHUB.authenticate();
 		try {
 			LOG.info(gh.get("app"));
 		} catch (IOException | InterruptedException ex) {
@@ -181,6 +181,8 @@ public class ModGardenBackend {
             @NotNull
             @Override
             public String toJsonString(@NotNull Object obj, @NotNull Type type) {
+                if (obj instanceof JsonElement element)
+                    return element.toString();
                 if (!CODEC_REGISTRY.containsKey(type))
                     throw new UnsupportedOperationException("Cannot encode object type " + type);
                 return ((Codec<Object>)CODEC_REGISTRY.get(type)).encodeStart(JsonOps.INSTANCE, obj).getOrThrow().toString();
@@ -189,7 +191,7 @@ public class ModGardenBackend {
             @Override
             public <T> T fromJsonString(@NotNull String json, @NotNull Type type) {
                 if (!CODEC_REGISTRY.containsKey(type))
-                    throw new UnsupportedOperationException("Cannot decode object type " + type);;
+                    throw new UnsupportedOperationException("Cannot decode object type " + type);
                 return (T) CODEC_REGISTRY.get(type).decode(JsonOps.INSTANCE, JsonParser.parseString(json)).getOrThrow().getFirst();
             }
 
