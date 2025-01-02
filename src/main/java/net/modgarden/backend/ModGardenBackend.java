@@ -16,6 +16,7 @@ import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.profile.MinecraftAccount;
 import net.modgarden.backend.data.profile.User;
 import net.modgarden.backend.oauth.OAuthService;
+import net.modgarden.backend.oauth.client.DiscordOAuthClient;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,8 +57,10 @@ public class ModGardenBackend {
             LOG.error("Failed to create database file.", ex);
         }
 
+        var discord = OAuthService.DISCORD.authenticate();
 		var gh = OAuthService.GITHUB.authenticate();
 		try {
+            LOG.info(discord.get("users/@me"));
 			LOG.info(gh.get("app"));
 		} catch (IOException | InterruptedException ex) {
 			LOG.error("Failed to get app.", ex);
@@ -80,6 +83,9 @@ public class ModGardenBackend {
         app.get("/projects/{project}", Project::getProject);
         app.get("/submissions/{submission}", Submission::getSubmission);
         app.get("/users/{user}", User::getUser);
+
+        app.get("/oauth2/discord/redirect", DiscordOAuthClient::authorizeDiscordUser);
+
         app.error(404, BackendError::handleError);
         app.error(422, BackendError::handleError);
 		app.start(7070);

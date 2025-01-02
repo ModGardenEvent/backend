@@ -10,6 +10,7 @@ import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.award.AwardInstance;
 import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Project;
+import net.modgarden.backend.oauth.OAuthService;
 import net.modgarden.backend.util.ExtraCodecs;
 import net.modgarden.backend.util.SQLiteOps;
 import org.jetbrains.annotations.Nullable;
@@ -76,21 +77,23 @@ public record User(String id,
     @Nullable
     public static User query(String path,
                              @Nullable String service) {
-        User user = null;
+        User user;
 
         if ("modrinth".equalsIgnoreCase(service)) {
             user = queryFromModrinthUsername(path.toLowerCase(Locale.ROOT));
             if (user == null)
                 user = queryFromModrinthId(path);
+            return user;
         }
 
-        if ("discord".equalsIgnoreCase(service))
-            user = queryFromDiscordId(path);
+        if ("discord".equalsIgnoreCase(service)) {
+            user = queryFromDiscordUsername(path.toLowerCase(Locale.ROOT));
+            if (user == null)
+                user = queryFromDiscordId(path);
+            return user;
+        }
 
-        if (user == null)
-            user = queryFromId(path);
-
-        return user;
+        return queryFromId(path);
     }
 
     private static User queryFromId(String id) {
@@ -103,6 +106,17 @@ public record User(String id,
 
     private static User queryFromModrinthId(String modrinthId) {
         return innerQuery("modrinth_id = ?", modrinthId);
+    }
+
+    private static User queryFromDiscordUsername(String discordUsername) {
+        try {
+            String usernameToId = getUserDiscordId(discordUsername);
+            if (usernameToId == null)
+                return null;
+            return queryFromDiscordId(usernameToId);
+        } catch (IOException | InterruptedException ex) {
+            return null;
+        }
     }
 
     private static User queryFromModrinthUsername(String modrinthUsername) {
@@ -156,6 +170,19 @@ public record User(String id,
             if (!element.isJsonObject())
                 return null;
             return element.getAsJsonObject().getAsJsonPrimitive("id").getAsString();
+        }
+    }
+
+    private static String getUserDiscordId(String discordUsername) throws IOException, InterruptedException {
+        var client = OAuthService.DISCORD.authenticate();
+        var stream = client.getResponse("guilds/1266288344644452363/members/search?query=" + discordUsername, HttpResponse.BodyHandlers.ofInputStream());
+        if (stream.statusCode() != 200)
+            return null;
+        try (InputStreamReader reader = new InputStreamReader(stream.body())) {
+            JsonElement element = JsonParser.parseReader(reader);
+            if (!element.isJsonArray() || element.getAsJsonArray().isEmpty() || !element.getAsJsonArray().get(0).isJsonObject())
+                return null;
+            return element.getAsJsonArray().get(0).getAsJsonObject().getAsJsonObject("user").getAsJsonPrimitive("id").getAsString();
         }
     }
 

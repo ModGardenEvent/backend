@@ -13,13 +13,13 @@ public record GithubOAuthClient(String jwt) implements OAuthClient {
 	public static final String API_VERSION = "2022-11-28";
 
     @Override
-	public String get(String endpoint) throws IOException, InterruptedException {
+	public <T> HttpResponse<T> getResponse(String endpoint, HttpResponse.BodyHandler<T> bodyHandler) throws IOException, InterruptedException {
 		var req = HttpRequest.newBuilder(URI.create(API_URL + endpoint))
 				.header("Accept", ACCEPT)
 				.header("X-GitHub-Api-Version", API_VERSION)
 				.header("Authorization", "Bearer " + jwt)
 				.build();
 
-		return ModGardenBackend.HTTP_CLIENT.send(req, HttpResponse.BodyHandlers.ofString()).body();
+		return ModGardenBackend.HTTP_CLIENT.send(req, bodyHandler);
 	}
 }
