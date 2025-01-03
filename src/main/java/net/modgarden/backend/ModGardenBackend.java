@@ -1,5 +1,7 @@
 package net.modgarden.backend;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
@@ -15,8 +17,7 @@ import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.profile.MinecraftAccount;
 import net.modgarden.backend.data.profile.User;
-import net.modgarden.backend.oauth.OAuthService;
-import net.modgarden.backend.oauth.client.DiscordOAuthClient;
+import net.modgarden.backend.handler.RegistrationHandler;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,15 +58,6 @@ public class ModGardenBackend {
             LOG.error("Failed to create database file.", ex);
         }
 
-        var discord = OAuthService.DISCORD.authenticate();
-		var gh = OAuthService.GITHUB.authenticate();
-		try {
-            LOG.info(discord.get("users/@me"));
-			LOG.info(gh.get("app"));
-		} catch (IOException | InterruptedException ex) {
-			LOG.error("Failed to get app.", ex);
-		}
-
 		CODEC_REGISTRY.put(Landing.class, Landing.CODEC);
         CODEC_REGISTRY.put(BackendError.class, BackendError.CODEC);
         CODEC_REGISTRY.put(Award.class, Award.CODEC);
@@ -84,8 +76,10 @@ public class ModGardenBackend {
         app.get("/submissions/{submission}", Submission::getSubmission);
         app.get("/users/{user}", User::getUser);
 
-        app.get("/oauth2/discord/redirect", DiscordOAuthClient::authorizeDiscordUser);
+        app.get("/register/discord", RegistrationHandler::registerThroughDiscord);
 
+        app.error(400, BackendError::handleError);
+        app.error(401, BackendError::handleError);
         app.error(404, BackendError::handleError);
         app.error(422, BackendError::handleError);
 		app.start(7070);
@@ -102,8 +96,10 @@ public class ModGardenBackend {
              Statement statement = connection.createStatement()) {
             statement.addBatch("CREATE TABLE IF NOT EXISTS users (" +
                         "id TEXT UNIQUE NOT NULL," +
+                        "username TEXT UNIQUE NOT NULL," +
                         "discord_id TEXT UNIQUE NOT NULL," +
                         "modrinth_id TEXT UNIQUE," +
+                        "creation_time INTEGER NOT NULL," +
                         "PRIMARY KEY(id)" +
                     ")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS events (" +
@@ -111,7 +107,7 @@ public class ModGardenBackend {
                         "slug TEXT UNIQUE NOT NULL," +
                         "display_name TEXT NOT NULL," +
                         "description TEXT NOT NULL," +
-                        "start_date INTEGER NOT NULL," +
+                        "start_time INTEGER NOT NULL," +
                         "PRIMARY KEY (id)" +
                     ")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS projects (" +
@@ -184,11 +180,13 @@ public class ModGardenBackend {
 
     private static JsonMapper createDFUMapper() {
         return new JsonMapper() {
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+
             @NotNull
             @Override
             public String toJsonString(@NotNull Object obj, @NotNull Type type) {
-                if (obj instanceof JsonElement element)
-                    return element.toString();
+                if (obj instanceof JsonElement)
+                    return gson.toJson(obj);
                 if (!CODEC_REGISTRY.containsKey(type))
                     throw new UnsupportedOperationException("Cannot encode object type " + type);
                 return ((Codec<Object>)CODEC_REGISTRY.get(type)).encodeStart(JsonOps.INSTANCE, obj).getOrThrow().toString();

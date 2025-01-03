@@ -22,18 +22,18 @@ public enum OAuthService {
     DISCORD("1305609404837527612", OAuthService::authenticateDiscord),
 	GITHUB("Iv23li4vLb7sDuZOiRmf", OAuthService::authenticateGithub);
 
-	private final String CLIENT_ID;
-	private final OAuthClientSupplier AUTH_SUPPLIER;
+	public final String clientId;
+	private final OAuthClientSupplier authSupplier;
 
 
-	OAuthService(String clientId, OAuthClientSupplier supplier) {
-		CLIENT_ID = clientId;
-		AUTH_SUPPLIER = supplier;
+	OAuthService(String cId, OAuthClientSupplier supplier) {
+        clientId = cId;
+        authSupplier = supplier;
 	}
 
     @NotNull
-    static OAuthClient authenticateDiscord(String clientId) {
-        return new DiscordOAuthClient(clientId);
+    static OAuthClient authenticateDiscord(String unused) {
+        return new DiscordOAuthClient();
     }
 
 	@NotNull
@@ -58,6 +58,6 @@ public enum OAuthService {
 
 	@NotNull
 	public <T extends OAuthClient> T authenticate() {
-		return (T) AUTH_SUPPLIER.authenticate(CLIENT_ID);
+		return (T) authSupplier.authenticate(clientId);
 	}
 }

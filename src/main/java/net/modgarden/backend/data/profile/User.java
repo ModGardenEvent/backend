@@ -25,22 +25,29 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
 public record User(String id,
+                   String username,
+                   String displayName,
                    String discordId,
                    Optional<String> modrinthId,
+                   Date creationDate,
                    List<String> projects,
                    List<String> events,
                    List<UUID> minecraftAccounts,
                    List<AwardInstance.UserValues> awards) {
     public static final Codec<User> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
+            Codec.STRING.fieldOf("username").forGetter(User::username),
+            Codec.STRING.fieldOf("display_name").forGetter(User::displayName),
             Codec.STRING.fieldOf("discord_id").forGetter(User::discordId),
             Codec.STRING.optionalFieldOf("modrinth_id").forGetter(User::modrinthId),
+            ExtraCodecs.DATE.fieldOf("creation_date").forGetter(User::creationDate),
             Project.ID_CODEC.listOf().optionalFieldOf("projects", List.of()).forGetter(User::projects),
             Event.ID_CODEC.listOf().optionalFieldOf("events", List.of()).forGetter(User::events),
             ExtraCodecs.UUID_CODEC.listOf().optionalFieldOf("minecraft_accounts", List.of()).forGetter(User::minecraftAccounts),
@@ -93,11 +100,18 @@ public record User(String id,
             return user;
         }
 
-        return queryFromId(path);
+        user = queryFromUsername(path);
+        if (user == null)
+            user = queryFromId(path);
+        return user;
     }
 
     private static User queryFromId(String id) {
         return innerQuery("id = ?", id);
+    }
+
+    private static User queryFromUsername(String username) {
+        return innerQuery("username = ?", username);
     }
 
     private static User queryFromDiscordId(String discordId) {
@@ -189,8 +203,11 @@ public record User(String id,
     private static String selectStatement(String whereStatement) {
         return "SELECT " +
                     "u.id, " +
+                    "u.username, " +
+                    "u.display_name, " +
                     "u.discord_id, " +
                     "u.modrinth_id, " +
+                    "u.creation_date, " +
                     "CASE " +
                         "WHEN p.id NOT NULL THEN json_group_array(DISTINCT p.id) " +
                         "ELSE json_array() " +
