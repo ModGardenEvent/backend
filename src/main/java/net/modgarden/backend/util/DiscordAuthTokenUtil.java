@@ -49,7 +49,7 @@ public class DiscordAuthTokenUtil {
     private static Map<String, String> getAuthorizationBody(String code) {
         var params = new HashMap<String, String>();
         params.put("client_id", OAuthService.DISCORD.clientId);
-        params.put("client_secret", ModGardenBackend.DOTENV.get("DISCORD_CLIENT_SECRET"));
+        params.put("client_secret", ModGardenBackend.DOTENV.get("DISCORD_OAUTH_CLIENT_SECRET"));
         params.put("code", code);
         params.put("grant_type", "authorization_code");
         params.put("redirect_uri", "http://localhost:7070/register/discord");

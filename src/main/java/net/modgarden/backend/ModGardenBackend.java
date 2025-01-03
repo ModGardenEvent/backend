@@ -69,12 +69,12 @@ public class ModGardenBackend {
 
 		Javalin app = Javalin.create(config -> config.jsonMapper(createDFUMapper()));
 		app.get("", Landing::getLandingJson);
-        app.get("/awards/{award}", Award::getAwardType);
-        app.get("/events/{event}", Event::getEvent);
-        app.get("/mcaccounts/{mcaccount}", MinecraftAccount::getAccount);
-        app.get("/projects/{project}", Project::getProject);
-        app.get("/submissions/{submission}", Submission::getSubmission);
-        app.get("/users/{user}", User::getUser);
+        app.get("/award/{award}", Award::getAwardType);
+        app.get("/event/{event}", Event::getEvent);
+        app.get("/mcaccount/{mcaccount}", MinecraftAccount::getAccount);
+        app.get("/project/{project}", Project::getProject);
+        app.get("/submission/{submission}", Submission::getSubmission);
+        app.get("/user/{user}", User::getUser);
 
         app.get("/register/discord", RegistrationHandler::registerThroughDiscord);
 
@@ -96,7 +96,6 @@ public class ModGardenBackend {
              Statement statement = connection.createStatement()) {
             statement.addBatch("CREATE TABLE IF NOT EXISTS users (" +
                         "id TEXT UNIQUE NOT NULL," +
-                        "username TEXT UNIQUE NOT NULL," +
                         "discord_id TEXT UNIQUE NOT NULL," +
                         "modrinth_id TEXT UNIQUE," +
                         "creation_time INTEGER NOT NULL," +
