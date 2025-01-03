@@ -63,7 +63,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
             if (input.getMetaData().getColumnTypeName(1).equals("REAL"))
                 return outOps.createNumeric(input.getDouble(1));
 
-            return outOps.createNumeric(input.getInt(1));
+            return outOps.createNumeric(input.getLong(1));
         } catch (SQLException ex) {
             throw new RuntimeException(ex);
         }
@@ -77,7 +77,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
     @Override
     public ResultSet createNumeric(Number i) {
         boolean isInt = i.doubleValue() % 1 == 0;
-        return createValue(isInt ? i.longValue() : i.doubleValue(), isInt ? "INTEGER" : "REAL", false);
+        return createValue(i, isInt ? "INTEGER" : "REAL", false);
     }
 
     @Override
@@ -93,7 +93,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
     private <T> DataResult<T> getValue(ResultSet input) {
         try {
             input.next();
-            T value = (T) input.getObject(1);
+            T value = input.getMetaData().getColumnTypeName(1).equals("INTEGER") ? (T) (Object) input.getLong(1) :  (T) input.getObject(1);
             if (value == null)
                 return DataResult.error(() -> "Value not found.");
             return DataResult.success(value);
@@ -111,7 +111,12 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
             try (PreparedStatement replacePrepared = connection.prepareStatement("REPLACE INTO temp (value) VALUES (?)")) {
                 if (dataType.equals("TEXT") && value instanceof JsonArray array)
                     replacePrepared.setObject(1, array.toString());
-                else
+                else if (value instanceof Number number) {
+                    if (dataType.equals("INTEGER"))
+                        replacePrepared.setLong(1, number.longValue());
+                    else
+                        replacePrepared.setObject(1, number.doubleValue());
+                } else
                     replacePrepared.setObject(1, value);
                 replacePrepared.execute();
             }
@@ -252,7 +257,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
         if (columnTypeName.equals("TEXT"))
             return createValue(input.getString(columnIndex), "TEXT", false);
 
-        return createNumeric(columnTypeName.equals("INTEGER") ? input.getInt(columnIndex) : input.getDouble(columnIndex));
+        return createNumeric(columnTypeName.equals("INTEGER") ? input.getLong(columnIndex) : input.getDouble(columnIndex));
     }
 
     @Override
