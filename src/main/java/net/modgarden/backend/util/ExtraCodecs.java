@@ -14,8 +14,7 @@ public class ExtraCodecs {
     public static final Codec<Date> DATE = Codec.either(Codec.LONG, Codec.STRING).flatXmap(either -> either.map(l -> DataResult.success(new Date(l)),string -> {
         try {
             return DataResult.success(DateFormat.getDateTimeInstance().parse(string));
-        } catch (ClassCastException | ParseException ignored) {
-        }
+        } catch (ClassCastException | ParseException ignored) {}
         return DataResult.error(() -> "Failed to parse date.");
     }), date -> DataResult.success(Either.right(DateFormat.getDateTimeInstance().format(date))));
 
