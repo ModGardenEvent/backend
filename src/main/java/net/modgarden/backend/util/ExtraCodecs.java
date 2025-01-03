@@ -17,8 +17,7 @@ public class ExtraCodecs {
         } catch (ClassCastException | ParseException ignored) {
         }
         return DataResult.error(() -> "Failed to parse date.");
-    }),
-            date -> DataResult.success(Either.right(DateFormat.getDateTimeInstance().format(date))));
+    }), date -> DataResult.success(Either.right(DateFormat.getDateTimeInstance().format(date))));
 
     public static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(string -> new UUID(
             new BigInteger(string.substring(0, 16), 16).longValue(),
