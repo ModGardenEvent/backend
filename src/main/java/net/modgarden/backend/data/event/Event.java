@@ -20,12 +20,14 @@ public record Event(String id,
                     String slug,
                     String displayName,
                     String description,
+                    long startTime,
                     Date startDate) {
     public static final Codec<Event> CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Event::id),
             Codec.STRING.fieldOf("slug").forGetter(Event::slug),
             Codec.STRING.fieldOf("display_name").forGetter(Event::displayName),
             Codec.STRING.fieldOf("description").forGetter(Event::description),
+            Codec.LONG.fieldOf("start_time").forGetter(Event::startTime),
             ExtraCodecs.DATE.fieldOf("start_date").forGetter(Event::startDate)
     ).apply(inst, Event::new)));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(Event::validate);
@@ -110,12 +112,13 @@ public record Event(String id,
                 "e.slug, " +
                 "e.display_name, " +
                 "e.description, " +
-                "e.start_date " +
+                "e.start_time " +
+                "e.start_time AS start_date " +
                 "FROM " +
-                "events e " +
+                    "events e " +
                 "WHERE " +
-                "e." + whereStatement + " " +
+                    "e." + whereStatement + " " +
                 "GROUP BY " +
-                "e.id, e.slug, e.display_name, e.description, e.start_date";
+                    "e.id, e.slug, e.display_name, e.description, e.start_time";
     }
 }

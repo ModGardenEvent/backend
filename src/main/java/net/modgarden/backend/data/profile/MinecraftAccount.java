@@ -1,7 +1,6 @@
 package net.modgarden.backend.data.profile;
 
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -10,7 +9,6 @@ import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.util.ExtraCodecs;
 import net.modgarden.backend.util.SQLiteOps;
 
-import javax.print.DocFlavor;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;

@@ -34,6 +34,7 @@ import java.util.UUID;
 public record User(String id,
                    String discordId,
                    Optional<String> modrinthId,
+                   long creationTime,
                    Date creationDate,
                    List<String> projects,
                    List<String> events,
@@ -43,6 +44,7 @@ public record User(String id,
             Codec.STRING.fieldOf("id").forGetter(User::id),
             Codec.STRING.fieldOf("discord_id").forGetter(User::discordId),
             Codec.STRING.optionalFieldOf("modrinth_id").forGetter(User::modrinthId),
+            Codec.LONG.fieldOf("creation_time").forGetter(User::creationTime),
             ExtraCodecs.DATE.fieldOf("creation_date").forGetter(User::creationDate),
             Project.ID_CODEC.listOf().optionalFieldOf("projects", List.of()).forGetter(User::projects),
             Event.ID_CODEC.listOf().optionalFieldOf("events", List.of()).forGetter(User::events),
@@ -194,7 +196,8 @@ public record User(String id,
                     "u.id, " +
                     "u.discord_id, " +
                     "u.modrinth_id, " +
-                    "u.creation_date, " +
+                    "u.creation_time, " +
+                    "u.creation_time AS creation_date, " +
                     "CASE " +
                         "WHEN p.id NOT NULL THEN json_group_array(DISTINCT p.id) " +
                         "ELSE json_array() " +
@@ -226,6 +229,6 @@ public record User(String id,
                 "WHERE " +
                     "u." + whereStatement + " " +
                 "GROUP BY " +
-                    "u.id, u.discord_id, u.modrinth_id";
+                    "u.id, u.discord_id, u.modrinth_id, u.creation_time";
     }
 }

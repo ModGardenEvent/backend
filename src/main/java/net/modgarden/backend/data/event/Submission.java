@@ -1,7 +1,6 @@
 package net.modgarden.backend.data.event;
 
 import com.mojang.serialization.Codec;
-import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
@@ -12,21 +11,21 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.DateFormat;
-import java.text.ParseException;
 import java.util.Date;
 
 public record Submission(String id,
                          String projectId,
                          String event,
                          String modrinthVersionId,
-                         Date submittedAt) {
+                         long submittedAt,
+                         Date submissionDate) {
     public static final Codec<Submission> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Submission::id),
             Codec.STRING.fieldOf("project_id").forGetter(Submission::projectId),
             Event.ID_CODEC.fieldOf("event").forGetter(Submission::event),
             Codec.STRING.fieldOf("modrinth_version_id").forGetter(Submission::modrinthVersionId),
-            ExtraCodecs.DATE.fieldOf("submitted_at").forGetter(Submission::submittedAt)
+            Codec.LONG.fieldOf("submitted_at").forGetter(Submission::submittedAt),
+            ExtraCodecs.DATE.fieldOf("submitted_date").forGetter(Submission::submissionDate)
     ).apply(inst, Submission::new));
 
     public static void getSubmission(Context ctx) {
@@ -50,7 +49,7 @@ public record Submission(String id,
 
     public static Submission innerQuery(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement("SELECT * FROM submissions WHERE id = ?")) {
+             PreparedStatement prepared = connection.prepareStatement(selectStatement())) {
             prepared.setString(1, id);
             ResultSet result = prepared.executeQuery();
             if (!result.isBeforeFirst())
@@ -62,5 +61,21 @@ public record Submission(String id,
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         }
         return null;
+    }
+
+    private static String selectStatement() {
+        return "SELECT " +
+                "s.id, " +
+                "s.project_id, " +
+                "s.event, " +
+                "s.modrinth_version_id, " +
+                "s.submitted_at, " +
+                "u.submitted_at AS submission_date, " +
+                "FROM " +
+                    "submissions AS s " +
+                "WHERE " +
+                    "s.id = ? " +
+                "GROUP BY " +
+                    "s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted_at";
     }
 }
