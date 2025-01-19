@@ -94,7 +94,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
             input.next();
             T value = (T) input.getObject(1);
             if (value == null)
-                return DataResult.error(() -> "Value not found.");
+                return DataResult.error(() -> "Value not present.");
             return DataResult.success(value);
         } catch (SQLException ex) {
             return DataResult.error(() -> "Exception when obtaining value. " + ex.getMessage());
@@ -176,8 +176,11 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
                 while (map.next()) {
                     for (int i = 1; i <= map.getMetaData().getColumnCount(); ++i) {
                         String keyString = map.getMetaData().getColumnName(i);
+                        var obj = value.getObject(1);
+                        if (obj == null)
+                            continue;
                         keyList.add(keyString);
-                        valueList.add(map.getObject(i));
+                        valueList.add(obj);
 
                         statement.execute("ALTER TABLE temp ADD COLUMN " + keyString + " " + map.getMetaData().getColumnTypeName(i));
                         try (PreparedStatement replacePrepared = connection.prepareStatement("REPLACE INTO temp (_temp_primary," + String.join(",", keyList) + ") VALUES (0," + valueList.stream().map(object -> "?").collect(Collectors.joining(",")) + ")")) {
@@ -191,9 +194,12 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
             key.beforeFirst();
             value.beforeFirst();
             while (key.next() && value.next()) {
+                var obj = value.getObject(1);
+                if (obj == null)
+                    continue;
                 String keyString = key.getString(1);
                 keyList.add(keyString);
-                valueList.add(value.getObject(1));
+                valueList.add(obj);
 
                 statement.execute("ALTER TABLE temp ADD COLUMN " + keyString + " " + value.getMetaData().getColumnTypeName(1));
                     try (PreparedStatement replacePrepared = connection.prepareStatement("REPLACE INTO temp (_temp_primary," + String.join(",", keyList) + ") VALUES (0," + valueList.stream().map(object -> "?").collect(Collectors.joining(",")) + ")")) {
@@ -223,6 +229,8 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
                 for (int i = 1; i <= input.getMetaData().getColumnCount(); ++i) {
                     String columnName = input.getMetaData().getColumnName(i);
                     ResultSet value = mapToResultSet(input, i);
+                    if (value == null)
+                        continue;
                     pairs.add(Pair.of(createString(columnName), value));
                 }
             }
@@ -237,7 +245,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
         String columnTypeName = input.getMetaData().getColumnTypeName(columnIndex);
 
         if (input.getObject(columnIndex) == null)
-            return createValue(null, "NULL", false);
+            return null;
 
         try {
             if (columnTypeName.equals("TEXT")) {

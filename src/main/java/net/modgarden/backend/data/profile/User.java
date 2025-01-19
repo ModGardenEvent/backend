@@ -43,7 +43,7 @@ public record User(String id,
     public static final Codec<User> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
             Codec.STRING.fieldOf("discord_id").forGetter(User::discordId),
-            Codec.STRING.lenientOptionalFieldOf("modrinth_id").forGetter(User::modrinthId),
+            Codec.STRING.optionalFieldOf("modrinth_id").forGetter(User::modrinthId),
             Codec.LONG.fieldOf("creation_time").forGetter(User::creationTime),
             ExtraCodecs.DATE.fieldOf("creation_date").forGetter(User::creationDate),
             Project.ID_CODEC.listOf().optionalFieldOf("projects", List.of()).forGetter(User::projects),
