@@ -43,7 +43,7 @@ public record User(String id,
     public static final Codec<User> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
             Codec.STRING.fieldOf("discord_id").forGetter(User::discordId),
-            Codec.STRING.optionalFieldOf("modrinth_id").forGetter(User::modrinthId),
+            Codec.STRING.lenientOptionalFieldOf("modrinth_id").forGetter(User::modrinthId),
             Codec.LONG.fieldOf("creation_time").forGetter(User::creationTime),
             ExtraCodecs.DATE.fieldOf("creation_date").forGetter(User::creationDate),
             Project.ID_CODEC.listOf().optionalFieldOf("projects", List.of()).forGetter(User::projects),
@@ -217,7 +217,9 @@ public record User(String id,
                 "FROM " +
                     "users u " +
                 "LEFT JOIN " +
-                    "projects p, project_authors a ON u.id = a.user_id AND p.id = a.project_id " +
+                    "project_authors a ON u.id = a.user_id " +
+                "LEFT JOIN " +
+                    "projects p ON p.id = a.project_id " +
                 "LEFT JOIN " +
                     "submissions s ON p.id = s.project_id " +
                 "LEFT JOIN " +

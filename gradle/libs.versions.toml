@@ -1,8 +1,9 @@
 [versions]
 dfu = "8.0.16"
-javalin = "6.3.1-SNAPSHOT"
+javalin = "6.4.0"
 logback = "1.5.12"
 sqlite = "3.47.1.0"
+snowflakeid = "0.0.2"
 dotenv = "2.3.0"
 jwt = "0.11.5"
 
@@ -14,6 +15,7 @@ javalin = { group = "io.javalin", name = "javalin", version.ref = "javalin" }
 logback = { group = "ch.qos.logback", name = "logback-classic", version.ref = "logback" }
 sqlite = { group = "org.xerial", name = "sqlite-jdbc", version.ref = "sqlite" }
 dotenv = { group = "io.github.cdimascio", name = "dotenv-java", version.ref = "dotenv" }
+snowflakeid = { group = "de.mkammerer.snowflake-id", name = "snowflake-id", version.ref = "snowflakeid" }
 jwt_api = { group = "io.jsonwebtoken", name = "jjwt-api", version.ref = "jwt" }
 jwt_impl = { group = "io.jsonwebtoken", name = "jjwt-impl", version.ref = "jwt" }
 jwt_gson = { group = "io.jsonwebtoken", name = "jjwt-gson", version.ref = "jwt" }

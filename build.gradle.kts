@@ -19,9 +19,6 @@ java {
 
 repositories {
     mavenCentral()
-    maven("https://repo.reposilite.com/snapshots") {
-        name = "Reposilite Snapshots"
-    }
     maven("https://repo.glaremasters.me/repository/public/") {
         name = "GlareMasters"
     }
@@ -33,6 +30,7 @@ dependencies {
 	implementation(libs.javalin)
     implementation(libs.logback)
     implementation(libs.sqlite)
+    implementation(libs.snowflakeid)
 	implementation(libs.dotenv)
 	implementation(libs.jwt.api)
 	implementation(libs.jwt.impl)

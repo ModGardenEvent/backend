@@ -76,12 +76,13 @@ public class ModGardenBackend {
         app.get("/submission/{submission}", Submission::getSubmission);
         app.get("/user/{user}", User::getUser);
 
-        app.get("/register/discord", RegistrationHandler::registerThroughDiscord);
+        app.post("/register/discord/{discordid}", RegistrationHandler::registerThroughDiscord);
 
         app.error(400, BackendError::handleError);
         app.error(401, BackendError::handleError);
         app.error(404, BackendError::handleError);
         app.error(422, BackendError::handleError);
+        app.error(500, BackendError::handleError);
 		app.start(7070);
 		LOG.info("Mod Garden Backend Started!");
     }
@@ -105,7 +106,6 @@ public class ModGardenBackend {
                         "id TEXT UNIQUE NOT NULL," +
                         "slug TEXT UNIQUE NOT NULL," +
                         "display_name TEXT NOT NULL," +
-                        "description TEXT NOT NULL," +
                         "start_time INTEGER NOT NULL," +
                         "PRIMARY KEY (id)" +
                     ")");

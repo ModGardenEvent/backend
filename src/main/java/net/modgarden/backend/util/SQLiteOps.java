@@ -76,8 +76,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
 
     @Override
     public ResultSet createNumeric(Number i) {
-        boolean isInt = i.doubleValue() % 1 == 0;
-        return createValue(i, isInt ? "INTEGER" : "REAL", false);
+        return createValue(i, "NUMERIC", false);
     }
 
     @Override
@@ -93,7 +92,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
     private <T> DataResult<T> getValue(ResultSet input) {
         try {
             input.next();
-            T value = input.getMetaData().getColumnTypeName(1).equals("INTEGER") ? (T) (Object) input.getLong(1) :  (T) input.getObject(1);
+            T value = (T) input.getObject(1);
             if (value == null)
                 return DataResult.error(() -> "Value not found.");
             return DataResult.success(value);
@@ -111,12 +110,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
             try (PreparedStatement replacePrepared = connection.prepareStatement("REPLACE INTO temp (value) VALUES (?)")) {
                 if (dataType.equals("TEXT") && value instanceof JsonArray array)
                     replacePrepared.setObject(1, array.toString());
-                else if (value instanceof Number number) {
-                    if (dataType.equals("INTEGER"))
-                        replacePrepared.setLong(1, number.longValue());
-                    else
-                        replacePrepared.setObject(1, number.doubleValue());
-                } else
+                else
                     replacePrepared.setObject(1, value);
                 replacePrepared.execute();
             }
@@ -269,7 +263,9 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
                 JsonElement element = JsonParser.parseString(input.getString(1));
                 DataResult<Stream<JsonElement>> jsonElement = JsonOps.INSTANCE.getStream(element);
                 if (jsonElement.isError())
-                    return jsonElement.map(json -> null);
+                    return jsonElement.map(json -> Stream.of());
+                if (element.isJsonArray() && element.getAsJsonArray().isEmpty())
+                    return DataResult.success(Stream.of());
                 List<ResultSet> resultSets = new ArrayList<>();
                 for (JsonElement element1 : jsonElement.getOrThrow().toList()) {
                     ResultSet converted = JsonOps.INSTANCE.convertTo(this, element1);
