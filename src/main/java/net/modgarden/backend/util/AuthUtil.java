@@ -24,7 +24,8 @@ public class AuthUtil {
     }
 
     public static String generateRandomToken() {
-        byte[] bytes = new byte[4];
+        // FIXME: Guarantee this as 6 characters.
+        byte[] bytes = new byte[6];
         new SecureRandom().nextBytes(bytes);
         return new String(Base62.createInstance().encode(bytes), StandardCharsets.UTF_8);
     }
