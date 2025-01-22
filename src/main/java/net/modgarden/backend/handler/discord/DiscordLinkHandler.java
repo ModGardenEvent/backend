@@ -57,13 +57,21 @@ public class DiscordLinkHandler {
             }
 
             if (service.equals(LinkCode.Service.MODRINTH.serializedName())) {
-                try (var userCheckStatement = connection.prepareStatement("SELECT 1 FROM users WHERE discord_id = ? AND modrinth_id IS NOT NULL");
+                try (var modrinthCheckStatement = connection.prepareStatement("SELECT 1 FROM users WHERE modrinth_id = ?");
+                     var userCheckStatement = connection.prepareStatement("SELECT 1 FROM users WHERE discord_id = ? AND modrinth_id IS NOT NULL");
                      var insertStatement = connection.prepareStatement("UPDATE users SET modrinth_id = ? WHERE discord_id = ?")) {
+                    modrinthCheckStatement.setString(1, accountId);
+                    ResultSet modrinthCheckResult = modrinthCheckStatement.executeQuery();
+                    if (!modrinthCheckResult.isBeforeFirst() && modrinthCheckResult.getBoolean(1)) {
+                        ctx.result("The specified Modrinth account has already been linked to a Mod Garden account.");
+                        ctx.status(422);
+                    }
+
                     userCheckStatement.setString(1, discordId);
                     ResultSet userCheckResult = userCheckStatement.executeQuery();
                     if (!userCheckResult.isBeforeFirst() && userCheckResult.getBoolean(1)) {
-                        ctx.result("You are already linked with " + capitalisedService + ".");
-                        ctx.status(200);
+                        ctx.result("The specified Mod Garden account is already linked with Modrinth.");
+                        ctx.status(422);
                         return;
                     }
 
