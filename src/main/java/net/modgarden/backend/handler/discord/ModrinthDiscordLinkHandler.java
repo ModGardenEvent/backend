@@ -63,8 +63,9 @@ public class ModrinthDiscordLinkHandler {
             }
             String linkToken = insertTokenIntoDatabase(ctx, userId);
             ctx.status(200);
-            ctx.result("Successfully created link token for Modrinth account.\n\n" +
-                    "Your link token is: " + linkToken + "\n\n" +
+            ctx.result("Successfully created link code for Modrinth account.\n\n" +
+                    "Your link code is: " + linkToken + "\n\n" +
+                "This code will expire when used or in approximately 15 minutes.\n\n" +
                     "Please return to Discord for Step 2.");
         } catch (IOException | InterruptedException ex) {
             ModGardenBackend.LOG.error("Failed to handle Modrinth OAuth response: ", ex);
