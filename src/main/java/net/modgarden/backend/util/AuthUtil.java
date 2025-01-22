@@ -24,10 +24,10 @@ public class AuthUtil {
     }
 
     public static String generateRandomToken() {
-        // FIXME: Guarantee this as 6 characters.
-        byte[] bytes = new byte[6];
+        byte[] bytes = new byte[10];
         new SecureRandom().nextBytes(bytes);
-        return new String(Base62.createInstance().encode(bytes), StandardCharsets.UTF_8);
+        var token = new String(Base62.createInstance().encode(bytes), StandardCharsets.UTF_8);
+        return token.substring(0, 6);
     }
 
     public static long getTokenExpirationTime() {
