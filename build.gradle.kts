@@ -35,6 +35,7 @@ dependencies {
 	implementation(libs.jwt.api)
 	implementation(libs.jwt.impl)
 	implementation(libs.jwt.gson)
+    implementation(libs.base62)
 }
 
 tasks {

@@ -17,7 +17,10 @@ import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.profile.MinecraftAccount;
 import net.modgarden.backend.data.profile.User;
+import net.modgarden.backend.handler.discord.DiscordLinkHandler;
+import net.modgarden.backend.handler.discord.ModrinthDiscordLinkHandler;
 import net.modgarden.backend.handler.RegistrationHandler;
+import net.modgarden.backend.util.AuthUtil;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +40,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ModGardenBackend {
+    public static final String URL = "http://localhost:7070";
 	public static final Logger LOG = LoggerFactory.getLogger("Mod Garden Backend");
     private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
 
@@ -51,8 +55,8 @@ public class ModGardenBackend {
         try {
             if (new File("./database.db").createNewFile()) {
                 LOG.info("Successfuly created database file.");
-                createDatabaseContents();
             }
+            createDatabaseContents();
             updateSchemaVersion();
         } catch (IOException ex) {
             LOG.error("Failed to create database file.", ex);
@@ -67,6 +71,9 @@ public class ModGardenBackend {
         CODEC_REGISTRY.put(Submission.class, Submission.CODEC);
         CODEC_REGISTRY.put(User.class, User.CODEC);
 
+        Landing.createInstance();
+        AuthUtil.clearTokensEachFifteenMinutes();
+
 		Javalin app = Javalin.create(config -> config.jsonMapper(createDFUMapper()));
 		app.get("", Landing::getLandingJson);
         app.get("/award/{award}", Award::getAwardType);
@@ -76,7 +83,10 @@ public class ModGardenBackend {
         app.get("/submission/{submission}", Submission::getSubmission);
         app.get("/user/{user}", User::getUser);
 
-        app.post("/register/discord/{discordid}", RegistrationHandler::registerThroughDiscord);
+        app.get("/link/discord/modrinth", ModrinthDiscordLinkHandler::authModrinthAccount);
+        app.post("/link/discord", DiscordLinkHandler::link);
+
+        app.post("/register/discord", RegistrationHandler::registerThroughDiscord);
 
         app.error(400, BackendError::handleError);
         app.error(401, BackendError::handleError);
@@ -151,6 +161,13 @@ public class ModGardenBackend {
                         "awarded_to TEXT NOT NULL," +
                         "additional_tooltip TEXT," +
                         "PRIMARY KEY (award_id, awarded_to)" +
+                    ")");
+            statement.addBatch("CREATE TABLE IF NOT EXISTS link_codes (" +
+                    "code TEXT NOT NULL," +
+                    "account_id TEXT NOT NULL," +
+                    "service TEXT NOT NULL," +
+                    "expiration_time INTEGER NOT NULL," +
+                    "PRIMARY KEY (code)" +
                     ")");
             statement.executeBatch();
         } catch (SQLException ex) {

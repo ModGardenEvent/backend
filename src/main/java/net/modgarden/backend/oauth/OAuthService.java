@@ -3,6 +3,7 @@ package net.modgarden.backend.oauth;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import net.modgarden.backend.oauth.client.DiscordOAuthClient;
+import net.modgarden.backend.oauth.client.ModrinthOAuthClient;
 import net.modgarden.backend.oauth.client.OAuthClientSupplier;
 import net.modgarden.backend.oauth.client.OAuthClient;
 import net.modgarden.backend.oauth.client.GithubOAuthClient;
@@ -20,6 +21,7 @@ import java.util.Date;
 
 public enum OAuthService {
     DISCORD("1305609404837527612", OAuthService::authenticateDiscord),
+    MODRINTH("4g0H4NkM", OAuthService::authenticateModrinth),
 	GITHUB("Iv23li4vLb7sDuZOiRmf", OAuthService::authenticateGithub);
 
 	public final String clientId;
@@ -34,6 +36,10 @@ public enum OAuthService {
     @NotNull
     static OAuthClient authenticateDiscord(String unused) {
         return new DiscordOAuthClient();
+    }
+
+    static OAuthClient authenticateModrinth(String unused) {
+        return new ModrinthOAuthClient();
     }
 
 	@NotNull

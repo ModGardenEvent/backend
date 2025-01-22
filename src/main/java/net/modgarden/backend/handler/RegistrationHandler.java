@@ -11,13 +11,13 @@ import java.sql.SQLException;
 public class RegistrationHandler {
     public static void registerThroughDiscord(Context ctx) {
         // TODO: Unhardcode this from the Discord Bot when the web frontend is available.
-        if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_CLIENT_SECRET")).equals(ctx.header("Authorization"))) {
-            ctx.result("Unauthorized registration of Discord account.");
+        if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
+            ctx.result("Unauthorized.");
             ctx.status(401);
             return;
         }
 
-        String discordId = ctx.pathParam("discordid");
+        String discordId = ctx.queryParam("id");
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              var checkStatement = connection.prepareStatement("SELECT 1 FROM users WHERE discord_id = ?");
              var insertStatement = connection.prepareStatement("INSERT INTO users(id, discord_id, creation_time) VALUES (?, ?, ?)")) {
