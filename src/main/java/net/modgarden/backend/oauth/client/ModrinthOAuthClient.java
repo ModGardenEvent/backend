@@ -12,11 +12,23 @@ public record ModrinthOAuthClient() implements OAuthClient {
 	public static final String API_URL = "https://api.modrinth.com/";
 
     @Override
-	public <T> HttpResponse<T> getResponse(String endpoint, HttpResponse.BodyHandler<T> bodyHandler) throws IOException, InterruptedException {
+	public <T> HttpResponse<T> get(String endpoint, HttpResponse.BodyHandler<T> bodyHandler, String... headers) throws IOException, InterruptedException {
 		var req = HttpRequest.newBuilder(URI.create(API_URL + endpoint))
-				.header("User-Agent", "ModGardenEvent/backend/" + Landing.getInstance().version() + " (modgarden.net)")
-				.build();
+				.header("User-Agent", "ModGardenEvent/backend/" + Landing.getInstance().version() + " (modgarden.net)");
+        if (headers.length > 0)
+            req.headers(headers);
 
-		return ModGardenBackend.HTTP_CLIENT.send(req, bodyHandler);
+		return ModGardenBackend.HTTP_CLIENT.send(req.build(), bodyHandler);
 	}
+
+    @Override
+    public <T> HttpResponse<T> post(String endpoint, HttpRequest.BodyPublisher bodyPublisher, HttpResponse.BodyHandler<T> bodyHandler, String... headers) throws IOException, InterruptedException {
+        var req = HttpRequest.newBuilder(URI.create(API_URL + endpoint))
+                .header("User-Agent", "ModGardenEvent/backend/" + Landing.getInstance().version() + " (modgarden.net)");
+        if (headers.length > 0)
+            req.headers(headers);
+        req.POST(bodyPublisher);
+
+        return ModGardenBackend.HTTP_CLIENT.send(req.build(), bodyHandler);
+    }
 }

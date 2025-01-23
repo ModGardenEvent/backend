@@ -9,9 +9,7 @@ import net.modgarden.backend.oauth.OAuthService;
 import net.modgarden.backend.util.AuthUtil;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.sql.Connection;
@@ -22,15 +20,14 @@ import java.util.Map;
 
 public class ModrinthDiscordLinkHandler {
     public static void authModrinthAccount(Context ctx) {
-        var tokenRequest = HttpRequest.newBuilder(URI.create("https://api.modrinth.com/_internal/oauth/token"))
-                .headers(
-                        "Content-Type", "application/x-www-form-urlencoded",
-                        "Authorization", ModGardenBackend.DOTENV.get("MODRINTH_OAUTH_SECRET")
-                ).POST(HttpRequest.BodyPublishers.ofString(AuthUtil.createBody(getAuthorizationBody(ctx.queryParam("code")))))
-                .build();
+        var authClient = OAuthService.MODRINTH.authenticate();
         try {
-            HttpResponse<InputStream> tokenResponse = ModGardenBackend.HTTP_CLIENT.send(tokenRequest, HttpResponse.BodyHandlers.ofInputStream());
-
+            var tokenResponse = authClient.post("_internal/oauth/token",
+                    HttpRequest.BodyPublishers.ofString(AuthUtil.createBody(getAuthorizationBody(ctx.queryParam("code")))),
+                    HttpResponse.BodyHandlers.ofInputStream(),
+                    "Content-Type", "application/x-www-form-urlencoded",
+                    "Authorization", ModGardenBackend.DOTENV.get("MODRINTH_OAUTH_SECRET")
+            );
             String token;
             try (InputStreamReader reader = new InputStreamReader(tokenResponse.body())) {
                 JsonElement tokenJson = JsonParser.parseReader(reader);
@@ -42,17 +39,14 @@ public class ModrinthDiscordLinkHandler {
                 token = tokenJson.getAsJsonObject().get("access_token").getAsString();
             }
 
-            var userRequest = HttpRequest.newBuilder(URI.create("https://api.modrinth.com/v2/user"))
-                    .headers(
-                            "Content-Type", "application/x-www-form-urlencoded",
-                            "Authorization", token
-                    ).GET()
-                    .build();
-
-            HttpResponse<InputStream> userReponse = ModGardenBackend.HTTP_CLIENT.send(userRequest, HttpResponse.BodyHandlers.ofInputStream());
+            var userResponse = authClient.get("_internal/oauth/token",
+                    HttpResponse.BodyHandlers.ofInputStream(),
+                    "Content-Type", "application/x-www-form-urlencoded",
+                    "Authorization", token
+            );
 
             String userId;
-            try (InputStreamReader reader = new InputStreamReader(userReponse.body())) {
+            try (InputStreamReader reader = new InputStreamReader(userResponse.body())) {
                 JsonElement userJson = JsonParser.parseReader(reader);
                 if (!userJson.isJsonObject() || !userJson.getAsJsonObject().has("id")) {
                     ctx.status(500);
@@ -65,7 +59,7 @@ public class ModrinthDiscordLinkHandler {
             ctx.status(200);
             ctx.result("Successfully created link code for Modrinth account.\n\n" +
                     "Your link code is: " + linkToken + "\n\n" +
-                "This code will expire when used or in approximately 15 minutes.\n\n" +
+                    "This code will expire when used or in approximately 15 minutes.\n\n" +
                     "Please return to Discord for Step 2.");
         } catch (IOException | InterruptedException ex) {
             ModGardenBackend.LOG.error("Failed to handle Modrinth OAuth response: ", ex);

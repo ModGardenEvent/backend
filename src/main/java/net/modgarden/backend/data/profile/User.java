@@ -165,9 +165,8 @@ public record User(String id,
     }
 
     private static String getUserModrinthId(String modrinthUsername) throws IOException, InterruptedException {
-        var req = HttpRequest.newBuilder(URI.create("https://api.modrinth.com/v2/user/" + modrinthUsername))
-                .build();
-        HttpResponse<InputStream> stream = ModGardenBackend.HTTP_CLIENT.send(req, HttpResponse.BodyHandlers.ofInputStream());
+        var modrinth = OAuthService.MODRINTH.authenticate();
+        var stream = modrinth.get("v2/user/" + modrinthUsername, HttpResponse.BodyHandlers.ofInputStream());
         if (stream.statusCode() != 200)
             return null;
         try (InputStreamReader reader = new InputStreamReader(stream.body())) {
@@ -180,7 +179,7 @@ public record User(String id,
 
     private static String getUserDiscordId(String discordUsername) throws IOException, InterruptedException {
         var client = OAuthService.DISCORD.authenticate();
-        var stream = client.getResponse("guilds/1266288344644452363/members/search?query=" + discordUsername, HttpResponse.BodyHandlers.ofInputStream());
+        var stream = client.get("guilds/1266288344644452363/members/search?query=" + discordUsername, HttpResponse.BodyHandlers.ofInputStream());
         if (stream.statusCode() != 200)
             return null;
         try (InputStreamReader reader = new InputStreamReader(stream.body())) {
