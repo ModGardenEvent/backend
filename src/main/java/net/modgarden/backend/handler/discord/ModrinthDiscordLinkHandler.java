@@ -39,7 +39,7 @@ public class ModrinthDiscordLinkHandler {
                 token = tokenJson.getAsJsonObject().get("access_token").getAsString();
             }
 
-            var userResponse = authClient.get("user",
+            var userResponse = authClient.get("v2/user",
                     HttpResponse.BodyHandlers.ofInputStream(),
                     "Content-Type", "application/x-www-form-urlencoded",
                     "Authorization", token
