@@ -6,6 +6,7 @@ plugins {
     application
     java
     idea
+    `java-library-distribution`
     alias(libs.plugins.idea.ext) apply true
 }
 
@@ -22,7 +23,6 @@ repositories {
     maven("https://repo.glaremasters.me/repository/public/") {
         name = "GlareMasters"
     }
-
 }
 
 dependencies {
@@ -49,12 +49,26 @@ tasks {
 		dependsOn(processResourcesTasks)
 	}
 
+    jar.configure {
+        manifest {
+            attributes["Main-Class"] = "net.modgarden.backend.ModGardenBackend"
+        }
+    }
 	withType<ProcessResources>().matching { processResourcesTasks.contains(it.name) }.configureEach {
 		inputs.properties(expandProps)
 		filesMatching("landing.json") {
 			expand(expandProps)
 		}
 	}
+    withType<Zip>().configureEach {
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    }
+}
+
+distributions {
+    main {
+        distributionBaseName = "mod-garden-backend"
+    }
 }
 
 application {
