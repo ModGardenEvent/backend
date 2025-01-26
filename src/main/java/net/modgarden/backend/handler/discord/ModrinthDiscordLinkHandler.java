@@ -20,10 +20,17 @@ import java.util.Map;
 
 public class ModrinthDiscordLinkHandler {
     public static void authModrinthAccount(Context ctx) {
+        String code = ctx.queryParam("code");
+        if (code == null) {
+            ctx.status(422);
+            ctx.result("Modrinth access code is not specified.");
+            return;
+        }
+
         var authClient = OAuthService.MODRINTH.authenticate();
         try {
             var tokenResponse = authClient.post("_internal/oauth/token",
-                    HttpRequest.BodyPublishers.ofString(AuthUtil.createBody(getAuthorizationBody(ctx.queryParam("code")))),
+                    HttpRequest.BodyPublishers.ofString(AuthUtil.createBody(getAuthorizationBody(code))),
                     HttpResponse.BodyHandlers.ofInputStream(),
                     "Content-Type", "application/x-www-form-urlencoded",
                     "Authorization", ModGardenBackend.DOTENV.get("MODRINTH_OAUTH_SECRET")
