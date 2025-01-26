@@ -29,6 +29,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public record User(String id,
+                   String displayName,
                    String discordId,
                    Optional<String> modrinthId,
                    long creationTime,
@@ -39,6 +40,7 @@ public record User(String id,
                    List<AwardInstance.UserValues> awards) {
     public static final Codec<User> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
+            Codec.STRING.fieldOf("display_name").forGetter(User::displayName),
             Codec.STRING.fieldOf("discord_id").forGetter(User::discordId),
             Codec.STRING.optionalFieldOf("modrinth_id").forGetter(User::modrinthId),
             Codec.LONG.fieldOf("creation_time").forGetter(User::creationTime),
@@ -190,6 +192,7 @@ public record User(String id,
     private static String selectStatement(String whereStatement) {
         return "SELECT " +
                     "u.id, " +
+                    "u.display_name, " +
                     "u.discord_id, " +
                     "u.modrinth_id, " +
                     "u.creation_time, " +

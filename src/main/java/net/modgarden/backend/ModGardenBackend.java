@@ -86,7 +86,7 @@ public class ModGardenBackend {
         app.get("/link/discord/modrinth", ModrinthDiscordLinkHandler::authModrinthAccount);
         app.post("/link/discord", DiscordLinkHandler::link);
 
-        app.post("/register/discord", RegistrationHandler::registerThroughDiscord);
+        app.post("/register/discord", RegistrationHandler::registerThroughDiscordBot);
 
         app.error(400, BackendError::handleError);
         app.error(401, BackendError::handleError);
@@ -107,6 +107,7 @@ public class ModGardenBackend {
              Statement statement = connection.createStatement()) {
             statement.addBatch("CREATE TABLE IF NOT EXISTS users (" +
                         "id TEXT UNIQUE NOT NULL," +
+                        "display_name TEXT NOT NULL," +
                         "discord_id TEXT UNIQUE NOT NULL," +
                         "modrinth_id TEXT UNIQUE," +
                         "creation_time INTEGER NOT NULL," +
