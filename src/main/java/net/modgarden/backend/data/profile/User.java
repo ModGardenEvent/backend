@@ -16,10 +16,7 @@ import net.modgarden.backend.util.SQLiteOps;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.net.URI;
-import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -46,10 +43,10 @@ public record User(String id,
             Codec.STRING.optionalFieldOf("modrinth_id").forGetter(User::modrinthId),
             Codec.LONG.fieldOf("creation_time").forGetter(User::creationTime),
             ExtraCodecs.DATE.fieldOf("creation_date").forGetter(User::creationDate),
-            Project.ID_CODEC.listOf().optionalFieldOf("projects", List.of()).forGetter(User::projects),
-            Event.ID_CODEC.listOf().optionalFieldOf("events", List.of()).forGetter(User::events),
-            ExtraCodecs.UUID_CODEC.listOf().optionalFieldOf("minecraft_accounts", List.of()).forGetter(User::minecraftAccounts),
-            AwardInstance.UserValues.CODEC.listOf().optionalFieldOf("awards", List.of()).forGetter(User::awards)
+            Project.ID_CODEC.listOf().fieldOf("projects").forGetter(User::projects),
+            Event.ID_CODEC.listOf().fieldOf("events").forGetter(User::events),
+            ExtraCodecs.UUID_CODEC.listOf().fieldOf("minecraft_accounts").forGetter(User::minecraftAccounts),
+            AwardInstance.UserValues.CODEC.listOf().fieldOf("awards").forGetter(User::awards)
     ).apply(inst, User::new));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(User::validate);
 

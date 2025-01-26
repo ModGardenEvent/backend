@@ -22,7 +22,7 @@ public record Project(String id,
             Codec.STRING.fieldOf("id").forGetter(Project::id),
             Codec.STRING.fieldOf("modrinth_id").forGetter(Project::modrinthId),
             User.ID_CODEC.fieldOf("attributed_to").forGetter(Project::attributedTo),
-            User.ID_CODEC.listOf().optionalFieldOf("authors", List.of()).forGetter(Project::authors)
+            User.ID_CODEC.listOf().fieldOf("authors").forGetter(Project::authors)
     ).apply(inst, Project::new)));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(Project::validate);
 

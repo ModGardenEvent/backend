@@ -11,19 +11,18 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Optional;
 
 public record Award(String id,
                     String slug,
                     String displayName,
                     String discordEmote,
-                    Optional<String> tooltip) {
+                    String tooltip) {
     public static final Codec<Award> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Award::id),
             Codec.STRING.fieldOf("slug").forGetter(Award::slug),
             Codec.STRING.fieldOf("display_name").forGetter(Award::displayName),
             Codec.STRING.fieldOf("discord_emote").forGetter(Award::discordEmote),
-            Codec.STRING.optionalFieldOf("tooltip").forGetter(Award::tooltip)
+            Codec.STRING.fieldOf("tooltip").forGetter(Award::tooltip)
     ).apply(inst, Award::new));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(Award::validate);
 

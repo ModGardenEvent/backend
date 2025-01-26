@@ -33,7 +33,7 @@ public record LinkCode(String code, String accountId, Service service, long expi
                 return null;
             return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
         } catch (IllegalStateException ex) {
-            ModGardenBackend.LOG.error("Failed to decode minecraft account from result set. ", ex);
+            ModGardenBackend.LOG.error("Failed to decode link code from result set. ", ex);
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         }
