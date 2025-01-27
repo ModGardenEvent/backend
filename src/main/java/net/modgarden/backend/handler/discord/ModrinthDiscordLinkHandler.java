@@ -80,6 +80,7 @@ public class ModrinthDiscordLinkHandler {
         }
     }
 
+    // TODO: Use existing link code for account instead of creating a new one if one already exists.
     public static String insertTokenIntoDatabase(Context ctx, String modrinthId) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              var checkStatement = connection.prepareStatement("SELECT 1 FROM link_codes WHERE code = ?");

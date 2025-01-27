@@ -32,7 +32,7 @@ public class DiscordLinkHandler {
             return;
         }
         if (service == null) {
-            ctx.result("Could not get service query param.");
+            ctx.result("Could not get service parameter.");
             ctx.status(404);
             return;
         }
@@ -51,7 +51,7 @@ public class DiscordLinkHandler {
             deleteStatement.setString(2, service);
             deleteStatement.execute();
             if (accountId == null) {
-                ctx.result("Could not get account id from link code.");
+                ctx.result("Invalid link code for " + capitalisedService + ".");
                 ctx.status(500);
                 return;
             }
@@ -62,15 +62,16 @@ public class DiscordLinkHandler {
                      var insertStatement = connection.prepareStatement("UPDATE users SET modrinth_id = ? WHERE discord_id = ?")) {
                     modrinthCheckStatement.setString(1, accountId);
                     ResultSet modrinthCheckResult = modrinthCheckStatement.executeQuery();
-                    if (!modrinthCheckResult.isBeforeFirst() && modrinthCheckResult.getBoolean(1)) {
-                        ctx.result("The specified Modrinth account has already been linked to a Mod Garden account.");
+                    if (modrinthCheckResult.isBeforeFirst() && modrinthCheckResult.getBoolean(1)) {
+                        ctx.result("The specified " + capitalisedService + " account has already been linked to a Mod Garden account.");
                         ctx.status(422);
+                        return;
                     }
 
                     userCheckStatement.setString(1, discordId);
                     ResultSet userCheckResult = userCheckStatement.executeQuery();
-                    if (!userCheckResult.isBeforeFirst() && userCheckResult.getBoolean(1)) {
-                        ctx.result("The specified Mod Garden account is already linked with Modrinth.");
+                    if (userCheckResult.isBeforeFirst() && userCheckResult.getBoolean(1)) {
+                        ctx.result("The specified Mod Garden account is already linked with " + capitalisedService + ".");
                         ctx.status(422);
                         return;
                     }
