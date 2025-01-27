@@ -50,27 +50,27 @@ public class DevelopmentModeData {
 			projectStatement.setString(1, Long.toString(glowBannersId));
 			projectStatement.setString(2, "r7G43arb");
 			projectStatement.setString(3, Long.toString(ultrusId));
-			projectStatement.setString(4, "glow_banners");
+			projectStatement.setString(4, "glow-banners");
 			projectStatement.execute();
 
 			long smeltingTouchId = generator.next();
 			projectStatement.setString(1, Long.toString(smeltingTouchId));
 			projectStatement.setString(2, "otiSEfKe");
 			projectStatement.setString(3, Long.toString(ultrusId));
-			projectStatement.setString(4, "smelting_touch");
+			projectStatement.setString(4, "smelting-touch");
 			projectStatement.execute();
 
 			long bovinesId = generator.next();
 			projectStatement.setString(1, Long.toString(bovinesId));
 			projectStatement.setString(2, "BDg6nMn3");
 			projectStatement.setString(3, Long.toString(pugId));
-			projectStatement.setString(4, "bovines_and_buttercups");
+			projectStatement.setString(4, "bovines-and-buttercups");
 
 			long rapscallionId = generator.next();
 			projectStatement.setString(1, Long.toString(rapscallionId));
 			projectStatement.setString(2, "9pGITjpO");
 			projectStatement.setString(3, Long.toString(pugId));
-			projectStatement.setString(4, "rapscallions_and_rockhoppers");
+			projectStatement.setString(4, "rapscallions-and-rockhoppers");
 
 			var submissionStatement = connection.prepareStatement("INSERT INTO submissions(id, project_id, event, modrinth_version_id, submitted_at) VALUES (?, ?, ?, ?, ?)");
 
