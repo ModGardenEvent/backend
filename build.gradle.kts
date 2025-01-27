@@ -83,6 +83,9 @@ idea {
                 mainClass = "net.modgarden.backend.ModGardenBackend"
                 moduleName = project.idea.module.name + ".main"
                 includeProvidedDependencies = true
+				envs = mapOf(
+					"env" to "development"
+				)
             }
         }
     }

@@ -10,6 +10,7 @@ import io.github.cdimascio.dotenv.Dotenv;
 import io.javalin.Javalin;
 import io.javalin.json.JsonMapper;
 import net.modgarden.backend.data.BackendError;
+import net.modgarden.backend.data.DevelopmentModeData;
 import net.modgarden.backend.data.Landing;
 import net.modgarden.backend.data.award.Award;
 import net.modgarden.backend.data.event.Event;
@@ -185,6 +186,10 @@ public class ModGardenBackend {
             return;
         }
         LOG.info("Created database tables.");
+
+		if ("development".equals(System.getenv("env"))) {
+			DevelopmentModeData.insertDevelopmentModeData();
+		}
     }
 
     private static void updateSchemaVersion() {
