@@ -96,7 +96,14 @@ public record User(String id,
             return user;
         }
 
-        return queryFromId(path);
+        user = queryFromUsername(path);
+        if (user == null)
+            user = queryFromId(path);
+        return user;
+    }
+
+    private static User queryFromUsername(String username) {
+        return innerQuery("username = ?", username);
     }
 
     private static User queryFromId(String id) {

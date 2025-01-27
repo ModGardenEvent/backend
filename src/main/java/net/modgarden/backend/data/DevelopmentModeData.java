@@ -113,7 +113,7 @@ public class DevelopmentModeData {
 
 			// TODO: Add more example data for the rest of the tables
 
-		} catch (SQLException e ) {
+		} catch (SQLException e) {
 			ModGardenBackend.LOG.error("Failed to create database connection in insertDevelopmentModeData.", e);
 			return;
 		}
