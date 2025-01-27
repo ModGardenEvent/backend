@@ -67,20 +67,21 @@ public record Project(String id,
     private static String selectStatement(String whereStatement) {
         return "SELECT " +
                 "p.id, " +
+                "p.slug, " +
                 "p.modrinth_id, " +
                 "p.attributed_to, " +
                 "CASE " +
-                "WHEN a.user_id NOT NULL THEN json_group_array(DISTINCT a.user_id) " +
-                "ELSE json_array() " +
+                    "WHEN a.user_id NOT NULL THEN json_group_array(DISTINCT a.user_id) " +
+                    "ELSE json_array() " +
                 "END AS authors " +
                 "FROM " +
-                "projects p " +
+                    "projects p " +
                 "LEFT JOIN " +
-                "project_authors a ON p.id = a.project_id " +
+                    "project_authors a ON p.id = a.project_id " +
                 "WHERE " +
-                "p." + whereStatement + " " +
+                    "p." + whereStatement + " " +
                 "GROUP BY " +
-                "p.id, p.modrinth_id, p.attributed_to";
+                    "p.id, p.modrinth_id, p.attributed_to";
     }
 
     private static DataResult<String> validate(String id) {
