@@ -26,7 +26,7 @@ public class RegistrationHandler {
         String displayName = ctx.queryParam("displayname");
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              var checkStatement = connection.prepareStatement("SELECT 1 FROM users WHERE discord_id = ?");
-             var insertStatement = connection.prepareStatement("INSERT INTO users(id, slug, display_name, discord_id, created) VALUES (?, ?, ?, ?, ?)")) {
+             var insertStatement = connection.prepareStatement("INSERT INTO users(id, username, display_name, discord_id, created) VALUES (?, ?, ?, ?, ?)")) {
             checkStatement.setString(1, discordId);
             ResultSet result = checkStatement.executeQuery();
             if (result != null && result.getBoolean(1)) {
