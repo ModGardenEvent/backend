@@ -63,6 +63,11 @@ public class ModrinthDiscordLinkHandler {
                 userId = userJson.getAsJsonObject().get("id").getAsString();
             }
             String linkToken = insertTokenIntoDatabase(ctx, userId);
+            if (linkToken == null) {
+                ctx.status(500);
+                ctx.result("Internal error whilst generating token.");
+                return;
+            }
             ctx.status(200);
             ctx.result("Successfully created link code for Modrinth account.\n\n" +
                     "Your link code is: " + linkToken + "\n\n" +
@@ -71,14 +76,14 @@ public class ModrinthDiscordLinkHandler {
         } catch (IOException | InterruptedException ex) {
             ModGardenBackend.LOG.error("Failed to handle Modrinth OAuth response: ", ex);
             ctx.status(500);
-            ctx.result("Internal Error.");
+            ctx.result("Internal error.");
         }
     }
 
     public static String insertTokenIntoDatabase(Context ctx, String modrinthId) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              var checkStatement = connection.prepareStatement("SELECT 1 FROM link_codes WHERE code = ?");
-             var insertStatement = connection.prepareStatement("INSERT INTO link_codes(code, account_id, service, expired) VALUES (?, ?, ?, ?)")) {
+             var insertStatement = connection.prepareStatement("INSERT INTO link_codes(code, account_id, service, expires) VALUES (?, ?, ?, ?)")) {
             String token = null;
             while (token == null) {
                 checkStatement.clearParameters();
