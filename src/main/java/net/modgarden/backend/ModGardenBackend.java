@@ -41,7 +41,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ModGardenBackend {
-    public static final String URL = "https://api.modgarden.net";
+    public static final String URL = "development".equals(System.getenv("env")) ? "http://localhost:7070" : "https://api.modgarden.net";
 	public static final Logger LOG = LoggerFactory.getLogger("Mod Garden Backend");
     private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
 
