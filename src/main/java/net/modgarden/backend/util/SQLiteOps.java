@@ -22,7 +22,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -103,8 +106,9 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
 
     private <T> ResultSet createValue(T value, String dataType, boolean key) {
         ResultSet resultSet;
-        createTempTable();
-        try (Connection connection = createTempDatabaseConnection();
+        int tempIndex = createTempDatabaseIndex();
+        createTempTable(tempIndex);
+        try (Connection connection = createTempDatabaseConnection(tempIndex);
              Statement statement = connection.createStatement();) {
             statement.execute("ALTER TABLE temp ADD COLUMN value " + dataType);
             try (PreparedStatement replacePrepared = connection.prepareStatement("REPLACE INTO temp (value) VALUES (?)")) {
@@ -127,10 +131,10 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
             statement.execute("ALTER TABLE temp DROP COLUMN value");
         }
         catch (SQLException ex) {
-            dropTempTable();
+            dropTempTable(tempIndex);
             throw new RuntimeException(ex);
         }
-        dropTempTable();
+        dropTempTable(tempIndex);
         return resultSet;
     }
 
@@ -161,8 +165,9 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
     @Override
     public DataResult<ResultSet> mergeToMap(ResultSet map, ResultSet key, ResultSet value) {
         DataResult<ResultSet> dataResult;
-        createTempTable();
-        try (Connection connection = createTempDatabaseConnection();
+        int tempIndex = createTempDatabaseIndex();
+        createTempTable(tempIndex);
+        try (Connection connection = createTempDatabaseConnection(tempIndex);
              Statement statement = connection.createStatement();
              map; key; value) {
 
@@ -217,7 +222,7 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
             ModGardenBackend.LOG.error("Exception merging results to database map.", ex);
             dataResult = DataResult.error(() -> "Exception merging results to database map.");
         }
-        dropTempTable();
+        dropTempTable(tempIndex);
         return dataResult;
     }
 
@@ -340,27 +345,41 @@ public class SQLiteOps implements DynamicOps<ResultSet> {
         }
     }
 
-    private static Connection createTempDatabaseConnection() throws SQLException {
+    private static final Set<Integer> TEMP_IDS = new HashSet<>();
+
+    private static int createTempDatabaseIndex() {
+        Random random = new Random();
+        int randomId = random.nextInt();
+
+        while (TEMP_IDS.contains(randomId))
+            randomId = random.nextInt();
+        TEMP_IDS.add(randomId);
+
+        return randomId;
+    }
+
+    private static Connection createTempDatabaseConnection(int tempIndex) throws SQLException {
         try {
-            new File("./temp.db").createNewFile();
+            new File("./temp" + tempIndex + ".db").createNewFile();
         } catch (IOException ex) {
             ModGardenBackend.LOG.error("Failed to create temporary database file.", ex);
         }
-        String url = "jdbc:sqlite:temp.db";
+        String url = "jdbc:sqlite:temp" + tempIndex + ".db";
         return DriverManager.getConnection(url);
     }
 
-    private static void dropTempTable() {
+    private static void dropTempTable(int tempIndex) {
         try {
-            Files.deleteIfExists(new File("./temp.db").toPath());
+            Files.deleteIfExists(new File("./temp" + tempIndex + ".db").toPath());
         } catch (IOException ex) {
             ModGardenBackend.LOG.error("Failed to delete temporary database file.", ex);
         }
+        TEMP_IDS.remove(tempIndex);
     }
 
-    private void createTempTable() {
+    private void createTempTable(int tempIndex) {
         String createStatement = "CREATE TABLE IF NOT EXISTS temp (_temp_primary INTEGER PRIMARY KEY)";
-        try(Connection connection = createTempDatabaseConnection();
+        try(Connection connection = createTempDatabaseConnection(tempIndex);
             Statement statement = connection.createStatement()) {
             statement.execute(createStatement);
         } catch (SQLException ex) {
