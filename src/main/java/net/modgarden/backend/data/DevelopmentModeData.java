@@ -1,7 +1,10 @@
 package net.modgarden.backend.data;
 
-import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.data.event.Event;
+import net.modgarden.backend.data.event.Project;
+import net.modgarden.backend.data.event.Submission;
+import net.modgarden.backend.data.profile.User;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -11,8 +14,7 @@ public class DevelopmentModeData {
 		try {
 			Connection connection = ModGardenBackend.createDatabaseConnection();
 			var userStatement = connection.prepareStatement("INSERT OR IGNORE INTO users(id, username, display_name, discord_id, created) VALUES (?, ?, ?, ?, ?)");
-			var generator = SnowflakeIdGenerator.createDefault(0);
-			long ultrusId = generator.next();
+			long ultrusId = User.ID_GENERATOR.next();
 			userStatement.setString(1, Long.toString(ultrusId));
 			userStatement.setString(2, "ultrusbot");
 			userStatement.setString(3, "UltrusBot");
@@ -20,7 +22,7 @@ public class DevelopmentModeData {
 			userStatement.setLong(5, System.currentTimeMillis());
 			userStatement.execute();
 
-            long pugId = generator.next();
+            long pugId = User.ID_GENERATOR.next();
 			userStatement.setString(1, Long.toString(pugId));
 			userStatement.setString(2, "pug");
 			userStatement.setString(3, "Pug");
@@ -30,21 +32,21 @@ public class DevelopmentModeData {
 
 
 			var eventStatement = connection.prepareStatement("INSERT OR IGNORE INTO events(id, slug, display_name, started, minecraft_version, loader, loader_version) VALUES (?, ?, ?, ?, '1.21.1', 'fabric', '0.16.10')");
-			long mojankId = generator.next();
+			long mojankId = Event.ID_GENERATOR.next();
 			eventStatement.setString(1, Long.toString(mojankId));
 			eventStatement.setString(2, "mojank-fest");
 			eventStatement.setString(3, "MoJank Fest");
 			eventStatement.setLong(4, System.currentTimeMillis() - (86400000 * 5));
 			eventStatement.execute();
 
-            long festivalId = generator.next();
+            long festivalId = Event.ID_GENERATOR.next();
             eventStatement.setString(1, Long.toString(festivalId));
             eventStatement.setString(2, "festival");
             eventStatement.setString(3, "Mod Garden: Festival");
             eventStatement.setLong(4, System.currentTimeMillis() - (86400000 * 3));
             eventStatement.execute();
 
-			long exampleGardenId = generator.next();
+			long exampleGardenId = Event.ID_GENERATOR.next();
 			eventStatement.setString(1, Long.toString(exampleGardenId));
 			eventStatement.setString(2, "example-garden");
 			eventStatement.setString(3, "Example Garden");
@@ -52,28 +54,28 @@ public class DevelopmentModeData {
 			eventStatement.execute();
 
 			var projectStatement = connection.prepareStatement("INSERT OR IGNORE INTO projects(id, modrinth_id, attributed_to, slug) VALUES (?, ?, ?, ?)");
-			long glowBannersId = generator.next();
+			long glowBannersId = Project.ID_GENERATOR.next();
 			projectStatement.setString(1, Long.toString(glowBannersId));
 			projectStatement.setString(2, "r7G43arb");
 			projectStatement.setString(3, Long.toString(ultrusId));
 			projectStatement.setString(4, "glow-banners");
 			projectStatement.execute();
 
-			long smeltingTouchId = generator.next();
+			long smeltingTouchId = Project.ID_GENERATOR.next();
 			projectStatement.setString(1, Long.toString(smeltingTouchId));
 			projectStatement.setString(2, "otiSEfKe");
 			projectStatement.setString(3, Long.toString(ultrusId));
 			projectStatement.setString(4, "smelting-touch");
 			projectStatement.execute();
 
-			long bovinesId = generator.next();
+			long bovinesId = Project.ID_GENERATOR.next();
 			projectStatement.setString(1, Long.toString(bovinesId));
 			projectStatement.setString(2, "BDg6nMn3");
 			projectStatement.setString(3, Long.toString(pugId));
 			projectStatement.setString(4, "bovines-and-buttercups");
             projectStatement.execute();
 
-			long rapscallionsId = generator.next();
+			long rapscallionsId = Project.ID_GENERATOR.next();
 			projectStatement.setString(1, Long.toString(rapscallionsId));
 			projectStatement.setString(2, "9pGITjpO");
 			projectStatement.setString(3, Long.toString(pugId));
@@ -82,7 +84,7 @@ public class DevelopmentModeData {
 
 			var submissionStatement = connection.prepareStatement("INSERT OR IGNORE INTO submissions(id, project_id, event, modrinth_version_id, submitted_at) VALUES (?, ?, ?, ?, ?)");
 
-			long glowBannersSubmissionId = generator.next();
+			long glowBannersSubmissionId = Submission.ID_GENERATOR.next();
 			submissionStatement.setString(1, Long.toString(glowBannersSubmissionId));
 			submissionStatement.setString(2, Long.toString(glowBannersId));
 			submissionStatement.setString(3, Long.toString(mojankId));
@@ -90,7 +92,7 @@ public class DevelopmentModeData {
 			submissionStatement.setLong(5, System.currentTimeMillis() - (86400000 * 3));
 			submissionStatement.execute();
 
-			long smeltingTouchSubmissionId = generator.next();
+			long smeltingTouchSubmissionId = Submission.ID_GENERATOR.next();
 			submissionStatement.setString(1, Long.toString(smeltingTouchSubmissionId));
 			submissionStatement.setString(2, Long.toString(smeltingTouchId));
 			submissionStatement.setString(3, Long.toString(exampleGardenId));
@@ -98,7 +100,7 @@ public class DevelopmentModeData {
 			submissionStatement.setLong(5, System.currentTimeMillis() - (86400000));
 			submissionStatement.execute();
 
-			long bovinesMojankSubmissionId = generator.next();
+			long bovinesMojankSubmissionId = Submission.ID_GENERATOR.next();
 			submissionStatement.setString(1, Long.toString(bovinesMojankSubmissionId));
 			submissionStatement.setString(2, Long.toString(bovinesId));
 			submissionStatement.setString(3, Long.toString(mojankId));
@@ -106,7 +108,7 @@ public class DevelopmentModeData {
 			submissionStatement.setLong(5, System.currentTimeMillis() - (86400000 * 4));
 			submissionStatement.execute();
 
-            long bovinesFestivalSubmissionId = generator.next();
+            long bovinesFestivalSubmissionId = Submission.ID_GENERATOR.next();
             submissionStatement.setString(1, Long.toString(bovinesFestivalSubmissionId));
             submissionStatement.setString(2, Long.toString(bovinesId));
             submissionStatement.setString(3, Long.toString(festivalId));
@@ -114,7 +116,7 @@ public class DevelopmentModeData {
             submissionStatement.setLong(5, System.currentTimeMillis() - (86400000 * 4));
             submissionStatement.execute();
 
-			long rapscallionsSubmissionId = generator.next();
+			long rapscallionsSubmissionId = Submission.ID_GENERATOR.next();
 			submissionStatement.setString(1, Long.toString(rapscallionsSubmissionId));
 			submissionStatement.setString(2, Long.toString(rapscallionsId));
 			submissionStatement.setString(3, Long.toString(exampleGardenId));

@@ -3,6 +3,7 @@ package net.modgarden.backend.data.award;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.util.SQLiteOps;
@@ -18,6 +19,7 @@ public record Award(String id,
                     String sprite,
                     String discordEmote,
                     String tooltip) {
+    public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(4);
     public static final Codec<Award> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Award::id),
             Codec.STRING.fieldOf("slug").forGetter(Award::slug),

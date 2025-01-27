@@ -4,6 +4,7 @@ import com.google.gson.JsonParser;
 import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.data.profile.User;
 import net.modgarden.backend.oauth.OAuthService;
 
 import java.io.IOException;
@@ -34,11 +35,7 @@ public class RegistrationHandler {
                 ctx.status(200);
                 return;
             }
-            // This is likely going to be the only snowflake generator across this project.
-            // So we can use generatorId 0.
-            int generatorId = 0;
-            SnowflakeIdGenerator generator = SnowflakeIdGenerator.createDefault(generatorId);
-            long id = generator.next();
+            long id = User.ID_GENERATOR.next();
 
             if (username == null || displayName == null) {
                 var discordClient = OAuthService.DISCORD.authenticate();

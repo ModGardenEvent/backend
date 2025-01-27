@@ -3,6 +3,7 @@ package net.modgarden.backend.data.event;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.util.SQLiteOps;
@@ -21,6 +22,7 @@ public record Event(String id,
                     String loader,
                     String loaderVersion,
                     long started) {
+    public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(1);
     public static final Codec<Event> CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Event::id),
             Codec.STRING.fieldOf("slug").forGetter(Event::slug),

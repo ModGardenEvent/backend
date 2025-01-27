@@ -5,6 +5,7 @@ import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.award.AwardInstance;
@@ -37,6 +38,7 @@ public record User(String id,
                    List<String> events,
                    List<UUID> minecraftAccounts,
                    List<AwardInstance.UserValues> awards) {
+    public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(0);
     public static final Codec<User> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
             Codec.STRING.fieldOf("username").forGetter(User::username),

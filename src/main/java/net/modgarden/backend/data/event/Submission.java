@@ -2,6 +2,7 @@ package net.modgarden.backend.data.event;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.util.SQLiteOps;
@@ -16,6 +17,7 @@ public record Submission(String id,
                          String event,
                          String modrinthVersionId,
                          long submitted) {
+    public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(3);
     public static final Codec<Submission> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Submission::id),
             Codec.STRING.fieldOf("project_id").forGetter(Submission::projectId),
