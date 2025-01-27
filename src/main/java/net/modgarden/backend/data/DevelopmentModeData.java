@@ -10,7 +10,7 @@ public class DevelopmentModeData {
 	public static void insertDevelopmentModeData() {
 		try {
 			Connection connection = ModGardenBackend.createDatabaseConnection();
-			var userStatement = connection.prepareStatement("INSERT INTO users(id, username, display_name, discord_id, created) VALUES (?, ?, ?, ?, ?)");
+			var userStatement = connection.prepareStatement("INSERT OR IGNORE INTO users(id, username, display_name, discord_id, created) VALUES (?, ?, ?, ?, ?)");
 			var generator = SnowflakeIdGenerator.createDefault(0);
 			long ultrusId = 111L;
 			userStatement.setString(1, Long.toString(ultrusId));
@@ -29,7 +29,7 @@ public class DevelopmentModeData {
 			userStatement.execute();
 
 
-			var eventStatement = connection.prepareStatement("INSERT INTO events(id, slug, display_name, started, minecraft_version, loader, loader_version) VALUES (?, ?, ?, ?, '1.21', 'fabric', '0.16.10')");
+			var eventStatement = connection.prepareStatement("INSERT OR IGNORE INTO events(id, slug, display_name, started, minecraft_version, loader, loader_version) VALUES (?, ?, ?, ?, '1.21', 'fabric', '0.16.10')");
 			long mojankId = generator.next();
 			eventStatement.setString(1, Long.toString(mojankId));
 			eventStatement.setString(2, "mojank-fest");
@@ -45,7 +45,7 @@ public class DevelopmentModeData {
 			eventStatement.execute();
 
 
-			var projectStatement = connection.prepareStatement("INSERT INTO projects(id, modrinth_id, attributed_to, slug) VALUES (?, ?, ?, ?)");
+			var projectStatement = connection.prepareStatement("INSERT OR IGNORE INTO projects(id, modrinth_id, attributed_to, slug) VALUES (?, ?, ?, ?)");
 			long glowBannersId = generator.next();
 			projectStatement.setString(1, Long.toString(glowBannersId));
 			projectStatement.setString(2, "r7G43arb");
@@ -72,7 +72,7 @@ public class DevelopmentModeData {
 			projectStatement.setString(3, Long.toString(pugId));
 			projectStatement.setString(4, "rapscallions-and-rockhoppers");
 
-			var submissionStatement = connection.prepareStatement("INSERT INTO submissions(id, project_id, event, modrinth_version_id, submitted_at) VALUES (?, ?, ?, ?, ?)");
+			var submissionStatement = connection.prepareStatement("INSERT OR IGNORE INTO submissions(id, project_id, event, modrinth_version_id, submitted_at) VALUES (?, ?, ?, ?, ?)");
 
 			long glowBannersSubmissionId = generator.next();
 			submissionStatement.setString(1, Long.toString(glowBannersSubmissionId));
@@ -106,7 +106,7 @@ public class DevelopmentModeData {
 			submissionStatement.setLong(5, System.currentTimeMillis() - (86400000 * 2));
 			submissionStatement.execute();
 
-			var projectAuthorsStatement = connection.prepareStatement("INSERT INTO project_authors(project_id, user_id) VALUES (?, ?)");
+			var projectAuthorsStatement = connection.prepareStatement("INSERT OR IGNORE INTO project_authors(project_id, user_id) VALUES (?, ?)");
 			projectAuthorsStatement.setString(1, Long.toString(rapscallionId));
 			projectAuthorsStatement.setString(2, Long.toString(ultrusId));
 			projectAuthorsStatement.execute();
