@@ -107,7 +107,7 @@ public class ModGardenBackend {
              Statement statement = connection.createStatement()) {
             statement.addBatch("CREATE TABLE IF NOT EXISTS users (" +
                         "id TEXT UNIQUE NOT NULL," +
-                        "slug TEXT UNIQUE NOT NULL," +
+                        "username TEXT UNIQUE NOT NULL," +
                         "display_name TEXT NOT NULL," +
                         "discord_id TEXT UNIQUE NOT NULL," +
                         "modrinth_id TEXT UNIQUE," +

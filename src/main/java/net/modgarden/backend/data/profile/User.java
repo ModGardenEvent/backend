@@ -28,7 +28,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public record User(String id,
-                   String slug,
+                   String username,
                    String displayName,
                    String discordId,
                    Optional<String> modrinthId,
@@ -39,7 +39,7 @@ public record User(String id,
                    List<AwardInstance.UserValues> awards) {
     public static final Codec<User> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
-            Codec.STRING.fieldOf("slug").forGetter(User::slug),
+            Codec.STRING.fieldOf("username").forGetter(User::username),
             Codec.STRING.fieldOf("display_name").forGetter(User::displayName),
             Codec.STRING.fieldOf("discord_id").forGetter(User::discordId),
             Codec.STRING.optionalFieldOf("modrinth_id").forGetter(User::modrinthId),
@@ -191,7 +191,7 @@ public record User(String id,
     private static String selectStatement(String whereStatement) {
         return "SELECT " +
                     "u.id, " +
-                    "u.slug, " +
+                    "u.username, " +
                     "u.display_name, " +
                     "u.discord_id, " +
                     "u.modrinth_id, " +
@@ -229,6 +229,6 @@ public record User(String id,
                 "WHERE " +
                     "u." + whereStatement + " " +
                 "GROUP BY " +
-                    "u.id, u.discord_id, u.modrinth_id, u.created";
+                    "u.id, u.username, u.display_name, u.discord_id, u.modrinth_id, u.created";
     }
 }
