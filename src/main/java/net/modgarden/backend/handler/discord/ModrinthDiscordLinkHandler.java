@@ -81,21 +81,26 @@ public class ModrinthDiscordLinkHandler {
     }
 
     // TODO: Use existing link code for account instead of creating a new one if one already exists.
-    public static String insertTokenIntoDatabase(Context ctx, String modrinthId) {
+    public static String insertTokenIntoDatabase(Context ctx, String accountId) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             var checkStatement = connection.prepareStatement("SELECT 1 FROM link_codes WHERE code = ?");
+             var checkAccountIdStatement = connection.prepareStatement("SELECT code FROM link_codes WHERE account_id = ?");
+             var checkCodeStatement = connection.prepareStatement("SELECT 1 FROM link_codes WHERE code = ?");
              var insertStatement = connection.prepareStatement("INSERT INTO link_codes(code, account_id, service, expires) VALUES (?, ?, ?, ?)")) {
-            String token = null;
+            checkAccountIdStatement.setString(1, accountId);
+            ResultSet existing = checkAccountIdStatement.executeQuery();
+            String token = existing.getString(1);
+            if (token != null)
+                return token;
             while (token == null) {
-                checkStatement.clearParameters();
+                checkCodeStatement.clearParameters();
                 String potential = AuthUtil.generateRandomToken();
-                checkStatement.setString(1, potential);
-                ResultSet result = checkStatement.executeQuery();
+                checkCodeStatement.setString(1, potential);
+                ResultSet result = checkCodeStatement.executeQuery();
                 if (!result.getBoolean(1))
                     token = potential;
             }
             insertStatement.setString(1, token);
-            insertStatement.setString(2, modrinthId);
+            insertStatement.setString(2, accountId);
             insertStatement.setString(3, LinkCode.Service.MODRINTH.serializedName());
             insertStatement.setLong(4, AuthUtil.getTokenExpirationTime());
             insertStatement.execute();
