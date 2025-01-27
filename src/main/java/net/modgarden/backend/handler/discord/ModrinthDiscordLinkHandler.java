@@ -62,7 +62,7 @@ public class ModrinthDiscordLinkHandler {
                 }
                 userId = userJson.getAsJsonObject().get("id").getAsString();
             }
-            String linkToken = insertTokenIntoDatabase(ctx, userId);
+            String linkToken = AuthUtil.insertTokenIntoDatabase(ctx, userId);
             if (linkToken == null) {
                 ctx.status(500);
                 ctx.result("Internal error whilst generating token.");
@@ -78,39 +78,6 @@ public class ModrinthDiscordLinkHandler {
             ctx.status(500);
             ctx.result("Internal error.");
         }
-    }
-
-    // TODO: Use existing link code for account instead of creating a new one if one already exists.
-    public static String insertTokenIntoDatabase(Context ctx, String accountId) {
-        try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             var checkAccountIdStatement = connection.prepareStatement("SELECT code FROM link_codes WHERE account_id = ?");
-             var checkCodeStatement = connection.prepareStatement("SELECT 1 FROM link_codes WHERE code = ?");
-             var insertStatement = connection.prepareStatement("INSERT INTO link_codes(code, account_id, service, expires) VALUES (?, ?, ?, ?)")) {
-            checkAccountIdStatement.setString(1, accountId);
-            ResultSet existing = checkAccountIdStatement.executeQuery();
-            String token = existing.getString(1);
-            if (token != null)
-                return token;
-            while (token == null) {
-                checkCodeStatement.clearParameters();
-                String potential = AuthUtil.generateRandomToken();
-                checkCodeStatement.setString(1, potential);
-                ResultSet result = checkCodeStatement.executeQuery();
-                if (!result.getBoolean(1))
-                    token = potential;
-            }
-            insertStatement.setString(1, token);
-            insertStatement.setString(2, accountId);
-            insertStatement.setString(3, LinkCode.Service.MODRINTH.serializedName());
-            insertStatement.setLong(4, AuthUtil.getTokenExpirationTime());
-            insertStatement.execute();
-            return token;
-        } catch (SQLException ex) {
-            ModGardenBackend.LOG.error("Exception in SQL query.", ex);
-            ctx.result("Internal Error.");
-            ctx.status(500);
-        }
-        return null;
     }
 
     private static Map<String, String> getAuthorizationBody(String code) {
