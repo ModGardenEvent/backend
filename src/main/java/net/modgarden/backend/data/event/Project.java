@@ -15,11 +15,13 @@ import java.sql.SQLException;
 import java.util.List;
 
 public record Project(String id,
+                      String slug,
                       String modrinthId,
                       String attributedTo,
                       List<String> authors) {
     public static final Codec<Project> CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Project::id),
+            Codec.STRING.fieldOf("slug").forGetter(Project::slug),
             Codec.STRING.fieldOf("modrinth_id").forGetter(Project::modrinthId),
             User.ID_CODEC.fieldOf("attributed_to").forGetter(Project::attributedTo),
             User.ID_CODEC.listOf().fieldOf("authors").forGetter(Project::authors)

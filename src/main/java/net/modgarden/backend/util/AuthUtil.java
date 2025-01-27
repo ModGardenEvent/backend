@@ -49,7 +49,7 @@ public class AuthUtil {
 
     private static void clearTokens() {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement statement = connection.prepareStatement("DELETE FROM link_codes WHERE expiration_time <= ?")) {
+             PreparedStatement statement = connection.prepareStatement("DELETE FROM link_codes WHERE expired <= ?")) {
             statement.setLong(1, System.currentTimeMillis());
             statement.execute();
         } catch (SQLException ex) {

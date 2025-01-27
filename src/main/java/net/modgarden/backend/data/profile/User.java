@@ -22,29 +22,28 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
 public record User(String id,
+                   String slug,
                    String displayName,
                    String discordId,
                    Optional<String> modrinthId,
-                   long creationTime,
-                   Date creationDate,
+                   long created,
                    List<String> projects,
                    List<String> events,
                    List<UUID> minecraftAccounts,
                    List<AwardInstance.UserValues> awards) {
     public static final Codec<User> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
+            Codec.STRING.fieldOf("slug").forGetter(User::slug),
             Codec.STRING.fieldOf("display_name").forGetter(User::displayName),
             Codec.STRING.fieldOf("discord_id").forGetter(User::discordId),
             Codec.STRING.optionalFieldOf("modrinth_id").forGetter(User::modrinthId),
-            Codec.LONG.fieldOf("creation_time").forGetter(User::creationTime),
-            ExtraCodecs.DATE.fieldOf("creation_date").forGetter(User::creationDate),
+            Codec.LONG.fieldOf("created").forGetter(User::created),
             Project.ID_CODEC.listOf().fieldOf("projects").forGetter(User::projects),
             Event.ID_CODEC.listOf().fieldOf("events").forGetter(User::events),
             ExtraCodecs.UUID_CODEC.listOf().fieldOf("minecraft_accounts").forGetter(User::minecraftAccounts),
@@ -192,11 +191,11 @@ public record User(String id,
     private static String selectStatement(String whereStatement) {
         return "SELECT " +
                     "u.id, " +
+                    "u.slug, " +
                     "u.display_name, " +
                     "u.discord_id, " +
                     "u.modrinth_id, " +
-                    "u.creation_time, " +
-                    "u.creation_time AS creation_date, " +
+                    "u.created, " +
                     "CASE " +
                         "WHEN p.id NOT NULL THEN json_group_array(DISTINCT p.id) " +
                         "ELSE json_array() " +
@@ -210,7 +209,7 @@ public record User(String id,
                         "ELSE json_array() " +
                     "END AS minecraft_accounts, " +
                     "CASE " +
-                        "WHEN ai.award_id NOT NULL THEN json_group_array(DISTINCT json_object('award_id', ai.award_id, 'additional_tooltip', ai.additional_tooltip)) " +
+                        "WHEN ai.award_id NOT NULL THEN json_group_array(DISTINCT json_object('award_id', ai.award_id, 'custom_data', ai.custom_data)) " +
                         "ELSE json_array() " +
                     "END AS awards " +
                 "FROM " +
@@ -230,6 +229,6 @@ public record User(String id,
                 "WHERE " +
                     "u." + whereStatement + " " +
                 "GROUP BY " +
-                    "u.id, u.discord_id, u.modrinth_id, u.creation_time";
+                    "u.id, u.discord_id, u.modrinth_id, u.created";
     }
 }

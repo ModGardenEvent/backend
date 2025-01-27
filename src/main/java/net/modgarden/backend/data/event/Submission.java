@@ -4,28 +4,24 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.util.ExtraCodecs;
 import net.modgarden.backend.util.SQLiteOps;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Date;
 
 public record Submission(String id,
                          String projectId,
                          String event,
                          String modrinthVersionId,
-                         long submittedAt,
-                         Date submissionDate) {
+                         long submitted) {
     public static final Codec<Submission> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Submission::id),
             Codec.STRING.fieldOf("project_id").forGetter(Submission::projectId),
             Event.ID_CODEC.fieldOf("event").forGetter(Submission::event),
             Codec.STRING.fieldOf("modrinth_version_id").forGetter(Submission::modrinthVersionId),
-            Codec.LONG.fieldOf("submitted_at").forGetter(Submission::submittedAt),
-            ExtraCodecs.DATE.fieldOf("submitted_date").forGetter(Submission::submissionDate)
+            Codec.LONG.fieldOf("submitted").forGetter(Submission::submitted)
     ).apply(inst, Submission::new));
 
     public static void getSubmission(Context ctx) {

@@ -78,7 +78,7 @@ public class ModrinthDiscordLinkHandler {
     public static String insertTokenIntoDatabase(Context ctx, String modrinthId) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              var checkStatement = connection.prepareStatement("SELECT 1 FROM link_codes WHERE code = ?");
-             var insertStatement = connection.prepareStatement("INSERT INTO link_codes(code, account_id, service, expiration_time) VALUES (?, ?, ?, ?)")) {
+             var insertStatement = connection.prepareStatement("INSERT INTO link_codes(code, account_id, service, expired) VALUES (?, ?, ?, ?)")) {
             String token = null;
             while (token == null) {
                 checkStatement.clearParameters();

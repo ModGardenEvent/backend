@@ -15,12 +15,14 @@ import java.sql.SQLException;
 public record Award(String id,
                     String slug,
                     String displayName,
+                    String sprite,
                     String discordEmote,
                     String tooltip) {
     public static final Codec<Award> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Award::id),
             Codec.STRING.fieldOf("slug").forGetter(Award::slug),
             Codec.STRING.fieldOf("display_name").forGetter(Award::displayName),
+            Codec.STRING.fieldOf("sprite").forGetter(Award::sprite),
             Codec.STRING.fieldOf("discord_emote").forGetter(Award::discordEmote),
             Codec.STRING.fieldOf("tooltip").forGetter(Award::tooltip)
     ).apply(inst, Award::new));

@@ -40,7 +40,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ModGardenBackend {
-    public static final String URL = "https://api.modgarden.net";
+    public static final String URL = "http://localhost:7070";
 	public static final Logger LOG = LoggerFactory.getLogger("Mod Garden Backend");
     private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
 
@@ -107,21 +107,26 @@ public class ModGardenBackend {
              Statement statement = connection.createStatement()) {
             statement.addBatch("CREATE TABLE IF NOT EXISTS users (" +
                         "id TEXT UNIQUE NOT NULL," +
+                        "slug TEXT UNIQUE NOT NULL," +
                         "display_name TEXT NOT NULL," +
                         "discord_id TEXT UNIQUE NOT NULL," +
                         "modrinth_id TEXT UNIQUE," +
-                        "creation_time INTEGER NOT NULL," +
+                        "created INTEGER NOT NULL," +
                         "PRIMARY KEY(id)" +
                     ")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS events (" +
                         "id TEXT UNIQUE NOT NULL," +
                         "slug TEXT UNIQUE NOT NULL," +
                         "display_name TEXT NOT NULL," +
-                        "start_time INTEGER NOT NULL," +
+                        "minecraft_version TEXT NOT NULL," +
+                        "loader TEXT NOT NULL," +
+                        "loader_version TEXT NOT NULL," +
+                        "started INTEGER NOT NULL," +
                         "PRIMARY KEY (id)" +
                     ")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS projects (" +
                         "id TEXT UNIQUE NOT NULL," +
+                        "slug TEXT UNIQUE NOT NULL," +
                         "modrinth_id TEXT UNIQUE NOT NULL," +
                         "attributed_to TEXT NOT NULL," +
                         "FOREIGN KEY (attributed_to) REFERENCES users(id)," +
@@ -152,7 +157,9 @@ public class ModGardenBackend {
                     ")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS awards (" +
                         "id TEXT UNIQUE NOT NULL," +
+                        "slug TEXT UNIQUE NOT NULL," +
                         "display_name TEXT NOT NULL," +
+                        "sprite TEXT NOT NULL," +
                         "discord_emote TEXT NOT NULL," +
                         "tooltip TEXT," +
                         "PRIMARY KEY (id)" +
@@ -160,15 +167,17 @@ public class ModGardenBackend {
             statement.addBatch("CREATE TABLE IF NOT EXISTS award_instances (" +
                         "award_id TEXT NOT NULL," +
                         "awarded_to TEXT NOT NULL," +
-                        "additional_tooltip TEXT," +
+                        "custom_data TEXT," +
+                        "FOREIGN KEY (award_id) REFERENCES awards(id)," +
+                        "FOREIGN KEY (awarded_to) REFERENCES users(id)," +
                         "PRIMARY KEY (award_id, awarded_to)" +
                     ")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS link_codes (" +
-                    "code TEXT NOT NULL," +
-                    "account_id TEXT NOT NULL," +
-                    "service TEXT NOT NULL," +
-                    "expiration_time INTEGER NOT NULL," +
-                    "PRIMARY KEY (code)" +
+                        "code TEXT NOT NULL," +
+                        "account_id TEXT NOT NULL," +
+                        "service TEXT NOT NULL," +
+                        "expires INTEGER NOT NULL," +
+                        "PRIMARY KEY (code)" +
                     ")");
             statement.executeBatch();
         } catch (SQLException ex) {

@@ -5,7 +5,6 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.util.ExtraCodecs;
 import net.modgarden.backend.util.SQLiteOps;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,20 +12,23 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Date;
 import java.util.Locale;
 
 public record Event(String id,
                     String slug,
                     String displayName,
-                    long startTime,
-                    Date startDate) {
+                    String minecraftVersion,
+                    String loader,
+                    String loaderVersion,
+                    long started) {
     public static final Codec<Event> CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Event::id),
             Codec.STRING.fieldOf("slug").forGetter(Event::slug),
             Codec.STRING.fieldOf("display_name").forGetter(Event::displayName),
-            Codec.LONG.fieldOf("start_time").forGetter(Event::startTime),
-            ExtraCodecs.DATE.fieldOf("start_date").forGetter(Event::startDate)
+            Codec.STRING.fieldOf("minecraft_version").forGetter(Event::minecraftVersion),
+            Codec.STRING.fieldOf("loader").forGetter(Event::loader),
+            Codec.STRING.fieldOf("loader_version").forGetter(Event::loaderVersion),
+            Codec.LONG.fieldOf("started").forGetter(Event::started)
     ).apply(inst, Event::new)));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(Event::validate);
 
@@ -109,13 +111,15 @@ public record Event(String id,
                 "e.id, " +
                 "e.slug, " +
                 "e.display_name, " +
-                "e.start_time " +
-                "e.start_time AS start_date " +
+                "e.minecraft_version, " +
+                "e.loader, " +
+                "e.loader_version, " +
+                "e.started " +
                 "FROM " +
                     "events e " +
                 "WHERE " +
                     "e." + whereStatement + " " +
                 "GROUP BY " +
-                    "e.id, e.slug, e.display_name, e.start_time";
+                    "e.id, e.slug, e.display_name, e.minecraft_version, e.loader, e.loader_version, e.started";
     }
 }

@@ -15,12 +15,12 @@ import java.util.Arrays;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
-public record LinkCode(String code, String accountId, Service service, long expirationTime) {
+public record LinkCode(String code, String accountId, Service service, long expires) {
     public static final Codec<LinkCode> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("code").forGetter(LinkCode::code),
             Codec.STRING.fieldOf("account_id").forGetter(LinkCode::accountId),
             Service.CODEC.fieldOf("service").forGetter(LinkCode::service),
-            Codec.LONG.fieldOf("expiration_time").forGetter(LinkCode::expirationTime)
+            Codec.LONG.fieldOf("expires").forGetter(LinkCode::expires)
     ).apply(inst, LinkCode::new));
 
     @Nullable
