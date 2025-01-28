@@ -12,8 +12,8 @@ import net.modgarden.backend.data.award.AwardInstance;
 import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.oauth.OAuthService;
+import net.modgarden.backend.util.DatabaseAccess;
 import net.modgarden.backend.util.ExtraCodecs;
-import net.modgarden.backend.util.SQLiteOps;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -84,78 +84,25 @@ public record User(String id,
                              @Nullable String service) {
         User user;
 
-        if ("modrinth".equalsIgnoreCase(service)) {
-            user = queryFromModrinthUsername(path.toLowerCase(Locale.ROOT));
-            if (user == null)
-                user = queryFromModrinthId(path);
-            return user;
-        }
+		if ("modrinth".equalsIgnoreCase(service)) {
+			user = DatabaseAccess.userFromModrinthUsername(path.toLowerCase(Locale.ROOT));
+			if (user == null)
+				user = DatabaseAccess.userFromModrinthId(path);
+			return user;
+		}
 
-        if ("discord".equalsIgnoreCase(service)) {
-            user = queryFromDiscordUsername(path.toLowerCase(Locale.ROOT));
-            if (user == null)
-                user = queryFromDiscordId(path);
-            return user;
-        }
+		if ("discord".equalsIgnoreCase(service)) {
+			user = DatabaseAccess.userFromDiscordUsername(path.toLowerCase(Locale.ROOT));
+			if (user == null)
+				user = DatabaseAccess.userFromDiscordId(path);
+			return user;
+		}
 
-        user = queryFromUsername(path);
-        if (user == null)
-            user = queryFromId(path);
-        return user;
-    }
+		user = DatabaseAccess.userFromUsername(path);
+		if (user == null)
+			user = DatabaseAccess.userFromId(path);
+		return user;
 
-    private static User queryFromUsername(String username) {
-        return innerQuery("username = ?", username);
-    }
-
-    private static User queryFromId(String id) {
-        return innerQuery("id = ?", id);
-    }
-
-    private static User queryFromDiscordId(String discordId) {
-        return innerQuery("discord_id = ?", discordId);
-    }
-
-    private static User queryFromModrinthId(String modrinthId) {
-        return innerQuery("modrinth_id = ?", modrinthId);
-    }
-
-    private static User queryFromDiscordUsername(String discordUsername) {
-        try {
-            String usernameToId = getUserDiscordId(discordUsername);
-            if (usernameToId == null)
-                return null;
-            return queryFromDiscordId(usernameToId);
-        } catch (IOException | InterruptedException ex) {
-            return null;
-        }
-    }
-
-    private static User queryFromModrinthUsername(String modrinthUsername) {
-        try {
-            String usernameToId = getUserModrinthId(modrinthUsername);
-            if (usernameToId == null)
-                return null;
-            return queryFromModrinthId(usernameToId);
-        } catch (IOException | InterruptedException ex) {
-            return null;
-        }
-    }
-
-    private static User innerQuery(String whereStatement, String id) {
-        try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement(selectStatement(whereStatement))) {
-            prepared.setString(1, id);
-            ResultSet result = prepared.executeQuery();
-            if (!result.isBeforeFirst())
-                return null;
-            return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
-        } catch (IllegalStateException ex) {
-            ModGardenBackend.LOG.error("Could not decode user. ", ex);
-        } catch (SQLException ex) {
-            ModGardenBackend.LOG.error("Exception in SQL query.", ex);
-        }
-        return null;
     }
 
     private static DataResult<String> validate(String id) {
@@ -171,7 +118,7 @@ public record User(String id,
         return DataResult.error(() -> "Failed to get user with id '" + id + "'.");
     }
 
-    private static String getUserModrinthId(String modrinthUsername) throws IOException, InterruptedException {
+    public static String getUserModrinthId(String modrinthUsername) throws IOException, InterruptedException {
         var modrinth = OAuthService.MODRINTH.authenticate();
         var stream = modrinth.get("v2/user/" + modrinthUsername, HttpResponse.BodyHandlers.ofInputStream());
         if (stream.statusCode() != 200)
@@ -184,7 +131,7 @@ public record User(String id,
         }
     }
 
-    private static String getUserDiscordId(String discordUsername) throws IOException, InterruptedException {
+    public static String getUserDiscordId(String discordUsername) throws IOException, InterruptedException {
         var client = OAuthService.DISCORD.authenticate();
         var stream = client.get("guilds/1266288344644452363/members/search?query=" + discordUsername, HttpResponse.BodyHandlers.ofInputStream());
         if (stream.statusCode() != 200)
@@ -195,49 +142,5 @@ public record User(String id,
                 return null;
             return element.getAsJsonArray().get(0).getAsJsonObject().getAsJsonObject("user").getAsJsonPrimitive("id").getAsString();
         }
-    }
-
-    private static String selectStatement(String whereStatement) {
-        return "SELECT " +
-                    "u.id, " +
-                    "u.username, " +
-                    "u.display_name, " +
-                    "u.discord_id, " +
-                    "u.modrinth_id, " +
-                    "u.created, " +
-                    "CASE " +
-                        "WHEN p.id NOT NULL THEN json_group_array(DISTINCT p.id) " +
-                        "ELSE json_array() " +
-                    "END AS projects, " +
-                    "CASE " +
-                        "WHEN e.id NOT NULL THEN json_group_array(DISTINCT e.id) " +
-                        "ELSE json_array() " +
-                    "END AS events, " +
-                    "CASE " +
-                        "WHEN ma.uuid NOT NULL THEN json_group_array(DISTINCT ma.uuid) " +
-                        "ELSE json_array() " +
-                    "END AS minecraft_accounts, " +
-                    "CASE " +
-                        "WHEN ai.award_id NOT NULL THEN json_group_array(DISTINCT json_object('award_id', ai.award_id, 'custom_data', ai.custom_data)) " +
-                        "ELSE json_array() " +
-                    "END AS awards " +
-                "FROM " +
-                    "users u " +
-                "LEFT JOIN " +
-                    "project_authors a ON u.id = a.user_id " +
-                "LEFT JOIN " +
-                    "projects p ON p.id = a.project_id " +
-                "LEFT JOIN " +
-                    "submissions s ON p.id = s.project_id " +
-                "LEFT JOIN " +
-                    "events e ON s.event = e.id " +
-                "LEFT JOIN " +
-                    "minecraft_accounts ma ON u.id = ma.user_id " +
-                "LEFT JOIN " +
-                    "award_instances ai ON u.id = ai.awarded_to " +
-                "WHERE " +
-                    "u." + whereStatement + " " +
-                "GROUP BY " +
-                    "u.id, u.username, u.display_name, u.discord_id, u.modrinth_id, u.created";
     }
 }
