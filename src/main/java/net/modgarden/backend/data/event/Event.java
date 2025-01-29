@@ -1,5 +1,6 @@
 package net.modgarden.backend.data.event;
 
+import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -52,6 +53,19 @@ public record Event(String id,
         ModGardenBackend.LOG.info("Successfully queried event from path '{}'", path);
         ctx.json(event);
     }
+
+	public static void getEvents(Context ctx) {
+		try {
+			Connection connection = ModGardenBackend.createDatabaseConnection();
+			var result = connection.createStatement().executeQuery(selectAllStatement());
+			var json_result = JsonParser.parseString(result.getString("json_result"));
+			ctx.json(json_result);
+		} catch (SQLException ex) {
+			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
+		} catch (IllegalStateException ex) {
+			ModGardenBackend.LOG.error("Failed to decode event from result set. ", ex);
+		}
+	}
 
     @Nullable
     public static Event query(String path) {
@@ -124,4 +138,21 @@ public record Event(String id,
                 "GROUP BY " +
                     "e.id, e.slug, e.display_name, e.minecraft_version, e.loader, e.loader_version, e.started";
     }
+
+	private static String selectAllStatement() {
+		return """
+			SELECT json_group_array(
+					json_object(
+						'id', id,
+						'slug', slug,
+						'display_name', display_name,
+						'minecraft_version', minecraft_version,
+						'loader', loader,
+						'loader_version', loader_version,
+						'started', started
+					)
+				) AS json_result
+			FROM events;
+			""";
+	}
 }

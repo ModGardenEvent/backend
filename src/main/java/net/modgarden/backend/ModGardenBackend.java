@@ -79,6 +79,7 @@ public class ModGardenBackend {
 		app.get("", Landing::getLandingJson);
         app.get("/award/{award}", Award::getAwardType);
         app.get("/event/{event}", Event::getEvent);
+		app.get("/events", Event::getEvents);
         app.get("/mcaccount/{mcaccount}", MinecraftAccount::getAccount);
         app.get("/project/{project}", Project::getProject);
         app.get("/submission/{submission}", Submission::getSubmission);

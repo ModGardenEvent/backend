@@ -53,6 +53,13 @@ public class DevelopmentModeData {
 			eventStatement.setLong(4, System.currentTimeMillis() - (86400000 * 2));
 			eventStatement.execute();
 
+			long currentEventId = Event.ID_GENERATOR.next();
+			eventStatement.setString(1, Long.toString(currentEventId));
+			eventStatement.setString(2, "current-event");
+			eventStatement.setString(3, "Current Event");
+			eventStatement.setLong(4, System.currentTimeMillis());
+			eventStatement.execute();
+
 			var projectStatement = connection.prepareStatement("INSERT OR IGNORE INTO projects(id, modrinth_id, attributed_to, slug) VALUES (?, ?, ?, ?)");
 			long glowBannersId = Project.ID_GENERATOR.next();
 			projectStatement.setString(1, Long.toString(glowBannersId));
