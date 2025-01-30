@@ -3,11 +3,11 @@ package net.modgarden.backend.data.profile;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.JavaOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.util.ExtraCodecs;
-import net.modgarden.backend.util.SQLiteOps;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -89,7 +89,11 @@ public record MinecraftAccount(UUID uuid,
             ResultSet result = prepared.executeQuery();
             if (!result.isBeforeFirst())
                 return null;
-            return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
+			var decodedUUID = ExtraCodecs.UUID_CODEC.decode(JavaOps.INSTANCE, result.getString("uuid")).getOrThrow().getFirst();
+			return new MinecraftAccount(
+					decodedUUID,
+					result.getString("user_id")
+			);
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Failed to decode minecraft account from result set. ", ex);
         } catch (SQLException ex) {

@@ -7,7 +7,6 @@ import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.profile.User;
-import net.modgarden.backend.util.SQLiteOps;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -57,7 +56,14 @@ public record Project(String id,
             ResultSet result = prepared.executeQuery();
             if (!result.isBeforeFirst())
                 return null;
-            return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
+			List<String> authors = List.of(result.getString("authors").split(","));
+			return new Project(
+				result.getString("id"),
+				result.getString("slug"),
+				result.getString("modrinth_id"),
+				result.getString("attributed_to"),
+				authors
+			);
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Failed to decode project from result set. ", ex);;
         } catch (SQLException ex) {
@@ -73,8 +79,8 @@ public record Project(String id,
                 "p.modrinth_id, " +
                 "p.attributed_to, " +
                 "CASE " +
-                    "WHEN a.user_id NOT NULL THEN json_group_array(DISTINCT a.user_id) " +
-                    "ELSE json_array() " +
+                    "WHEN a.user_id IS NOT NULL THEN group_concat(DISTINCT a.user_id)" +
+                    "ELSE '' " +
                 "END AS authors " +
                 "FROM " +
                     "projects p " +

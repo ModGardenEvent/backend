@@ -4,7 +4,6 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.util.SQLiteOps;
 import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
@@ -31,8 +30,15 @@ public record LinkCode(String code, String accountId, Service service, long expi
             ResultSet result = prepared.executeQuery();
             if (!result.isBeforeFirst())
                 return null;
-            return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
-        } catch (IllegalStateException ex) {
+			var serviceString = result.getString("service");
+			var service = Service.valueOf(serviceString.toUpperCase(Locale.ROOT));
+			return new LinkCode(
+					result.getString("code"),
+					result.getString("account_id"),
+					service,
+					result.getLong("expires")
+			);
+		} catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Failed to decode link code from result set. ", ex);
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);

@@ -5,7 +5,6 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.util.SQLiteOps;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -52,7 +51,13 @@ public record Submission(String id,
             ResultSet result = prepared.executeQuery();
             if (!result.isBeforeFirst())
                 return null;
-            return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
+			return new Submission(
+					result.getString("id"),
+					result.getString("project_id"),
+					result.getString("event"),
+					result.getString("modrinth_version_id"),
+					result.getLong("submitted_at")
+			);
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Failed to decode submission from result set. ", ex);;
         } catch (SQLException ex) {
@@ -67,10 +72,9 @@ public record Submission(String id,
                 "s.project_id, " +
                 "s.event, " +
                 "s.modrinth_version_id, " +
-                "s.submitted_at, " +
-                "u.submitted_at AS submission_date, " +
+                "s.submitted_at " +
                 "FROM " +
-                    "submissions AS s " +
+                    "submissions s " +
                 "WHERE " +
                     "s.id = ? " +
                 "GROUP BY " +

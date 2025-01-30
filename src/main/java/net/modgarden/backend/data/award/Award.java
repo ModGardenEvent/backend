@@ -6,7 +6,6 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.util.SQLiteOps;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -59,7 +58,14 @@ public record Award(String id,
             ResultSet result = prepared.executeQuery();
             if (!result.isBeforeFirst())
                 return null;
-            return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
+			return new Award(
+					result.getString("id"),
+					result.getString("slug"),
+					result.getString("display_name"),
+					result.getString("sprite"),
+					result.getString("discord_emote"),
+					result.getString("tooltip")
+			);
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Could not decode award. ", ex);
         } catch (SQLException ex) {

@@ -7,7 +7,6 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.util.SQLiteOps;
 import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
@@ -84,7 +83,15 @@ public record Event(String id,
             ResultSet result = prepared.executeQuery();
             if (!result.isBeforeFirst())
                 return null;
-            return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
+			return new Event(
+					result.getString("id"),
+					result.getString("slug"),
+					result.getString("display_name"),
+					result.getString("minecraft_version"),
+					result.getString("loader"),
+					result.getString("loader_version"),
+					result.getLong("started")
+			);
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Failed to decode submission from result set. ", ex);
         } catch (SQLException ex) {
@@ -100,8 +107,16 @@ public record Event(String id,
             ResultSet result = prepared.executeQuery();
             if (!result.isBeforeFirst())
                 return null;
-            return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
-        } catch (IllegalStateException ex) {
+			return new Event(
+					result.getString("id"),
+					result.getString("slug"),
+					result.getString("display_name"),
+					result.getString("minecraft_version"),
+					result.getString("loader"),
+					result.getString("loader_version"),
+					result.getLong("started")
+			);
+		} catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Failed to decode event from result set. ", ex);
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);

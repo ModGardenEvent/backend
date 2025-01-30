@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
+import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
@@ -13,7 +14,6 @@ import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.oauth.OAuthService;
 import net.modgarden.backend.util.ExtraCodecs;
-import net.modgarden.backend.util.SQLiteOps;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -149,7 +149,30 @@ public record User(String id,
             ResultSet result = prepared.executeQuery();
             if (!result.isBeforeFirst())
                 return null;
-            return CODEC.decode(SQLiteOps.INSTANCE, result).getOrThrow().getFirst();
+
+			var projectJson = result.getString("projects"); // Array of strings
+			var eventJson = result.getString("events"); // Array of strings
+			var minecraftAccountJson = result.getString("minecraft_accounts"); // Array of UUIDs
+			var awardJson = result.getString("awards"); // Array of award instance user values
+
+			List<String> projects = result.getString("projects").isEmpty() ? List.of() : List.of(projectJson.split(","));
+			List<String> events = result.getString("events").isEmpty() ? List.of() : List.of(eventJson.split(","));
+
+
+			List<UUID> minecraftAccounts = ExtraCodecs.UUID_CODEC.listOf().decode(JsonOps.INSTANCE, JsonParser.parseString(minecraftAccountJson)).getOrThrow().getFirst();
+			List<AwardInstance.UserValues> awards = AwardInstance.UserValues.CODEC.listOf().decode(JsonOps.INSTANCE, JsonParser.parseString(awardJson)).getOrThrow().getFirst();
+			return new User(
+					result.getString("id"),
+					result.getString("username"),
+					result.getString("display_name"),
+					result.getString("discord_id"),
+					Optional.ofNullable(result.getString("modrinth_id")),
+					result.getLong("created"),
+					projects,
+					events,
+					minecraftAccounts,
+					awards
+			);
         } catch (IllegalStateException ex) {
             ModGardenBackend.LOG.error("Could not decode user. ", ex);
         } catch (SQLException ex) {
@@ -206,12 +229,12 @@ public record User(String id,
                     "u.modrinth_id, " +
                     "u.created, " +
                     "CASE " +
-                        "WHEN p.id NOT NULL THEN json_group_array(DISTINCT p.id) " +
-                        "ELSE json_array() " +
+                        "WHEN p.id NOT NULL THEN group_concat(DISTINCT p.id) " +
+                        "ELSE '' " +
                     "END AS projects, " +
                     "CASE " +
-                        "WHEN e.id NOT NULL THEN json_group_array(DISTINCT e.id) " +
-                        "ELSE json_array() " +
+                        "WHEN e.id NOT NULL THEN group_concat(DISTINCT e.id) " +
+                        "ELSE '' " +
                     "END AS events, " +
                     "CASE " +
                         "WHEN ma.uuid NOT NULL THEN json_group_array(DISTINCT ma.uuid) " +
