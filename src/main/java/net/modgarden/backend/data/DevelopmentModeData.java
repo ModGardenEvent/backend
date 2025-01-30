@@ -37,6 +37,7 @@ public class DevelopmentModeData {
 			userStatement.setString(4, "876135519526977587");
 			userStatement.setLong(5, System.currentTimeMillis());
 			userStatement.setString(6, "");
+			userStatement.execute();
 
 
 			var eventStatement = connection.prepareStatement("INSERT OR IGNORE INTO events(id, slug, display_name, started, minecraft_version, loader, loader_version) VALUES (?, ?, ?, ?, '1.21.1', 'fabric', '0.16.10')");
