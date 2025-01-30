@@ -84,6 +84,7 @@ public class ModGardenBackend {
         app.get("/project/{project}", Project::getProject);
         app.get("/submission/{submission}", Submission::getSubmission);
         app.get("/user/{user}", User::getUser);
+		app.get("/user/{user}/projects", Project::getProjectsByUser);
 
         app.get("/link/discord/modrinth", ModrinthDiscordLinkHandler::authModrinthAccount);
         app.post("/link/discord", DiscordLinkHandler::link);

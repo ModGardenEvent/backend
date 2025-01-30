@@ -1,5 +1,7 @@
 package net.modgarden.backend.data.event;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -72,6 +74,46 @@ public record Project(String id,
         return null;
     }
 
+	public static void getProjectsByUser(Context ctx) {
+		String user = ctx.pathParam("user");
+		if (!user.matches(ModGardenBackend.SAFE_URL_REGEX)) {
+			ctx.result("Illegal characters in path '" + user + "'.");
+			ctx.status(422);
+			return;
+		}
+		var queryString = selectAllByUser(user);
+		try {
+			Connection connection = ModGardenBackend.createDatabaseConnection();
+			PreparedStatement prepared = connection.prepareStatement(queryString);
+			ResultSet result = prepared.executeQuery();
+			if (!result.isBeforeFirst()) {
+				ModGardenBackend.LOG.error("Could not find projects for user '{}'.", user);
+				ctx.result("Could not find projects for user '" + user + "'.");
+				ctx.status(404);
+				return;
+			}
+			var projectList = new JsonArray();
+			while (result.next()) {
+				var projectObject = new JsonObject();
+				var authors = new JsonArray();
+
+				for (String author : result.getString("authors").split(",")) {
+					authors.add(author);
+				}
+				projectObject.addProperty("id", result.getString("id"));
+				projectObject.addProperty("slug", result.getString("slug"));
+				projectObject.addProperty("modrinth_id", result.getString("modrinth_id"));
+				projectObject.addProperty("attributed_to", result.getString("attributed_to"));
+				projectObject.add("authors", authors);
+				projectList.add(projectObject);
+			}
+
+
+			ctx.json(projectList);
+		} catch (SQLException ex) {
+			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
+		}
+	}
     private static String selectStatement(String whereStatement) {
         return "SELECT " +
                 "p.id, " +
@@ -91,6 +133,31 @@ public record Project(String id,
                 "GROUP BY " +
                     "p.id, p.modrinth_id, p.attributed_to";
     }
+
+	private static String selectAllByUser(String user) {
+		return """
+				 SELECT p.id,
+				       p.slug,
+				       p.modrinth_id,
+				       p.attributed_to,
+				       COALESCE(Group_concat(DISTINCT a.user_id), '') AS authors
+				FROM   projects p
+				       LEFT JOIN project_authors a
+				              ON p.id = a.project_id
+				       LEFT JOIN users u
+				              ON a.user_id = u.id
+				WHERE  p.id IN (SELECT pa.project_id
+				                FROM   project_authors pa
+				                       JOIN users uu
+				                         ON pa.user_id = uu.id
+				                WHERE  uu.id = '%s'
+				                        OR uu.username = '%s')
+				GROUP  BY p.id,
+				          p.slug,
+				          p.modrinth_id,
+				          p.attributed_to;
+				""".formatted(user, user);
+	}
 
     private static DataResult<String> validate(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
