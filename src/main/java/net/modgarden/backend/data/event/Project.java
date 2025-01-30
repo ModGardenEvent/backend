@@ -86,12 +86,6 @@ public record Project(String id,
 			Connection connection = ModGardenBackend.createDatabaseConnection();
 			PreparedStatement prepared = connection.prepareStatement(queryString);
 			ResultSet result = prepared.executeQuery();
-			if (!result.isBeforeFirst()) {
-				ModGardenBackend.LOG.error("Could not find projects for user '{}'.", user);
-				ctx.result("Could not find projects for user '" + user + "'.");
-				ctx.status(404);
-				return;
-			}
 			var projectList = new JsonArray();
 			while (result.next()) {
 				var projectObject = new JsonObject();
