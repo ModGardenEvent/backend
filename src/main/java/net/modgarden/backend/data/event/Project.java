@@ -108,6 +108,43 @@ public record Project(String id,
 			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
 		}
 	}
+
+	public static void getProjectsByEvent(Context ctx) {
+		String event = ctx.pathParam("event");
+		if (!event.matches(ModGardenBackend.SAFE_URL_REGEX)) {
+			ctx.result("Illegal characters in path '" + event + "'.");
+			ctx.status(422);
+			return;
+		}
+		var queryString = selectAllByEvent(event);
+		try {
+			Connection connection = ModGardenBackend.createDatabaseConnection();
+			PreparedStatement prepared = connection.prepareStatement(queryString);
+			ResultSet result = prepared.executeQuery();
+			var projectList = new JsonArray();
+			while (result.next()) {
+				var projectObject = new JsonObject();
+				var authors = new JsonArray();
+
+				for (String author : result.getString("authors").split(",")) {
+					authors.add(author);
+				}
+				projectObject.addProperty("id", result.getString("id"));
+				projectObject.addProperty("slug", result.getString("slug"));
+				projectObject.addProperty("modrinth_id", result.getString("modrinth_id"));
+				projectObject.addProperty("attributed_to", result.getString("attributed_to"));
+				projectObject.add("authors", authors);
+				projectList.add(projectObject);
+			}
+
+
+			ctx.json(projectList);
+		} catch (SQLException ex) {
+			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
+		}
+	}
+
+
     private static String selectStatement(String whereStatement) {
         return "SELECT " +
                 "p.id, " +
@@ -151,6 +188,30 @@ public record Project(String id,
 				          p.modrinth_id,
 				          p.attributed_to;
 				""".formatted(user, user);
+	}
+
+	private static String selectAllByEvent(String event) {
+		return """
+			SELECT p.id,
+				   p.slug,
+				   p.modrinth_id,
+				   p.attributed_to,
+				   COALESCE(Group_concat(DISTINCT a.user_id), '') AS authors
+			FROM projects p
+				LEFT JOIN project_authors a
+					ON p.id = a.project_id
+				LEFT JOIN users u
+					ON a.user_id = u.id
+				LEFT JOIN submissions s
+					ON s.project_id = p.id
+				LEFT JOIN events e
+					ON e.id = s.event
+			WHERE  e.id = '%s' or e.slug = '%s'
+			GROUP  BY p.id,
+					  p.slug,
+					  p.modrinth_id,
+					  p.attributed_to
+			""".formatted(event, event);
 	}
 
     private static DataResult<String> validate(String id) {

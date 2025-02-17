@@ -69,12 +69,39 @@ public record Submission(String id,
 				submissions.add(submission);
 			}
 			ctx.json(submissions);
-
-
 		} catch (SQLException ex) {
 			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
 		}
 	}
+
+	public static void getSubmissionsByEvent(Context ctx) {
+		String event = ctx.pathParam("event");
+		if (!event.matches(ModGardenBackend.SAFE_URL_REGEX)) {
+			ctx.result("Illegal characters in path '" + event + "'.");
+			ctx.status(422);
+			return;
+		}
+		var queryString = selectByEventStatement(event);
+		try {
+			Connection connection = ModGardenBackend.createDatabaseConnection();
+			PreparedStatement prepared = connection.prepareStatement(queryString);
+			ResultSet result = prepared.executeQuery();
+			var submissions = new JsonArray();
+			while (result.next()) {
+				var submission = new JsonObject();
+				submission.addProperty("id", result.getString("id"));
+				submission.addProperty("project_id", result.getString("project_id"));
+				submission.addProperty("event", result.getString("event"));
+				submission.addProperty("modrinth_version_id", result.getString("modrinth_version_id"));
+				submission.addProperty("submitted_at", result.getLong("submitted_at"));
+				submissions.add(submission);
+			}
+			ctx.json(submissions);
+		} catch (SQLException ex) {
+			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
+		}
+	}
+
 
     public static Submission innerQuery(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
@@ -127,5 +154,15 @@ public record Submission(String id,
 											OR uu.username = '%s')
 					GROUP BY s.id
 				""".formatted(user, user);
+	}
+
+	private static String selectByEventStatement(String event) {
+		return """
+			SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted_at
+			FROM submissions s
+				LEFT JOIN events e on e.id = s.event
+				WHERE s.event = '%s' OR e.slug = '%s'
+				GROUP BY s.id
+			""".formatted(event, event);
 	}
 }

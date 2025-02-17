@@ -1,5 +1,7 @@
 package net.modgarden.backend.data.award;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -73,6 +75,53 @@ public record Award(String id,
         }
         return null;
     }
+
+	public static void getAwardsByUser(Context ctx) {
+		String user = ctx.pathParam("user");
+		if (!user.matches(ModGardenBackend.SAFE_URL_REGEX)) {
+			ctx.result("Illegal characters in path '" + user + "'.");
+			ctx.status(422);
+			return;
+		}
+		var queryString = selectAllByUser(user);
+		try {
+			Connection connection = ModGardenBackend.createDatabaseConnection();
+			PreparedStatement prepared = connection.prepareStatement(queryString);
+			ResultSet result = prepared.executeQuery();
+			var awards = new JsonArray();
+			while (result.next()) {
+				var award = new JsonObject();
+				award.addProperty("award_id", result.getString("award_id"));
+				award.addProperty("awarded_to", result.getString("awarded_to"));
+				award.addProperty("custom_data", result.getString("custom_data"));
+				award.addProperty("slug", result.getString("slug"));
+				award.addProperty("display_name", result.getString("display_name"));
+				award.addProperty("sprite", result.getString("sprite"));
+				award.addProperty("discord_emote", result.getString("discord_emote"));
+				award.addProperty("tooltip", result.getString("tooltip"));
+				award.addProperty("tier", result.getString("tier"));
+				award.addProperty("submission_id", result.getString("submission_id"));
+				awards.add(award);
+			}
+			ctx.json(awards);
+		} catch (SQLException ex) {
+			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
+		}
+	}
+
+	public static String selectAllByUser(String user) {
+		return """
+				SELECT i.award_id, i.awarded_to, i.custom_data, a.slug,
+				 a.display_name, a.sprite, a.discord_emote, a.tooltip, i.submission_id,
+				 COALESCE(i.tier_override, a.tier) as tier
+				FROM award_instances i
+				INNER JOIN awards a ON a.id = i.award_id
+				INNER JOIN users u ON u.id = i.awarded_to
+				WHERE u.id = '%s' OR u.username = '%s'
+				GROUP BY i.award_id
+				""".formatted(user, user);
+	}
+
 
     private static DataResult<String> validate(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();

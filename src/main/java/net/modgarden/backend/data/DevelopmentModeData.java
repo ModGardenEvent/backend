@@ -166,14 +166,15 @@ public class DevelopmentModeData {
 			projectAuthorsStatement.setString(2, Long.toString(ultrusId));
 			projectAuthorsStatement.execute();
 
-			var awardsStatement = connection.prepareStatement("INSERT OR IGNORE INTO awards(id, slug, display_name, sprite, discord_emote, tooltip) VALUES (?, ?, ?, ?, ?, ?)");
+			var awardsStatement = connection.prepareStatement("INSERT OR IGNORE INTO awards(id, slug, display_name, sprite, discord_emote, tooltip, tier) VALUES (?, ?, ?, ?, ?, ?, ?)");
 			long cowAward = RANDOM.nextLong(Long.MAX_VALUE);
 			awardsStatement.setString(1, Long.toString(cowAward));
 			awardsStatement.setString(2, "flower-cow");
 			awardsStatement.setString(3, "Flower Cow");
 			awardsStatement.setString(4, "cow_award");
 			awardsStatement.setString(5, "1065689127774867487");
-			awardsStatement.setString(6, "Flower Cow award");
+			awardsStatement.setString(6, "Flower Cow Award: Flower Cow");
+			awardsStatement.setString(7, "RARE");
 			awardsStatement.execute();
 
 			long glowAward = RANDOM.nextLong(Long.MAX_VALUE);
@@ -183,17 +184,121 @@ public class DevelopmentModeData {
 			awardsStatement.setString(4, "glow_award");
 			awardsStatement.setString(5, "1205742638884462592");
 			awardsStatement.setString(6, "Glowing Award, for mods that have glowing in them");
+			awardsStatement.setString(7, "UNCOMMON");
 			awardsStatement.execute();
 
-			var awardInstancesStatement = connection.prepareStatement("INSERT OR IGNORE INTO award_instances(award_id, awarded_to, custom_data) VALUES (?, ?, ?)");
+			long mojankShardsAward = RANDOM.nextLong(Long.MAX_VALUE);
+			awardsStatement.setString(1, Long.toString(mojankShardsAward));
+			awardsStatement.setString(2, "mojank-petals");
+			awardsStatement.setString(3, "Mojank Petals");
+			awardsStatement.setString(4, "mojank_shards");
+			awardsStatement.setString(5, "1333278359874179113");
+			awardsStatement.setString(6, "You have collected %custom_data% out of 50 petals in the MoJank Fest event");
+			awardsStatement.setString(7, "COMMON");
+			awardsStatement.execute();
+
+			long commonAward = RANDOM.nextLong(Long.MAX_VALUE);
+			awardsStatement.setString(1, Long.toString(commonAward));
+			awardsStatement.setString(2, "common-award");
+			awardsStatement.setString(3, "Common Award");
+			awardsStatement.setString(4, "common_award");
+			awardsStatement.setString(5, "1333278359874179113");
+			awardsStatement.setString(6, "Award Tier: Common");
+			awardsStatement.setString(7, "COMMON");
+			awardsStatement.execute();
+
+			long uncommonAward = RANDOM.nextLong(Long.MAX_VALUE);
+			awardsStatement.setString(1, Long.toString(uncommonAward));
+			awardsStatement.setString(2, "uncommon-award");
+			awardsStatement.setString(3, "Uncommon Award");
+			awardsStatement.setString(4, "uncommon_award");
+			awardsStatement.setString(5, "1333278359874179113");
+			awardsStatement.setString(6, "Award Tier: Uncommon");
+			awardsStatement.setString(7, "UNCOMMON");
+			awardsStatement.execute();
+
+			long rareAward = RANDOM.nextLong(Long.MAX_VALUE);
+			awardsStatement.setString(1, Long.toString(rareAward));
+			awardsStatement.setString(2, "rare-award");
+			awardsStatement.setString(3, "Rare Award");
+			awardsStatement.setString(4, "rare_award");
+			awardsStatement.setString(5, "1333278359874179113");
+			awardsStatement.setString(6, "Award Tier: Rare");
+			awardsStatement.setString(7, "RARE");
+			awardsStatement.execute();
+
+			long legendaryAward = RANDOM.nextLong(Long.MAX_VALUE);
+			awardsStatement.setString(1, Long.toString(legendaryAward));
+			awardsStatement.setString(2, "legendary-award");
+			awardsStatement.setString(3, "Legendary Award");
+			awardsStatement.setString(4, "legendary_award");
+			awardsStatement.setString(5, "1333278359874179113");
+			awardsStatement.setString(6, "Award Tier: Legendary");
+			awardsStatement.setString(7, "LEGENDARY");
+			awardsStatement.execute();
+
+			var awardInstancesStatement = connection.prepareStatement("INSERT OR IGNORE INTO award_instances(award_id, awarded_to, custom_data, submission_id, tier_override) VALUES (?, ?, ?, ?, ?)");
 			awardInstancesStatement.setString(1, Long.toString(cowAward));
 			awardInstancesStatement.setString(2, Long.toString(pugId));
 			awardInstancesStatement.setString(3, "");
+			awardInstancesStatement.setString(4, Long.toString(bovinesFestivalSubmissionId));
+			awardInstancesStatement.setString(5, null);
 			awardInstancesStatement.execute();
 
 			awardInstancesStatement.setString(1, Long.toString(glowAward));
 			awardInstancesStatement.setString(2, Long.toString(ultrusId));
 			awardInstancesStatement.setString(3, "");
+			awardInstancesStatement.setString(4, Long.toString(glowBannersSubmissionId));
+			awardInstancesStatement.setString(5, null);
+			awardInstancesStatement.execute();
+
+			awardInstancesStatement.setString(1, Long.toString(mojankShardsAward));
+			awardInstancesStatement.setString(2, Long.toString(ultrusId));
+			awardInstancesStatement.setString(3, "25");
+			awardInstancesStatement.setString(4, null);
+			awardInstancesStatement.setString(5, "UNCOMMON");
+			awardInstancesStatement.execute();
+
+			awardInstancesStatement.setString(1, Long.toString(mojankShardsAward));
+			awardInstancesStatement.setString(2, Long.toString(pugId));
+			awardInstancesStatement.setString(3, "50");
+			awardInstancesStatement.setString(4, null);
+			awardInstancesStatement.setString(5, "LEGENDARY");
+			awardInstancesStatement.execute();
+
+			awardInstancesStatement.setString(1, Long.toString(mojankShardsAward));
+			awardInstancesStatement.setString(2, Long.toString(greencowId));
+			awardInstancesStatement.setString(3, "2");
+			awardInstancesStatement.setString(4, null);
+			awardInstancesStatement.setString(5, null);
+			awardInstancesStatement.execute();
+
+			awardInstancesStatement.setString(1, Long.toString(commonAward));
+			awardInstancesStatement.setString(2, Long.toString(greencowId));
+			awardInstancesStatement.setString(3, "");
+			awardInstancesStatement.setString(4, null);
+			awardInstancesStatement.setString(5, null);
+			awardInstancesStatement.execute();
+
+			awardInstancesStatement.setString(1, Long.toString(uncommonAward));
+			awardInstancesStatement.setString(2, Long.toString(greencowId));
+			awardInstancesStatement.setString(3, "");
+			awardInstancesStatement.setString(4, null);
+			awardInstancesStatement.setString(5, null);
+			awardInstancesStatement.execute();
+
+			awardInstancesStatement.setString(1, Long.toString(rareAward));
+			awardInstancesStatement.setString(2, Long.toString(greencowId));
+			awardInstancesStatement.setString(3, "");
+			awardInstancesStatement.setString(4, null);
+			awardInstancesStatement.setString(5, null);
+			awardInstancesStatement.execute();
+
+			awardInstancesStatement.setString(1, Long.toString(legendaryAward));
+			awardInstancesStatement.setString(2, Long.toString(greencowId));
+			awardInstancesStatement.setString(3, "");
+			awardInstancesStatement.setString(4, null);
+			awardInstancesStatement.setString(5, null);
 			awardInstancesStatement.execute();
 
 			var minecraftAccountStatement = connection.prepareStatement("INSERT OR IGNORE INTO minecraft_accounts(uuid, user_id) VALUES (?, ?)");
@@ -204,7 +309,6 @@ public class DevelopmentModeData {
 			minecraftAccountStatement.setString(1, "6092cacbdd2a41c29f90e5b4680889cb");
 			minecraftAccountStatement.setString(2, Long.toString(ultrusId));
 			minecraftAccountStatement.execute();
-
 
 		} catch (SQLException e) {
 			ModGardenBackend.LOG.error("Failed to create database connection in insertDevelopmentModeData.", e);

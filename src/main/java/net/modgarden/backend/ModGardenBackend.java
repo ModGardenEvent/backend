@@ -13,6 +13,7 @@ import net.modgarden.backend.data.BackendError;
 import net.modgarden.backend.data.DevelopmentModeData;
 import net.modgarden.backend.data.Landing;
 import net.modgarden.backend.data.award.Award;
+import net.modgarden.backend.data.award.AwardInstance;
 import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
@@ -71,6 +72,7 @@ public class ModGardenBackend {
         CODEC_REGISTRY.put(Project.class, Project.CODEC);
         CODEC_REGISTRY.put(Submission.class, Submission.CODEC);
         CODEC_REGISTRY.put(User.class, User.CODEC);
+		CODEC_REGISTRY.put(AwardInstance.FullAwardData.class, AwardInstance.FullAwardData.CODEC);
 
         Landing.createInstance();
         AuthUtil.clearTokensEachFifteenMinutes();
@@ -79,6 +81,8 @@ public class ModGardenBackend {
 		app.get("", Landing::getLandingJson);
         app.get("/award/{award}", Award::getAwardType);
         app.get("/event/{event}", Event::getEvent);
+		app.get("/event/{event}/projects", Project::getProjectsByEvent);
+		app.get("/event/{event}/submissions", Submission::getSubmissionsByEvent);
 		app.get("/events", Event::getEvents);
         app.get("/mcaccount/{mcaccount}", MinecraftAccount::getAccount);
         app.get("/project/{project}", Project::getProject);
@@ -86,6 +90,7 @@ public class ModGardenBackend {
         app.get("/user/{user}", User::getUser);
 		app.get("/user/{user}/projects", Project::getProjectsByUser);
 		app.get("/user/{user}/submissions", Submission::getSubmissionsByUser);
+		app.get("/user/{user}/awards", Award::getAwardsByUser);
 
         app.get("/link/discord/modrinth", ModrinthDiscordLinkHandler::authModrinthAccount);
         app.post("/link/discord", DiscordLinkHandler::link);
@@ -166,14 +171,18 @@ public class ModGardenBackend {
                         "sprite TEXT NOT NULL," +
                         "discord_emote TEXT NOT NULL," +
                         "tooltip TEXT," +
+						"tier TEXT NOT NULL CHECK (tier in ('COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY'))," +
                         "PRIMARY KEY (id)" +
                     ")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS award_instances (" +
                         "award_id TEXT NOT NULL," +
                         "awarded_to TEXT NOT NULL," +
                         "custom_data TEXT," +
+						"submission_id TEXT," +
+						"tier_override TEXT CHECK (tier_override in ('COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY'))," +
                         "FOREIGN KEY (award_id) REFERENCES awards(id)," +
                         "FOREIGN KEY (awarded_to) REFERENCES users(id)," +
+						"FOREIGN KEY (submission_id) REFERENCES submissions(id)," +
                         "PRIMARY KEY (award_id, awarded_to)" +
                     ")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS link_codes (" +
