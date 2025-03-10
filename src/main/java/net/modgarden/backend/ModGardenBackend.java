@@ -50,7 +50,7 @@ public class ModGardenBackend {
 
 	public static final Dotenv DOTENV = Dotenv.load();
 
-    public static final String SAFE_URL_REGEX = "[a-zA-Z0-9!@$()`.+,_\"-]+";;
+    public static final String SAFE_URL_REGEX = "[a-zA-Z0-9!@$()`.+,_\"-]+";
     private static final int DATABASE_SCHEMA_VERSION = 1;
 
     public static void main(String[] args) {
