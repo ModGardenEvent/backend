@@ -21,10 +21,10 @@ public class DevelopmentModeData {
 			userStatement.setString(6, "RlpLaNSn");
 			userStatement.execute();
 
-            long pugId = RANDOM.nextLong(Long.MAX_VALUE);
-			userStatement.setString(1, Long.toString(pugId));
-			userStatement.setString(2, "pug");
-			userStatement.setString(3, "Pug");
+            long calicoId = RANDOM.nextLong(Long.MAX_VALUE);
+			userStatement.setString(1, Long.toString(calicoId));
+			userStatement.setString(2, "calico");
+			userStatement.setString(3, "Calico");
 			userStatement.setString(4, "680986902240690176");
 			userStatement.setLong(5, System.currentTimeMillis());
 			userStatement.setString(6, "84zsGbft");
@@ -87,14 +87,14 @@ public class DevelopmentModeData {
 			long bovinesId = RANDOM.nextLong(Long.MAX_VALUE);
 			projectStatement.setString(1, Long.toString(bovinesId));
 			projectStatement.setString(2, "BDg6nMn3");
-			projectStatement.setString(3, Long.toString(pugId));
+			projectStatement.setString(3, Long.toString(calicoId));
 			projectStatement.setString(4, "bovines-and-buttercups");
             projectStatement.execute();
 
 			long rapscallionsId = RANDOM.nextLong(Long.MAX_VALUE);
 			projectStatement.setString(1, Long.toString(rapscallionsId));
 			projectStatement.setString(2, "9pGITjpO");
-			projectStatement.setString(3, Long.toString(pugId));
+			projectStatement.setString(3, Long.toString(calicoId));
 			projectStatement.setString(4, "rapscallions-and-rockhoppers");
             projectStatement.execute();
 
@@ -154,12 +154,12 @@ public class DevelopmentModeData {
 
             // Bovines and Buttercups Data
             projectAuthorsStatement.setString(1, Long.toString(bovinesId));
-            projectAuthorsStatement.setString(2, Long.toString(pugId));
+            projectAuthorsStatement.setString(2, Long.toString(calicoId));
             projectAuthorsStatement.execute();
 
             // Rapscallions and Rockhoppers Data
             projectAuthorsStatement.setString(1, Long.toString(rapscallionsId));
-            projectAuthorsStatement.setString(2, Long.toString(pugId));
+            projectAuthorsStatement.setString(2, Long.toString(calicoId));
             projectAuthorsStatement.execute();
 
 			projectAuthorsStatement.setString(1, Long.toString(rapscallionsId));
@@ -239,7 +239,7 @@ public class DevelopmentModeData {
 
 			var awardInstancesStatement = connection.prepareStatement("INSERT OR IGNORE INTO award_instances(award_id, awarded_to, custom_data, submission_id, tier_override) VALUES (?, ?, ?, ?, ?)");
 			awardInstancesStatement.setString(1, Long.toString(cowAward));
-			awardInstancesStatement.setString(2, Long.toString(pugId));
+			awardInstancesStatement.setString(2, Long.toString(calicoId));
 			awardInstancesStatement.setString(3, "");
 			awardInstancesStatement.setString(4, Long.toString(bovinesFestivalSubmissionId));
 			awardInstancesStatement.setString(5, null);
@@ -260,7 +260,7 @@ public class DevelopmentModeData {
 			awardInstancesStatement.execute();
 
 			awardInstancesStatement.setString(1, Long.toString(mojankShardsAward));
-			awardInstancesStatement.setString(2, Long.toString(pugId));
+			awardInstancesStatement.setString(2, Long.toString(calicoId));
 			awardInstancesStatement.setString(3, "50");
 			awardInstancesStatement.setString(4, null);
 			awardInstancesStatement.setString(5, "LEGENDARY");
@@ -303,7 +303,7 @@ public class DevelopmentModeData {
 
 			var minecraftAccountStatement = connection.prepareStatement("INSERT OR IGNORE INTO minecraft_accounts(uuid, user_id) VALUES (?, ?)");
 			minecraftAccountStatement.setString(1, "cd21c753fc8d493aa65c25184613402e");
-			minecraftAccountStatement.setString(2, Long.toString(pugId));
+			minecraftAccountStatement.setString(2, Long.toString(calicoId));
 			minecraftAccountStatement.execute();
 
 			minecraftAccountStatement.setString(1, "6092cacbdd2a41c29f90e5b4680889cb");
