@@ -19,7 +19,7 @@ import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.profile.MinecraftAccount;
 import net.modgarden.backend.data.profile.User;
-import net.modgarden.backend.handler.discord.DiscordLinkHandler;
+import net.modgarden.backend.handler.discord.DiscordBotLinkHandler;
 import net.modgarden.backend.handler.discord.ModrinthDiscordLinkHandler;
 import net.modgarden.backend.handler.RegistrationHandler;
 import net.modgarden.backend.util.AuthUtil;
@@ -74,28 +74,16 @@ public class ModGardenBackend {
         CODEC_REGISTRY.put(User.class, User.CODEC);
 		CODEC_REGISTRY.put(AwardInstance.FullAwardData.class, AwardInstance.FullAwardData.CODEC);
 
+		CODEC_REGISTRY.put(RegistrationHandler.Body.class, RegistrationHandler.Body.CODEC);
+		CODEC_REGISTRY.put(DiscordBotLinkHandler.Body.class, DiscordBotLinkHandler.Body.CODEC);
+
         Landing.createInstance();
         AuthUtil.clearTokensEachFifteenMinutes();
 
 		Javalin app = Javalin.create(config -> config.jsonMapper(createDFUMapper()));
 		app.get("", Landing::getLandingJson);
-        app.get("/award/{award}", Award::getAwardType);
-        app.get("/event/{event}", Event::getEvent);
-		app.get("/event/{event}/projects", Project::getProjectsByEvent);
-		app.get("/event/{event}/submissions", Submission::getSubmissionsByEvent);
-		app.get("/events", Event::getEvents);
-        app.get("/mcaccount/{mcaccount}", MinecraftAccount::getAccount);
-        app.get("/project/{project}", Project::getProject);
-        app.get("/submission/{submission}", Submission::getSubmission);
-        app.get("/user/{user}", User::getUser);
-		app.get("/user/{user}/projects", Project::getProjectsByUser);
-		app.get("/user/{user}/submissions", Submission::getSubmissionsByUser);
-		app.get("/user/{user}/awards", Award::getAwardsByUser);
 
-        app.get("/link/discord/modrinth", ModrinthDiscordLinkHandler::authModrinthAccount);
-        app.post("/link/discord", DiscordLinkHandler::link);
-
-        app.post("/register/discord", RegistrationHandler::registerThroughDiscordBot);
+		v1(app);
 
         app.error(400, BackendError::handleError);
         app.error(401, BackendError::handleError);
@@ -105,6 +93,26 @@ public class ModGardenBackend {
 		app.start(7070);
 		LOG.info("Mod Garden Backend Started!");
     }
+
+	public static void v1(Javalin app) {
+		app.get("/v1/award/{award}", Award::getAwardType);
+		app.get("/v1/event/{event}", Event::getEvent);
+		app.get("/v1/event/{event}/projects", Project::getProjectsByEvent);
+		app.get("/v1/event/{event}/submissions", Submission::getSubmissionsByEvent);
+		app.get("/v1/events", Event::getEvents);
+		app.get("/v1/mcaccount/{mcaccount}", MinecraftAccount::getAccount);
+		app.get("/v1/project/{project}", Project::getProject);
+		app.get("/v1/submission/{submission}", Submission::getSubmission);
+		app.get("/v1/user/{user}", User::getUser);
+		app.get("/v1/user/{user}/projects", Project::getProjectsByUser);
+		app.get("/v1/user/{user}/submissions", Submission::getSubmissionsByUser);
+		app.get("/v1/user/{user}/awards", Award::getAwardsByUser);
+
+		app.get("/v1/link/discord/modrinth", ModrinthDiscordLinkHandler::authModrinthAccount);
+		app.post("/v1/link/discord", DiscordBotLinkHandler::link);
+
+		app.post("/v1/register/discord", RegistrationHandler::registerThroughDiscordBot);
+	}
 
     public static Connection createDatabaseConnection() throws SQLException {
         String url = "jdbc:sqlite:database.db";
