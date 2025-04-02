@@ -19,6 +19,12 @@ public class DiscordBotLinkHandler {
             return;
         }
 
+		if (!("application/json").equals(ctx.header("Content-Type"))) {
+			ctx.result("Invalid Content-Type.");
+			ctx.status(415);
+			return;
+		}
+
 		Body body = ctx.bodyAsClass(Body.class);
 
         String capitalisedService = body.service.substring(0, 1).toUpperCase(Locale.ROOT) + body.service.substring(1);
