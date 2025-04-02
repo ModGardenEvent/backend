@@ -1,7 +1,8 @@
 package net.modgarden.backend.handler;
 
 import com.google.gson.JsonParser;
-import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.profile.User;
@@ -13,6 +14,7 @@ import java.net.http.HttpResponse;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Optional;
 
 public class RegistrationHandler {
     public static void registerThroughDiscordBot(Context ctx) {
@@ -22,13 +24,20 @@ public class RegistrationHandler {
             return;
         }
 
-        String discordId = ctx.queryParam("id");
-        String username = ctx.queryParam("username");
-        String displayName = ctx.queryParam("displayname");
+		if (!("application/json").equals(ctx.header("Content-Type"))) {
+			ctx.result("Incorrect Content-Type.");
+			ctx.status(415);
+			return;
+		}
+
+		Body body = ctx.bodyAsClass(Body.class);
+		Optional<String> username = body.username;
+		Optional<String> displayName = body.displayName;
+
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              var checkStatement = connection.prepareStatement("SELECT 1 FROM users WHERE discord_id = ?");
              var insertStatement = connection.prepareStatement("INSERT INTO users(id, username, display_name, discord_id, created) VALUES (?, ?, ?, ?, ?)")) {
-            checkStatement.setString(1, discordId);
+            checkStatement.setString(1, body.id);
             ResultSet result = checkStatement.executeQuery();
             if (result != null && result.getBoolean(1)) {
                 ctx.result("Discord user is already registered.");
@@ -37,22 +46,22 @@ public class RegistrationHandler {
             }
             long id = User.ID_GENERATOR.next();
 
-            if (username == null || displayName == null) {
+            if (username.isEmpty() || displayName.isEmpty()) {
                 var discordClient = OAuthService.DISCORD.authenticate();
-                try (var stream = discordClient.get("users/" + discordId, HttpResponse.BodyHandlers.ofInputStream()).body();
+                try (var stream = discordClient.get("users/" + body.id, HttpResponse.BodyHandlers.ofInputStream()).body();
                      var reader = new InputStreamReader(stream)) {
                     var json = JsonParser.parseReader(reader);
-                    if (username == null)
-                        username = json.getAsJsonObject().get("username").getAsString();
-                    if (displayName == null)
-                        displayName = json.getAsJsonObject().get("global_name").getAsString();
+                    if (username.isEmpty())
+                        username = Optional.ofNullable(json.getAsJsonObject().get("username").getAsString());
+                    if (displayName.isEmpty())
+                        displayName = Optional.ofNullable(json.getAsJsonObject().get("global_name").getAsString());
                 }
             }
 
             insertStatement.setString(1, Long.toString(id));
-            insertStatement.setString(2, username);
-            insertStatement.setString(3, displayName);
-            insertStatement.setString(4, discordId);
+            insertStatement.setString(2, username.orElse(null));
+            insertStatement.setString(3, displayName.orElse(null));
+            insertStatement.setString(4, body.id);
             insertStatement.setLong(5, System.currentTimeMillis());
             insertStatement.execute();
         } catch (SQLException | IOException | InterruptedException ex) {
@@ -65,4 +74,13 @@ public class RegistrationHandler {
         ctx.result("Successfully registered Mod Garden account.");
         ctx.status(201);
     }
+
+
+	public record Body(String id, Optional<String> username, Optional<String> displayName) {
+		public static final Codec<Body> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+				Codec.STRING.fieldOf("id").forGetter(Body::id),
+				Codec.STRING.optionalFieldOf("username").forGetter(Body::username),
+				Codec.STRING.optionalFieldOf("display_name").forGetter(Body::displayName)
+		).apply(inst, Body::new));
+	}
 }
