@@ -96,13 +96,19 @@ public class ModGardenBackend {
 
 	public static void v1(Javalin app) {
 		app.get("/v1/award/{award}", Award::getAwardType);
+
 		app.get("/v1/event/{event}", Event::getEvent);
 		app.get("/v1/event/{event}/projects", Project::getProjectsByEvent);
 		app.get("/v1/event/{event}/submissions", Submission::getSubmissionsByEvent);
+
 		app.get("/v1/events", Event::getEvents);
+
 		app.get("/v1/mcaccount/{mcaccount}", MinecraftAccount::getAccount);
+
 		app.get("/v1/project/{project}", Project::getProject);
+
 		app.get("/v1/submission/{submission}", Submission::getSubmission);
+
 		app.get("/v1/user/{user}", User::getUser);
 		app.get("/v1/user/{user}/projects", Project::getProjectsByUser);
 		app.get("/v1/user/{user}/submissions", Submission::getSubmissionsByUser);
