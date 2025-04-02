@@ -25,7 +25,7 @@ public class RegistrationHandler {
         }
 
 		if (!("application/json").equals(ctx.header("Content-Type"))) {
-			ctx.result("Incorrect Content-Type.");
+			ctx.result("Invalid Content-Type.");
 			ctx.status(415);
 			return;
 		}
