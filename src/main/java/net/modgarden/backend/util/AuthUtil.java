@@ -73,11 +73,10 @@ public class AuthUtil {
         new Thread(() -> {
             try (ScheduledExecutorService executor = Executors.newScheduledThreadPool(1)) {
                 long scheduleTime = (long) (Math.floor((double) (System.currentTimeMillis() + 900000) / 900000) * 900000) - System.currentTimeMillis();
-                executor.schedule(() -> {
+				executor.schedule(() -> {
                     clearTokens();
                     executor.schedule(AuthUtil::clearTokens, 900000, TimeUnit.MILLISECONDS);
                 }, scheduleTime, TimeUnit.MILLISECONDS);
-                ModGardenBackend.LOG.info("Cleared tokens.");
             }
         }).start();
     }
@@ -86,7 +85,8 @@ public class AuthUtil {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              PreparedStatement statement = connection.prepareStatement("DELETE FROM link_codes WHERE expires <= ?")) {
             statement.setLong(1, System.currentTimeMillis());
-            statement.execute();
+            int total = statement.executeUpdate();
+			ModGardenBackend.LOG.debug("Cleared {} tokens.", total);
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Failed to clear tokens from database.");
         }

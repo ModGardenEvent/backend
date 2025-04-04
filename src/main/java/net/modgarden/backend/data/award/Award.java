@@ -49,7 +49,7 @@ public record Award(String id,
             return;
         }
 
-        ModGardenBackend.LOG.info("Successfully queried award from path '{}'", path);
+        ModGardenBackend.LOG.debug("Successfully queried award from path '{}'", path);
         ctx.json(award);
     }
 

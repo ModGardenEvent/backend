@@ -1,5 +1,6 @@
 package net.modgarden.backend;
 
+import ch.qos.logback.classic.Level;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -44,7 +45,7 @@ import java.util.Map;
 
 public class ModGardenBackend {
     public static final String URL = "development".equals(System.getenv("env")) ? "http://localhost:7070" : "https://api.modgarden.net";
-	public static final Logger LOG = LoggerFactory.getLogger("Mod Garden Backend");
+	public static final Logger LOG = LoggerFactory.getLogger(ModGardenBackend.class);
     private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
 
 	public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
@@ -55,6 +56,9 @@ public class ModGardenBackend {
     private static final int DATABASE_SCHEMA_VERSION = 1;
 
     public static void main(String[] args) {
+		if ("development".equals(System.getenv("env")))
+			((ch.qos.logback.classic.Logger)LOG).setLevel(Level.DEBUG);
+
         try {
             if (new File("./database.db").createNewFile()) {
                 LOG.info("Successfuly created database file.");

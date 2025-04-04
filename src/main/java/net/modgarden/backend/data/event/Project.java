@@ -47,7 +47,7 @@ public record Project(String id,
             return;
         }
 
-        ModGardenBackend.LOG.info("Successfully queried project from path '{}'", path);
+        ModGardenBackend.LOG.debug("Successfully queried project from path '{}'", path);
         ctx.json(project);
     }
 

@@ -75,7 +75,7 @@ public record User(String id,
             ctx.status(404);
             return;
         }
-        ModGardenBackend.LOG.info("Successfully queried user from path '{}' from service '{}'.", path, serviceEndString);
+        ModGardenBackend.LOG.debug("Successfully queried user from path '{}' from service '{}'.", path, serviceEndString);
         ctx.json(user);
     }
 
