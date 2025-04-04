@@ -20,6 +20,7 @@ import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.profile.MinecraftAccount;
 import net.modgarden.backend.data.profile.User;
 import net.modgarden.backend.handler.discord.DiscordBotLinkHandler;
+import net.modgarden.backend.handler.discord.DiscordBotUnlinkHandler;
 import net.modgarden.backend.handler.discord.ModrinthDiscordLinkHandler;
 import net.modgarden.backend.handler.RegistrationHandler;
 import net.modgarden.backend.util.AuthUtil;
@@ -76,6 +77,7 @@ public class ModGardenBackend {
 
 		CODEC_REGISTRY.put(RegistrationHandler.Body.class, RegistrationHandler.Body.CODEC);
 		CODEC_REGISTRY.put(DiscordBotLinkHandler.Body.class, DiscordBotLinkHandler.Body.CODEC);
+		CODEC_REGISTRY.put(DiscordBotUnlinkHandler.Body.class, DiscordBotUnlinkHandler.Body.CODEC);
 
         Landing.createInstance();
         AuthUtil.clearTokensEachFifteenMinutes();
@@ -116,6 +118,7 @@ public class ModGardenBackend {
 
 		app.get("/v1/link/discord/modrinth", ModrinthDiscordLinkHandler::authModrinthAccount);
 		app.post("/v1/link/discord", DiscordBotLinkHandler::link);
+		app.post("/v1/unlink/discord", DiscordBotUnlinkHandler::unlink);
 
 		app.post("/v1/register/discord", RegistrationHandler::registerThroughDiscordBot);
 	}
