@@ -31,8 +31,8 @@ public class RegistrationHandler {
 		}
 
 		Body body = ctx.bodyAsClass(Body.class);
-		Optional<String> username = body.username;
-		Optional<String> displayName = body.displayName;
+		String username = body.username.orElse(null);
+		String displayName = body.displayName.orElse(null);
 
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              var checkStatement = connection.prepareStatement("SELECT 1 FROM users WHERE discord_id = ?");
@@ -46,21 +46,40 @@ public class RegistrationHandler {
             }
             long id = User.ID_GENERATOR.next();
 
-            if (username.isEmpty() || displayName.isEmpty()) {
+            if (username == null || displayName == null) {
                 var discordClient = OAuthService.DISCORD.authenticate();
                 try (var stream = discordClient.get("users/" + body.id, HttpResponse.BodyHandlers.ofInputStream()).body();
                      var reader = new InputStreamReader(stream)) {
                     var json = JsonParser.parseReader(reader);
-                    if (username.isEmpty())
-                        username = Optional.ofNullable(json.getAsJsonObject().get("username").getAsString());
-                    if (displayName.isEmpty())
-                        displayName = Optional.ofNullable(json.getAsJsonObject().get("global_name").getAsString());
+                    if (username == null)
+                        username = json.getAsJsonObject().get("username").getAsString();
+                    if (displayName == null)
+                        displayName = json.getAsJsonObject().get("global_name").getAsString();
                 }
             }
 
+			if (username == null) {
+				ctx.result("Could not resolve username.");
+				ctx.status(500);
+				return;
+			} else if (!username.matches(User.USERNAME_REGEX)) {
+				ctx.result("Username has invalid characters.");
+				ctx.status(422);
+				return;
+			}
+			if (displayName == null) {
+				ctx.result("Could not resolve display name.");
+				ctx.status(500);
+				return;
+			} else if (!displayName.matches(User.DISPLAY_NAME_REGEX)) {
+				ctx.result("Display name has invalid characters.");
+				ctx.status(422);
+				return;
+			}
+
             insertStatement.setString(1, Long.toString(id));
-            insertStatement.setString(2, username.orElse(null));
-            insertStatement.setString(3, displayName.orElse(null));
+            insertStatement.setString(2, username);
+            insertStatement.setString(3, displayName);
             insertStatement.setString(4, body.id);
             insertStatement.setLong(5, System.currentTimeMillis());
             insertStatement.execute();

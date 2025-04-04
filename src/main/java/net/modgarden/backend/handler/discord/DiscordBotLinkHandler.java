@@ -42,7 +42,7 @@ public class DiscordBotLinkHandler {
             deleteStatement.execute();
             if (accountId == null) {
                 ctx.result("Invalid link code for " + capitalisedService + ".");
-                ctx.status(500);
+                ctx.status(422);
                 return;
             }
 

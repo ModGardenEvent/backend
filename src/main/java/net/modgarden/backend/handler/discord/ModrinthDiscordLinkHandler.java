@@ -4,7 +4,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.data.LinkCode;
 import net.modgarden.backend.oauth.OAuthService;
 import net.modgarden.backend.util.AuthUtil;
 
@@ -12,9 +11,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -39,7 +35,7 @@ public class ModrinthDiscordLinkHandler {
             try (InputStreamReader reader = new InputStreamReader(tokenResponse.body())) {
                 JsonElement tokenJson = JsonParser.parseReader(reader);
                 if (!tokenJson.isJsonObject() || !tokenJson.getAsJsonObject().has("access_token")) {
-                    ctx.status(500);
+                    ctx.status(422);
                     ctx.result("Invalid Modrinth access token.");
                     return;
                 }
