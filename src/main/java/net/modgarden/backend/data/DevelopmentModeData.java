@@ -4,6 +4,7 @@ import net.modgarden.backend.ModGardenBackend;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.Random;
 
 public class DevelopmentModeData {
@@ -36,7 +37,7 @@ public class DevelopmentModeData {
 			userStatement.setString(3, "GreenBot");
 			userStatement.setString(4, "876135519526977587");
 			userStatement.setLong(5, System.currentTimeMillis());
-			userStatement.setString(6, "");
+			userStatement.setNull(6, Types.VARCHAR);
 			userStatement.execute();
 
 
@@ -242,63 +243,63 @@ public class DevelopmentModeData {
 			awardInstancesStatement.setString(2, Long.toString(calicoId));
 			awardInstancesStatement.setString(3, "");
 			awardInstancesStatement.setString(4, Long.toString(bovinesFestivalSubmissionId));
-			awardInstancesStatement.setString(5, null);
+			awardInstancesStatement.setNull(5, Types.VARCHAR);
 			awardInstancesStatement.execute();
 
 			awardInstancesStatement.setString(1, Long.toString(glowAward));
 			awardInstancesStatement.setString(2, Long.toString(ultrusId));
 			awardInstancesStatement.setString(3, "");
 			awardInstancesStatement.setString(4, Long.toString(glowBannersSubmissionId));
-			awardInstancesStatement.setString(5, null);
+			awardInstancesStatement.setNull(5, Types.VARCHAR);
 			awardInstancesStatement.execute();
 
 			awardInstancesStatement.setString(1, Long.toString(mojankShardsAward));
 			awardInstancesStatement.setString(2, Long.toString(ultrusId));
 			awardInstancesStatement.setString(3, "25");
-			awardInstancesStatement.setString(4, null);
+			awardInstancesStatement.setNull(4, Types.VARCHAR);
 			awardInstancesStatement.setString(5, "UNCOMMON");
 			awardInstancesStatement.execute();
 
 			awardInstancesStatement.setString(1, Long.toString(mojankShardsAward));
 			awardInstancesStatement.setString(2, Long.toString(calicoId));
 			awardInstancesStatement.setString(3, "50");
-			awardInstancesStatement.setString(4, null);
+			awardInstancesStatement.setNull(4, Types.VARCHAR);
 			awardInstancesStatement.setString(5, "LEGENDARY");
 			awardInstancesStatement.execute();
 
 			awardInstancesStatement.setString(1, Long.toString(mojankShardsAward));
 			awardInstancesStatement.setString(2, Long.toString(greencowId));
 			awardInstancesStatement.setString(3, "2");
-			awardInstancesStatement.setString(4, null);
-			awardInstancesStatement.setString(5, null);
+			awardInstancesStatement.setNull(4, Types.VARCHAR);
+			awardInstancesStatement.setNull(5, Types.VARCHAR);
 			awardInstancesStatement.execute();
 
 			awardInstancesStatement.setString(1, Long.toString(commonAward));
 			awardInstancesStatement.setString(2, Long.toString(greencowId));
 			awardInstancesStatement.setString(3, "");
-			awardInstancesStatement.setString(4, null);
-			awardInstancesStatement.setString(5, null);
+			awardInstancesStatement.setNull(4, Types.VARCHAR);
+			awardInstancesStatement.setNull(5, Types.VARCHAR);
 			awardInstancesStatement.execute();
 
 			awardInstancesStatement.setString(1, Long.toString(uncommonAward));
 			awardInstancesStatement.setString(2, Long.toString(greencowId));
 			awardInstancesStatement.setString(3, "");
-			awardInstancesStatement.setString(4, null);
-			awardInstancesStatement.setString(5, null);
+			awardInstancesStatement.setNull(4, Types.VARCHAR);
+			awardInstancesStatement.setNull(5, Types.VARCHAR);
 			awardInstancesStatement.execute();
 
 			awardInstancesStatement.setString(1, Long.toString(rareAward));
 			awardInstancesStatement.setString(2, Long.toString(greencowId));
 			awardInstancesStatement.setString(3, "");
-			awardInstancesStatement.setString(4, null);
-			awardInstancesStatement.setString(5, null);
+			awardInstancesStatement.setNull(4, Types.VARCHAR);
+			awardInstancesStatement.setNull(5, Types.VARCHAR);
 			awardInstancesStatement.execute();
 
 			awardInstancesStatement.setString(1, Long.toString(legendaryAward));
 			awardInstancesStatement.setString(2, Long.toString(greencowId));
 			awardInstancesStatement.setString(3, "");
-			awardInstancesStatement.setString(4, null);
-			awardInstancesStatement.setString(5, null);
+			awardInstancesStatement.setNull(4, Types.VARCHAR);
+			awardInstancesStatement.setNull(5, Types.VARCHAR);
 			awardInstancesStatement.execute();
 
 			var minecraftAccountStatement = connection.prepareStatement("INSERT OR IGNORE INTO minecraft_accounts(uuid, user_id) VALUES (?, ?)");
