@@ -38,7 +38,7 @@ public class DiscordBotLinkHandler {
             String accountId = checkResult.getString(1);
 
             deleteStatement.setString(1, body.linkCode);
-			checkStatement.setString(2, body.service);
+			deleteStatement.setString(2, body.service);
             deleteStatement.execute();
             if (accountId == null) {
                 ctx.result("Invalid link code for " + capitalisedService + ".");
@@ -49,7 +49,7 @@ public class DiscordBotLinkHandler {
             if (body.service.equals(LinkCode.Service.MODRINTH.serializedName())) {
                 try (var modrinthCheckStatement = connection.prepareStatement("SELECT 1 FROM users WHERE modrinth_id = ?");
                      var userCheckStatement = connection.prepareStatement("SELECT 1 FROM users WHERE discord_id = ? AND modrinth_id IS NOT NULL");
-                     var insertStatement = connection.prepareStatement("UPDATE users SET modrinth_id = ? WHERE discord_id = ?")) {
+                     var insertStatement = connection.prepareStatement("UPDATE users SET modrinth_id = ? WHERE discord_id = ?");) {
                     modrinthCheckStatement.setString(1, accountId);
                     ResultSet modrinthCheckResult = modrinthCheckStatement.executeQuery();
                     if (modrinthCheckResult.isBeforeFirst() && modrinthCheckResult.getBoolean(1)) {
@@ -70,7 +70,7 @@ public class DiscordBotLinkHandler {
                     insertStatement.setString(2, body.discordId);
                     insertStatement.execute();
 
-                    ctx.result("Successfully linked " + capitalisedService + " account to Mod Garden.");
+                    ctx.result("Successfully linked " + capitalisedService + " account to Mod Garden account associated with Discord ID '" + body.discordId + "'.");
                     ctx.status(201);
                 }
             }
