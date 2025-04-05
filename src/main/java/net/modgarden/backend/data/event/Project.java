@@ -41,7 +41,7 @@ public record Project(String id,
         // TODO: Allow Modrinth as a service.
         Project project = innerQuery(path);
         if (project == null) {
-            ModGardenBackend.LOG.error("Could not find project '{}'.", path);
+            ModGardenBackend.LOG.debug("Could not find project '{}'.", path);
             ctx.result("Could not find project '" + path + "'.");
             ctx.status(404);
             return;
@@ -66,8 +66,6 @@ public record Project(String id,
 				result.getString("attributed_to"),
 				authors
 			);
-        } catch (IllegalStateException ex) {
-            ModGardenBackend.LOG.error("Failed to decode project from result set. ", ex);;
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         }

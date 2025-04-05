@@ -38,7 +38,7 @@ public record MinecraftAccount(UUID uuid,
         }
         MinecraftAccount account = query(path.toLowerCase(Locale.ROOT));
         if (account == null) {
-            ModGardenBackend.LOG.error("Could not find Minecraft account '{}'.", path);
+            ModGardenBackend.LOG.debug("Could not find Minecraft account '{}'.", path);
             ctx.result("Could not find Minecraft account '" + path + "'.");
             ctx.status(404);
             return;
@@ -94,8 +94,6 @@ public record MinecraftAccount(UUID uuid,
 					decodedUUID,
 					result.getString("user_id")
 			);
-        } catch (IllegalStateException ex) {
-            ModGardenBackend.LOG.error("Failed to decode minecraft account from result set. ", ex);
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         }

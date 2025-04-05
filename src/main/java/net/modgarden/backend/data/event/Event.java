@@ -43,7 +43,7 @@ public record Event(String id,
         }
         Event event = query(path);
         if (event == null) {
-            ModGardenBackend.LOG.error("Could not find event '{}'.", path);
+            ModGardenBackend.LOG.debug("Could not find event '{}'.", path);
             ctx.result("Could not find event '" + path + "'.");
             ctx.status(404);
             return;
@@ -61,8 +61,6 @@ public record Event(String id,
 			ctx.json(json_result);
 		} catch (SQLException ex) {
 			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
-		} catch (IllegalStateException ex) {
-			ModGardenBackend.LOG.error("Failed to decode event from result set. ", ex);
 		}
 	}
 
@@ -92,8 +90,6 @@ public record Event(String id,
 					result.getString("loader_version"),
 					result.getLong("started")
 			);
-        } catch (IllegalStateException ex) {
-            ModGardenBackend.LOG.error("Failed to decode submission from result set. ", ex);
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         }
@@ -116,9 +112,7 @@ public record Event(String id,
 					result.getString("loader_version"),
 					result.getLong("started")
 			);
-		} catch (IllegalStateException ex) {
-            ModGardenBackend.LOG.error("Failed to decode event from result set. ", ex);
-        } catch (SQLException ex) {
+		} catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         }
         return null;

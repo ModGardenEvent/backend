@@ -42,7 +42,7 @@ public record Submission(String id,
             return;
         }
 
-        ModGardenBackend.LOG.info("Successfully queried submission from path '{}'", path);
+        ModGardenBackend.LOG.debug("Successfully queried submission from path '{}'", path);
         ctx.json(submission);
     }
 
@@ -117,8 +117,6 @@ public record Submission(String id,
 					result.getString("modrinth_version_id"),
 					result.getLong("submitted_at")
 			);
-        } catch (IllegalStateException ex) {
-            ModGardenBackend.LOG.error("Failed to decode submission from result set. ", ex);;
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         }

@@ -74,7 +74,7 @@ public record User(String id,
 
         User user = query(path, service);
         if (user == null) {
-            ModGardenBackend.LOG.error("Could not find user '{}'.", path);
+            ModGardenBackend.LOG.debug("Could not find user '{}'.", path);
             ctx.result("Could not find user '" + path + "' from service '" + serviceEndString + "'.");
             ctx.status(404);
             return;
@@ -177,8 +177,6 @@ public record User(String id,
 					minecraftAccounts,
 					awards
 			);
-        } catch (IllegalStateException ex) {
-            ModGardenBackend.LOG.error("Could not decode user. ", ex);
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         }

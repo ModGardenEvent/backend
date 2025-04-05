@@ -43,7 +43,7 @@ public record Award(String id,
             award = innerQuery("id = ?", path);
 
         if (award == null) {
-            ModGardenBackend.LOG.error("Could not find award '{}'.", path);
+            ModGardenBackend.LOG.debug("Could not find award '{}'.", path);
             ctx.result("Could not find award '" + path + "'.");
             ctx.status(404);
             return;
@@ -68,9 +68,7 @@ public record Award(String id,
 					result.getString("discord_emote"),
 					result.getString("tooltip")
 			);
-        } catch (IllegalStateException ex) {
-            ModGardenBackend.LOG.error("Could not decode award. ", ex);
-        } catch (SQLException ex) {
+        }  catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
         }
         return null;
