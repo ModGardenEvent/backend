@@ -80,7 +80,7 @@ public class ModrinthDiscordOAuthHandler {
         var params = new HashMap<String, String>();
         params.put("code", code);
         params.put("client_id", OAuthService.MODRINTH.clientId);
-        params.put("redirect_uri", ModGardenBackend.URL + "/v1/link/discord/modrinth");
+        params.put("redirect_uri", ModGardenBackend.URL + "/v1/discord/oauth/modrinth");
         params.put("grant_type", "authorization_code");
         return params;
     }
