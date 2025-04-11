@@ -80,7 +80,7 @@ public class RegistrationHandler {
 			checkUsernameStatement.setString(1, username);
 			ResultSet existingUsername = checkDiscordIdStatement.executeQuery();
 			if (existingUsername != null && existingUsername.getBoolean(1)) {
-				ctx.result("Username " + username + " has been taken.");
+				ctx.result("Username '" + username + "' has been taken.");
 				ctx.status(422);
 				return;
 			}
