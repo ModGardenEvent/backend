@@ -35,16 +35,16 @@ public class RegistrationHandler {
 		String displayName = body.displayName.orElse(null);
 
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             var checkStatement = connection.prepareStatement("SELECT 1 FROM users WHERE discord_id = ?");
+             var checkDiscordIdStatement = connection.prepareStatement("SELECT 1 FROM users WHERE discord_id = ?");
+			 var checkUsernameStatement = connection.prepareStatement("SELECT 1 FROM users WHERE username = ?");
              var insertStatement = connection.prepareStatement("INSERT INTO users(id, username, display_name, discord_id, created) VALUES (?, ?, ?, ?, ?)")) {
-            checkStatement.setString(1, body.id);
-            ResultSet result = checkStatement.executeQuery();
-            if (result != null && result.getBoolean(1)) {
+			checkDiscordIdStatement.setString(1, body.id);
+            ResultSet existingDiscordUser = checkDiscordIdStatement.executeQuery();
+            if (existingDiscordUser != null && existingDiscordUser.getBoolean(1)) {
                 ctx.result("Discord user is already registered.");
-                ctx.status(200);
+                ctx.status(422);
                 return;
             }
-            long id = User.ID_GENERATOR.next();
 
             if (username == null || displayName == null) {
                 var discordClient = OAuthService.DISCORD.authenticate();
@@ -76,6 +76,16 @@ public class RegistrationHandler {
 				ctx.status(422);
 				return;
 			}
+
+			checkUsernameStatement.setString(1, username);
+			ResultSet existingUsername = checkDiscordIdStatement.executeQuery();
+			if (existingUsername != null && existingUsername.getBoolean(1)) {
+				ctx.result("Username " + username + " has been taken.");
+				ctx.status(422);
+				return;
+			}
+
+			long id = User.ID_GENERATOR.next();
 
             insertStatement.setString(1, Long.toString(id));
             insertStatement.setString(2, username);
