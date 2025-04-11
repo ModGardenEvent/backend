@@ -14,7 +14,7 @@ import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ModrinthDiscordLinkHandler {
+public class ModrinthDiscordOAuthHandler {
     public static void authModrinthAccount(Context ctx) {
         String code = ctx.queryParam("code");
         if (code == null) {

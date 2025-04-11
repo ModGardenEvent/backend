@@ -22,7 +22,7 @@ import net.modgarden.backend.data.profile.MinecraftAccount;
 import net.modgarden.backend.data.profile.User;
 import net.modgarden.backend.handler.discord.DiscordBotLinkHandler;
 import net.modgarden.backend.handler.discord.DiscordBotUnlinkHandler;
-import net.modgarden.backend.handler.discord.ModrinthDiscordLinkHandler;
+import net.modgarden.backend.handler.discord.ModrinthDiscordOAuthHandler;
 import net.modgarden.backend.handler.RegistrationHandler;
 import net.modgarden.backend.util.AuthUtil;
 import org.jetbrains.annotations.NotNull;
@@ -120,9 +120,9 @@ public class ModGardenBackend {
 		app.get("/v1/user/{user}/submissions", Submission::getSubmissionsByUser);
 		app.get("/v1/user/{user}/awards", Award::getAwardsByUser);
 
-		app.get("/v1/link/discord/modrinth", ModrinthDiscordLinkHandler::authModrinthAccount);
-		app.post("/v1/link/discord", DiscordBotLinkHandler::link);
-		app.post("/v1/unlink/discord", DiscordBotUnlinkHandler::unlink);
+		app.get("/v1/discord/oauth/modrinth", ModrinthDiscordOAuthHandler::authModrinthAccount);
+		app.post("/v1/discord/link", DiscordBotLinkHandler::link);
+		app.post("/v1/discord/unlink", DiscordBotUnlinkHandler::unlink);
 
 		app.post("/v1/register/discord", RegistrationHandler::registerThroughDiscordBot);
 	}
