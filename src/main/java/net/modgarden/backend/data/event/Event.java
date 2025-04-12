@@ -185,6 +185,7 @@ public record Event(String id,
                 "e.id, " +
                 "e.slug, " +
                 "e.display_name, " +
+				"e.description, " +
                 "e.minecraft_version, " +
                 "e.loader, " +
                 "e.loader_version, " +
@@ -195,7 +196,7 @@ public record Event(String id,
                 "WHERE " +
                     "e." + whereStatement + " " +
                 "GROUP BY " +
-                    "e.id, e.slug, e.display_name, e.minecraft_version, e.loader, e.loader_version, e.start_time, e.end_time";
+                    "e.id, e.slug, e.display_name, e.description, e.minecraft_version, e.loader, e.loader_version, e.start_time, e.end_time";
     }
 
 	private static String selectAllStatement() {

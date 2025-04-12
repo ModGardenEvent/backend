@@ -87,9 +87,10 @@ public record Project(String id,
 			ctx.status(422);
 			return;
 		}
-		var queryString = selectAllByUser(user);
 		try (Connection connection = ModGardenBackend.createDatabaseConnection();
-			 PreparedStatement prepared = connection.prepareStatement(queryString)) {
+			 PreparedStatement prepared = connection.prepareStatement(selectAllByUser())) {
+			prepared.setString(1, user);
+			prepared.setString(2, user);
 			ResultSet result = prepared.executeQuery();
 			var projectList = new JsonArray();
 			while (result.next()) {
@@ -124,10 +125,10 @@ public record Project(String id,
 			ctx.status(422);
 			return;
 		}
-		var queryString = selectAllByEvent(event);
-		try {
-			Connection connection = ModGardenBackend.createDatabaseConnection();
-			PreparedStatement prepared = connection.prepareStatement(queryString);
+		try (Connection connection = ModGardenBackend.createDatabaseConnection();
+			 PreparedStatement prepared = connection.prepareStatement(selectAllByEvent())) {
+			prepared.setString(1, event);
+			prepared.setString(2, event);
 			ResultSet result = prepared.executeQuery();
 			var projectList = new JsonArray();
 			while (result.next()) {
@@ -182,59 +183,59 @@ public record Project(String id,
                     "p.id, p.slug, p.modrinth_id, p.attributed_to";
     }
 
-	private static String selectAllByUser(String user) {
+	private static String selectAllByUser() {
 		return """
-				 SELECT p.id,
-				       p.slug,
-				       p.modrinth_id,
-				       p.attributed_to,
-				       COALESCE(Group_concat(DISTINCT a.user_id), '') AS authors
-				       COALESCE(Group_concat(DISTINCT b.user_id), '') AS builders
-				FROM   projects p
-				       LEFT JOIN project_authors a
-				              ON p.id = a.project_id
-				       LEFT JOIN project_builders b
-				              ON b.id = b.project_id
-				       LEFT JOIN users u
-				              ON a.user_id = u.id
-				WHERE  p.id IN (SELECT pa.project_id
-				                FROM   project_authors pa
-				                       JOIN users uu
-				                         ON pa.user_id = uu.id
-				                WHERE  uu.id = '%s'
-				                        OR uu.username = '%s')
-				GROUP  BY p.id,
-				          p.slug,
-				          p.modrinth_id,
-				          p.attributed_to;
-				""".formatted(user, user);
+				SELECT p.id,
+				 	p.slug,
+				 	p.modrinth_id,
+				 	p.attributed_to,
+				 	COALESCE(Group_concat(DISTINCT a.user_id), '') AS authors,
+					COALESCE(Group_concat(DISTINCT b.user_id), '') AS builders
+				FROM projects p
+					LEFT JOIN project_authors a
+				    	ON p.id = a.project_id
+						LEFT JOIN project_builders b
+							ON p.id = b.project_id
+						LEFT JOIN users u
+							ON a.user_id = u.id
+				WHERE p.id IN (SELECT pa.project_id
+					FROM project_authors pa
+						JOIN users uu
+							ON pa.user_id = uu.id
+						WHERE uu.id = ?
+							OR uu.username = ?)
+				GROUP BY p.id,
+					p.slug,
+					p.modrinth_id,
+					p.attributed_to
+				""";
 	}
 
-	private static String selectAllByEvent(String event) {
+	private static String selectAllByEvent() {
 		return """
 			SELECT p.id,
-				   p.slug,
-				   p.modrinth_id,
-				   p.attributed_to,
-				   COALESCE(Group_concat(DISTINCT a.user_id), '') AS authors
-				   COALESCE(Group_concat(DISTINCT b.user_id), '') AS builders
+				p.slug,
+				p.modrinth_id,
+				p.attributed_to,
+				COALESCE(Group_concat(DISTINCT a.user_id), '') AS authors,
+				COALESCE(Group_concat(DISTINCT b.user_id), '') AS builders
 			FROM projects p
 				LEFT JOIN project_authors a
 					ON p.id = a.project_id
 				LEFT JOIN project_builders b
-				    ON b.id = b.project_id
+					ON p.id = b.project_id
 				LEFT JOIN users u
 					ON a.user_id = u.id
 				LEFT JOIN submissions s
 					ON s.project_id = p.id
 				LEFT JOIN events e
 					ON e.id = s.event
-			WHERE  e.id = '%s' or e.slug = '%s'
-			GROUP  BY p.id,
-					  p.slug,
-					  p.modrinth_id,
-					  p.attributed_to
-			""".formatted(event, event);
+			WHERE e.id = ? or e.slug = ?
+			GROUP BY p.id,
+				p.slug,
+				p.modrinth_id,
+				p.attributed_to
+			""";
 	}
 
     private static DataResult<String> validate(String id) {
