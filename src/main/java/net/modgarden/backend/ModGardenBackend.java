@@ -46,19 +46,20 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ModGardenBackend {
-    public static final String URL = "development".equals(System.getenv("env")) ? "http://localhost:7070" : "https://api.modgarden.net";
+	public static final Dotenv DOTENV = Dotenv.load();
+
+    public static final String URL = "development".equals(DOTENV.get("env")) ? "http://localhost:7070" : "https://api.modgarden.net";
 	public static final Logger LOG = LoggerFactory.getLogger(ModGardenBackend.class);
     private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
 
 	public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
-	public static final Dotenv DOTENV = Dotenv.load();
 
     public static final String SAFE_URL_REGEX = "[a-zA-Z0-9!@$()`.+,_\"-]+";
     private static final int DATABASE_SCHEMA_VERSION = 1;
 
     public static void main(String[] args) {
-		if ("development".equals(System.getenv("env")))
+		if ("development".equals(DOTENV.get("env")))
 			((ch.qos.logback.classic.Logger)LOG).setLevel(Level.DEBUG);
 
         try {
@@ -246,7 +247,7 @@ public class ModGardenBackend {
         }
         LOG.info("Created database tables.");
 
-		if ("development".equals(System.getenv("env"))) {
+		if ("development".equals(DOTENV.get("env"))) {
 			DevelopmentModeData.insertDevelopmentModeData();
 		}
     }

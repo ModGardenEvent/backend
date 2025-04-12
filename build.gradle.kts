@@ -48,11 +48,14 @@ tasks {
 	assemble.configure {
 		dependsOn(processResourcesTasks)
 	}
-
+	distZip.configure {
+		archiveFileName.set("mod-garden-backend.zip")
+	}
     jar.configure {
         manifest {
             attributes["Main-Class"] = "net.modgarden.backend.ModGardenBackend"
         }
+		archiveFileName.set("mod-garden-backend.jar")
     }
 	withType<ProcessResources>().matching { processResourcesTasks.contains(it.name) }.configureEach {
 		inputs.properties(expandProps)
@@ -67,7 +70,9 @@ tasks {
 
 distributions {
     main {
-        distributionBaseName = "mod-garden-backend"
+		contents {
+			into("../mod-garden-backend")
+		}
     }
 }
 
