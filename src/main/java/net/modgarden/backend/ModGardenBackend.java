@@ -9,6 +9,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 import io.github.cdimascio.dotenv.Dotenv;
 import io.javalin.Javalin;
+import io.javalin.http.Handler;
 import io.javalin.json.JsonMapper;
 import net.modgarden.backend.data.BackendError;
 import net.modgarden.backend.data.DevelopmentModeData;
@@ -20,10 +21,11 @@ import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.profile.MinecraftAccount;
 import net.modgarden.backend.data.profile.User;
-import net.modgarden.backend.handler.discord.DiscordBotLinkHandler;
-import net.modgarden.backend.handler.discord.DiscordBotUnlinkHandler;
-import net.modgarden.backend.handler.discord.ModrinthDiscordOAuthHandler;
-import net.modgarden.backend.handler.RegistrationHandler;
+import net.modgarden.backend.handler.v1.discord.DiscordBotLinkHandler;
+import net.modgarden.backend.handler.v1.discord.DiscordBotSubmissionHandler;
+import net.modgarden.backend.handler.v1.discord.DiscordBotUnlinkHandler;
+import net.modgarden.backend.handler.v1.discord.DiscordBotOAuthHandler;
+import net.modgarden.backend.handler.v1.RegistrationHandler;
 import net.modgarden.backend.util.AuthUtil;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -71,16 +73,17 @@ public class ModGardenBackend {
 
 		CODEC_REGISTRY.put(Landing.class, Landing.CODEC);
         CODEC_REGISTRY.put(BackendError.class, BackendError.CODEC);
-        CODEC_REGISTRY.put(Award.class, Award.CODEC);
-        CODEC_REGISTRY.put(Event.class, Event.CODEC);
+        CODEC_REGISTRY.put(Award.class, Award.DIRECT_CODEC);
+        CODEC_REGISTRY.put(Event.class, Event.DIRECT_CODEC);
         CODEC_REGISTRY.put(MinecraftAccount.class, MinecraftAccount.CODEC);
-        CODEC_REGISTRY.put(Project.class, Project.CODEC);
-        CODEC_REGISTRY.put(Submission.class, Submission.CODEC);
-        CODEC_REGISTRY.put(User.class, User.CODEC);
+        CODEC_REGISTRY.put(Project.class, Project.DIRECT_CODEC);
+        CODEC_REGISTRY.put(Submission.class, Submission.DIRECT_CODEC);
+        CODEC_REGISTRY.put(User.class, User.DIRECT_CODEC);
 		CODEC_REGISTRY.put(AwardInstance.FullAwardData.class, AwardInstance.FullAwardData.CODEC);
 
 		CODEC_REGISTRY.put(RegistrationHandler.Body.class, RegistrationHandler.Body.CODEC);
 		CODEC_REGISTRY.put(DiscordBotLinkHandler.Body.class, DiscordBotLinkHandler.Body.CODEC);
+		CODEC_REGISTRY.put(DiscordBotSubmissionHandler.Body.class, DiscordBotSubmissionHandler.Body.CODEC);
 		CODEC_REGISTRY.put(DiscordBotUnlinkHandler.Body.class, DiscordBotUnlinkHandler.Body.CODEC);
 
         Landing.createInstance();
@@ -101,30 +104,42 @@ public class ModGardenBackend {
     }
 
 	public static void v1(Javalin app) {
-		app.get("/v1/award/{award}", Award::getAwardType);
+		get(app, 1, "award/{award}", Award::getAwardType);
 
-		app.get("/v1/event/{event}", Event::getEvent);
-		app.get("/v1/event/{event}/projects", Project::getProjectsByEvent);
-		app.get("/v1/event/{event}/submissions", Submission::getSubmissionsByEvent);
+		get(app, 1, "event/{event}", Event::getEvent);
+		get(app, 1, "event/{event}/projects", Project::getProjectsByEvent);
+		get(app, 1, "event/{event}/submissions", Submission::getSubmissionsByEvent);
 
-		app.get("/v1/events", Event::getEvents);
+		get(app, 1, "events", Event::getEvents);
 
-		app.get("/v1/mcaccount/{mcaccount}", MinecraftAccount::getAccount);
+		get(app, 1, "mcaccount/{mcaccount}", MinecraftAccount::getAccount);
 
-		app.get("/v1/project/{project}", Project::getProject);
+		get(app, 1, "project/{project}", Project::getProject);
 
-		app.get("/v1/submission/{submission}", Submission::getSubmission);
+		get(app, 1, "submission/{submission}", Submission::getSubmission);
 
-		app.get("/v1/user/{user}", User::getUser);
-		app.get("/v1/user/{user}/projects", Project::getProjectsByUser);
-		app.get("/v1/user/{user}/submissions", Submission::getSubmissionsByUser);
-		app.get("/v1/user/{user}/awards", Award::getAwardsByUser);
+		get(app, 1, "user/{user}", User::getUser);
+		get(app, 1, "user/{user}/projects", Project::getProjectsByUser);
+		get(app, 1, "user/{user}/submissions", Submission::getSubmissionsByUser);
+		get(app, 1, "user/{user}/awards", Award::getAwardsByUser);
 
-		app.get("/v1/discord/oauth/modrinth", ModrinthDiscordOAuthHandler::authModrinthAccount);
-		app.post("/v1/discord/link", DiscordBotLinkHandler::link);
-		app.post("/v1/discord/unlink", DiscordBotUnlinkHandler::unlink);
+		post(app, 1, "discord/register", RegistrationHandler::discordBotRegister);
 
-		app.post("/v1/register/discord", RegistrationHandler::registerThroughDiscordBot);
+		get(app, 1, "discord/oauth/modrinth", DiscordBotOAuthHandler::authModrinthAccount);
+		get(app, 1, "discord/oauth/minecraft", DiscordBotOAuthHandler::authMinecraftAccount);
+
+		post(app, 1, "discord/submission/create", DiscordBotSubmissionHandler::submitModrinth);
+
+		post(app, 1, "discord/link", DiscordBotLinkHandler::link);
+		post(app, 1, "discord/unlink", DiscordBotUnlinkHandler::unlink);
+	}
+
+	private static void get(Javalin app, int version, String endpoint, Handler consumer) {
+		app.get("/v" + version + "/" + endpoint, consumer);
+	}
+
+	private static void post(Javalin app, int version, String endpoint, Handler consumer) {
+		app.post("/v" + version + "/" + endpoint, consumer);
 	}
 
     public static Connection createDatabaseConnection() throws SQLException {
@@ -139,6 +154,8 @@ public class ModGardenBackend {
                         "id TEXT UNIQUE NOT NULL," +
                         "username TEXT UNIQUE NOT NULL," +
                         "display_name TEXT NOT NULL," +
+						"pronouns TEXT," +
+						"avatar_url TEXT," +
                         "discord_id TEXT UNIQUE NOT NULL," +
                         "modrinth_id TEXT UNIQUE," +
                         "created INTEGER NOT NULL," +
@@ -148,10 +165,12 @@ public class ModGardenBackend {
                         "id TEXT UNIQUE NOT NULL," +
                         "slug TEXT UNIQUE NOT NULL," +
                         "display_name TEXT NOT NULL," +
+						"description TEXT NOT NULL," +
                         "minecraft_version TEXT NOT NULL," +
                         "loader TEXT NOT NULL," +
                         "loader_version TEXT NOT NULL," +
-                        "started INTEGER NOT NULL," +
+                        "start_time INTEGER NOT NULL," +
+						"end_time INTEGER NOT NULL," +
                         "PRIMARY KEY (id)" +
                     ")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS projects (" +
@@ -169,12 +188,19 @@ public class ModGardenBackend {
                         "FOREIGN KEY (user_id) REFERENCES users(id)," +
                         "PRIMARY KEY (project_id, user_id)" +
                     ")");
+			statement.addBatch("CREATE TABLE IF NOT EXISTS project_builders (" +
+						"project_id TEXT NOT NULL," +
+						"user_id TEXT NOT NULL," +
+						"FOREIGN KEY (project_id) REFERENCES projects(id)," +
+						"FOREIGN KEY (user_id) REFERENCES users(id)," +
+						"PRIMARY KEY (project_id, user_id)" +
+					")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS submissions (" +
                         "id TEXT UNIQUE NOT NULL," +
+						"event TEXT NOT NULL," +
                         "project_id TEXT NOT NULL," +
-                        "event TEXT NOT NULL," +
                         "modrinth_version_id TEXT NOT NULL," +
-                        "submitted_at INTEGER NOT NULL," +
+                        "submitted INTEGER NOT NULL," +
                         "FOREIGN KEY (project_id) REFERENCES projects(id)," +
                         "FOREIGN KEY (event) REFERENCES events(id)," +
                         "PRIMARY KEY(id)" +
@@ -244,13 +270,13 @@ public class ModGardenBackend {
 
     private static JsonMapper createDFUMapper() {
         return new JsonMapper() {
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
             @NotNull
             @Override
             public String toJsonString(@NotNull Object obj, @NotNull Type type) {
                 if (obj instanceof JsonElement)
-                    return gson.toJson(obj);
+                    return GSON.toJson(obj);
                 if (!CODEC_REGISTRY.containsKey(type))
                     throw new UnsupportedOperationException("Cannot encode object type " + type);
                 return ((Codec<Object>)CODEC_REGISTRY.get(type)).encodeStart(JsonOps.INSTANCE, obj).getOrThrow().toString();

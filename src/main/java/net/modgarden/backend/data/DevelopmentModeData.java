@@ -41,33 +41,57 @@ public class DevelopmentModeData {
 			userStatement.execute();
 
 
-			var eventStatement = connection.prepareStatement("INSERT OR IGNORE INTO events(id, slug, display_name, started, minecraft_version, loader, loader_version) VALUES (?, ?, ?, ?, '1.21.1', 'fabric', '0.16.10')");
+			var eventStatement = connection.prepareStatement("INSERT OR IGNORE INTO events(id, slug, display_name, description, start_time, end_time, minecraft_version, loader, loader_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
 			long mojankId = RANDOM.nextLong(Long.MAX_VALUE);
 			eventStatement.setString(1, Long.toString(mojankId));
 			eventStatement.setString(2, "mojank-fest");
 			eventStatement.setString(3, "MoJank Fest");
-			eventStatement.setLong(4, System.currentTimeMillis() - (86400000 * 5));
+			eventStatement.setString(4, "A fest where you create the finest Mojank possible!\nWait? We can't use the word 'Fest' now? Damn it ModFest.");
+			eventStatement.setLong(5, System.currentTimeMillis() - (86400000L * 365));
+			eventStatement.setLong(6, System.currentTimeMillis() - (86400000L * 344));
+			eventStatement.setString(7, "1.20.1");
+			eventStatement.setString(8, "fabric");
+			eventStatement.setString(9, "0.15.11");
 			eventStatement.execute();
 
             long festivalId = RANDOM.nextLong(Long.MAX_VALUE);
             eventStatement.setString(1, Long.toString(festivalId));
             eventStatement.setString(2, "festival");
             eventStatement.setString(3, "Mod Garden: Festival");
-            eventStatement.setLong(4, System.currentTimeMillis() - (86400000 * 3));
+			eventStatement.setString(4, "We can't use the word 'Festival' either? Damn it ModFest.");
+            eventStatement.setLong(5, System.currentTimeMillis() - (86400000L * 222));
+			eventStatement.setLong(6, System.currentTimeMillis() - (86400000L * 162));
+			eventStatement.setString(7, "1.21.1");
+			eventStatement.setString(8, "fabric");
+			eventStatement.setString(9, "0.16.8");
             eventStatement.execute();
 
 			long exampleGardenId = RANDOM.nextLong(Long.MAX_VALUE);
 			eventStatement.setString(1, Long.toString(exampleGardenId));
 			eventStatement.setString(2, "example-garden");
 			eventStatement.setString(3, "Example Garden");
-			eventStatement.setLong(4, System.currentTimeMillis() - (86400000 * 2));
+			eventStatement.setString(4, "An Example Garden where you create an example mod.");
+			eventStatement.setLong(5, System.currentTimeMillis());
+			eventStatement.setLong(6, System.currentTimeMillis() + (86400000L * 60));
+			eventStatement.setString(7, "1.21.5");
+			eventStatement.setString(8, "fabric");
+			eventStatement.setString(9, "0.16.13");
 			eventStatement.execute();
 
-			long currentEventId = RANDOM.nextLong(Long.MAX_VALUE);
-			eventStatement.setString(1, Long.toString(currentEventId));
-			eventStatement.setString(2, "current-event");
-			eventStatement.setString(3, "Current Event");
-			eventStatement.setLong(4, System.currentTimeMillis());
+			long otherEvent = RANDOM.nextLong(Long.MAX_VALUE);
+			eventStatement.setString(1, Long.toString(otherEvent));
+			eventStatement.setString(2, "other-event");
+			eventStatement.setString(3, "Other Event");
+			eventStatement.setString(4, """
+					Super Mario Bros. 2 is a 1988 platform game developed and published by Nintendo for the Nintendo Entertainment System. After the smash hit Super Mario Bros. in 1985, Nintendo quickly released a minor adaptation of the original with advanced difficulty titled Super Mario Bros. 2, for its mature market in Japan in 1986. However, Nintendo of America found this sequel too similar to its predecessor, and its difficulty too frustrating, for the nascent American market. This prompted a second Super Mario Bros. sequel based on Yume Kōjō: Doki Doki Panic,[a] Nintendo's 1987 Family Computer Disk System game which had been based on a prototype platforming game and released as an advergame for Fuji Television's Yume Kōjō '87 media technology expo. The characters, enemies, and themes in Doki Doki Panic have the mascots and theme of the festival, and were adapted into the Super Mario theme to make a Western Super Mario Bros. sequel.
+					\n
+					Super Mario Bros. 2 was a resounding success, becoming the fifth-best-selling game on the NES, and was critically well-received for its design aspects and for differentiating the Super Mario series. It was re-released in Japan for the Famicom as Super Mario USA[b] (1992), and has been remade twice, first included in the Super Mario All-Stars (1993) collection for the Super NES, and as Super Mario Advance (2001) for the Game Boy Advance. It is included as part of the Virtual Console and Nintendo Classics services.""");
+			eventStatement.setLong(5, System.currentTimeMillis());
+			eventStatement.setLong(6, System.currentTimeMillis() + (86400000L * 21));
+			eventStatement.setString(7, "1.21.1");
+			eventStatement.setString(8, "neoforge");
+			eventStatement.setString(9, "21.1.146");
+
 			eventStatement.execute();
 
 			var projectStatement = connection.prepareStatement("INSERT OR IGNORE INTO projects(id, modrinth_id, attributed_to, slug) VALUES (?, ?, ?, ?)");
@@ -99,44 +123,44 @@ public class DevelopmentModeData {
 			projectStatement.setString(4, "rapscallions-and-rockhoppers");
             projectStatement.execute();
 
-			var submissionStatement = connection.prepareStatement("INSERT OR IGNORE INTO submissions(id, project_id, event, modrinth_version_id, submitted_at) VALUES (?, ?, ?, ?, ?)");
+			var submissionStatement = connection.prepareStatement("INSERT OR IGNORE INTO submissions(id, event, project_id, modrinth_version_id, submitted) VALUES (?, ?, ?, ?, ?)");
 
 			long glowBannersSubmissionId = RANDOM.nextLong(Long.MAX_VALUE);
 			submissionStatement.setString(1, Long.toString(glowBannersSubmissionId));
-			submissionStatement.setString(2, Long.toString(glowBannersId));
-			submissionStatement.setString(3, Long.toString(mojankId));
+			submissionStatement.setString(2, Long.toString(mojankId));
+			submissionStatement.setString(3, Long.toString(glowBannersId));
 			submissionStatement.setString(4, "c2VxpX2M");
 			submissionStatement.setLong(5, System.currentTimeMillis() - (86400000 * 3));
 			submissionStatement.execute();
 
 			long smeltingTouchSubmissionId = RANDOM.nextLong(Long.MAX_VALUE);
 			submissionStatement.setString(1, Long.toString(smeltingTouchSubmissionId));
-			submissionStatement.setString(2, Long.toString(smeltingTouchId));
-			submissionStatement.setString(3, Long.toString(exampleGardenId));
+			submissionStatement.setString(2, Long.toString(exampleGardenId));
+			submissionStatement.setString(3, Long.toString(smeltingTouchId));
 			submissionStatement.setString(4, "ubrXE4aR");
 			submissionStatement.setLong(5, System.currentTimeMillis() - (86400000));
 			submissionStatement.execute();
 
 			long bovinesMojankSubmissionId = RANDOM.nextLong(Long.MAX_VALUE);
 			submissionStatement.setString(1, Long.toString(bovinesMojankSubmissionId));
-			submissionStatement.setString(2, Long.toString(bovinesId));
-			submissionStatement.setString(3, Long.toString(mojankId));
+			submissionStatement.setString(2, Long.toString(mojankId));
+			submissionStatement.setString(3, Long.toString(bovinesId));
 			submissionStatement.setString(4, "j7WIi30J");
 			submissionStatement.setLong(5, System.currentTimeMillis() - (86400000 * 4));
 			submissionStatement.execute();
 
             long bovinesFestivalSubmissionId = RANDOM.nextLong(Long.MAX_VALUE);
             submissionStatement.setString(1, Long.toString(bovinesFestivalSubmissionId));
-            submissionStatement.setString(2, Long.toString(bovinesId));
-            submissionStatement.setString(3, Long.toString(festivalId));
+			submissionStatement.setString(2, Long.toString(festivalId));
+            submissionStatement.setString(3, Long.toString(bovinesId));
             submissionStatement.setString(4, "j7WIi30J");
             submissionStatement.setLong(5, System.currentTimeMillis() - (86400000 * 4));
             submissionStatement.execute();
 
 			long rapscallionsSubmissionId = RANDOM.nextLong(Long.MAX_VALUE);
 			submissionStatement.setString(1, Long.toString(rapscallionsSubmissionId));
-			submissionStatement.setString(2, Long.toString(rapscallionsId));
-			submissionStatement.setString(3, Long.toString(exampleGardenId));
+			submissionStatement.setString(2, Long.toString(exampleGardenId));
+			submissionStatement.setString(3, Long.toString(rapscallionsId));
 			submissionStatement.setString(4, "HOekJDf0");
 			submissionStatement.setLong(5, System.currentTimeMillis() - (86400000 * 2));
 			submissionStatement.execute();
@@ -315,6 +339,6 @@ public class DevelopmentModeData {
 			ModGardenBackend.LOG.error("Failed to create database connection in insertDevelopmentModeData.", e);
 			return;
 		}
-		ModGardenBackend.LOG.info("Inserted development mode data");
+		ModGardenBackend.LOG.debug("Inserted development mode data");
 	}
 }

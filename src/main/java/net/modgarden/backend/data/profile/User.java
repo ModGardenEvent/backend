@@ -23,17 +23,19 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.UUID;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.*;
 
 public record User(String id,
                    String username,
                    String displayName,
+				   Optional<String> avatarUrl,
+				   Optional<String> pronouns,
                    String discordId,
                    Optional<String> modrinthId,
-                   long created,
+                   ZonedDateTime created,
                    List<String> projects,
                    List<String> events,
                    List<UUID> minecraftAccounts,
@@ -43,19 +45,22 @@ public record User(String id,
 	public static final String USERNAME_REGEX = "^(?=.{2,32}$).?[a-z0-9_]+(?:.[a-z0-9_]+)*.?$";
 	public static final String DISPLAY_NAME_REGEX = "^(?=.{2,32}$)[A-Za-z]+(( )?(('|-|.)?([A-Za-z])+))*$";
 
-    public static final Codec<User> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+    public static final Codec<User> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
             Codec.STRING.fieldOf("username").forGetter(User::username),
             Codec.STRING.fieldOf("display_name").forGetter(User::displayName),
+			Codec.STRING.optionalFieldOf("avatar_url").forGetter(User::avatarUrl),
+			Codec.STRING.optionalFieldOf("pronouns").forGetter(User::pronouns),
             Codec.STRING.fieldOf("discord_id").forGetter(User::discordId),
             Codec.STRING.optionalFieldOf("modrinth_id").forGetter(User::modrinthId),
-            Codec.LONG.fieldOf("created").forGetter(User::created),
+            ExtraCodecs.ISO_DATE_TIME.fieldOf("created").forGetter(User::created),
             Project.ID_CODEC.listOf().fieldOf("projects").forGetter(User::projects),
             Event.ID_CODEC.listOf().fieldOf("events").forGetter(User::events),
             ExtraCodecs.UUID_CODEC.listOf().fieldOf("minecraft_accounts").forGetter(User::minecraftAccounts),
             AwardInstance.UserValues.CODEC.listOf().fieldOf("awards").forGetter(User::awards)
     ).apply(inst, User::new));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(User::validate);
+	public static final Codec<User> CODEC = ID_CODEC.xmap(User::queryFromId, user -> user.id);
 
     public static void getUser(Context ctx) {
         String path = ctx.pathParam("user");
@@ -162,16 +167,17 @@ public record User(String id,
 			List<String> projects = result.getString("projects").isEmpty() ? List.of() : List.of(projectJson.split(","));
 			List<String> events = result.getString("events").isEmpty() ? List.of() : List.of(eventJson.split(","));
 
-
 			List<UUID> minecraftAccounts = ExtraCodecs.UUID_CODEC.listOf().decode(JsonOps.INSTANCE, JsonParser.parseString(minecraftAccountJson)).getOrThrow().getFirst();
 			List<AwardInstance.UserValues> awards = AwardInstance.UserValues.CODEC.listOf().decode(JsonOps.INSTANCE, JsonParser.parseString(awardJson)).getOrThrow().getFirst();
 			return new User(
 					result.getString("id"),
 					result.getString("username"),
 					result.getString("display_name"),
+					Optional.ofNullable(result.getString("avatar_url")),
+					Optional.ofNullable(result.getString("pronouns")),
 					result.getString("discord_id"),
 					Optional.ofNullable(result.getString("modrinth_id")),
-					result.getLong("created"),
+					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("created")), ZoneId.of("GMT")),
 					projects,
 					events,
 					minecraftAccounts,
@@ -197,8 +203,8 @@ public record User(String id,
     }
 
     private static String getUserModrinthId(String modrinthUsername) throws IOException, InterruptedException {
-        var modrinth = OAuthService.MODRINTH.authenticate();
-        var stream = modrinth.get("v2/user/" + modrinthUsername, HttpResponse.BodyHandlers.ofInputStream());
+        var modrinthClient = OAuthService.MODRINTH.authenticate();
+        var stream = modrinthClient.get("v2/user/" + modrinthUsername, HttpResponse.BodyHandlers.ofInputStream());
         if (stream.statusCode() != 200)
             return null;
         try (InputStreamReader reader = new InputStreamReader(stream.body())) {
@@ -210,8 +216,8 @@ public record User(String id,
     }
 
     private static String getUserDiscordId(String discordUsername) throws IOException, InterruptedException {
-        var client = OAuthService.DISCORD.authenticate();
-        var stream = client.get("guilds/1266288344644452363/members/search?query=" + discordUsername, HttpResponse.BodyHandlers.ofInputStream());
+        var discordClient = OAuthService.DISCORD.authenticate();
+        var stream = discordClient.get("guilds/1266288344644452363/members/search?query=" + discordUsername, HttpResponse.BodyHandlers.ofInputStream());
         if (stream.statusCode() != 200)
             return null;
         try (InputStreamReader reader = new InputStreamReader(stream.body())) {
@@ -227,6 +233,8 @@ public record User(String id,
                     "u.id, " +
                     "u.username, " +
                     "u.display_name, " +
+					"u.avatar_url, " +
+					"u.pronouns, " +
                     "u.discord_id, " +
                     "u.modrinth_id, " +
                     "u.created, " +

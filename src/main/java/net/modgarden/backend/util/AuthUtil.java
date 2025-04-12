@@ -26,7 +26,7 @@ public class AuthUtil {
                 .collect(Collectors.joining("&"));
     }
 
-    public static String insertTokenIntoDatabase(Context ctx, String accountId) {
+    public static String insertTokenIntoDatabase(Context ctx, String accountId, LinkCode.Service service) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              var checkAccountIdStatement = connection.prepareStatement("SELECT code FROM link_codes WHERE account_id = ?");
              var checkCodeStatement = connection.prepareStatement("SELECT 1 FROM link_codes WHERE code = ?");
@@ -46,7 +46,7 @@ public class AuthUtil {
             }
             insertStatement.setString(1, token);
             insertStatement.setString(2, accountId);
-            insertStatement.setString(3, LinkCode.Service.MODRINTH.serializedName());
+            insertStatement.setString(3, service.serializedName());
             insertStatement.setLong(4, AuthUtil.getTokenExpirationTime());
             insertStatement.execute();
             return token;

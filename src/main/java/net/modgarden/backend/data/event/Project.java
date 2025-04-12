@@ -14,22 +14,28 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.List;
 
+// TODO: Allow creating organisations, allow projects to be attributed to an organisation.
+// TODO: Potentially allow GitHub only projects. Not necessarily now, but more notes on this will be placed in internal team chats. - Calico
 public record Project(String id,
                       String slug,
                       String modrinthId,
-                      String attributedTo,
-                      List<String> authors) {
+					  String attributedTo,
+                      List<String> authors,
+					  List<String> builders) {
     public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(2);
-    public static final Codec<Project> CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
+    public static final Codec<Project> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Project::id),
             Codec.STRING.fieldOf("slug").forGetter(Project::slug),
             Codec.STRING.fieldOf("modrinth_id").forGetter(Project::modrinthId),
             User.ID_CODEC.fieldOf("attributed_to").forGetter(Project::attributedTo),
-            User.ID_CODEC.listOf().fieldOf("authors").forGetter(Project::authors)
+            User.ID_CODEC.listOf().fieldOf("authors").forGetter(Project::authors),
+			User.ID_CODEC.listOf().fieldOf("builders").forGetter(Project::builders)
     ).apply(inst, Project::new)));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(Project::validate);
+	public static final Codec<Project> CODEC = ID_CODEC.xmap(Project::queryFromId, Project::id);
 
     public static void getProject(Context ctx) {
         String path = ctx.pathParam("project");
@@ -39,7 +45,7 @@ public record Project(String id,
             return;
         }
         // TODO: Allow Modrinth as a service.
-        Project project = innerQuery(path);
+        Project project = queryFromId(path);
         if (project == null) {
             ModGardenBackend.LOG.debug("Could not find project '{}'.", path);
             ctx.result("Could not find project '" + path + "'.");
@@ -51,7 +57,7 @@ public record Project(String id,
         ctx.json(project);
     }
 
-    private static Project innerQuery(String id) {
+    public static Project queryFromId(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              PreparedStatement prepared = connection.prepareStatement(selectStatement("id = ?"))) {
             prepared.setString(1, id);
@@ -59,12 +65,14 @@ public record Project(String id,
             if (!result.isBeforeFirst())
                 return null;
 			List<String> authors = List.of(result.getString("authors").split(","));
+			List<String> builders = List.of(result.getString("builders").split(","));
 			return new Project(
-				result.getString("id"),
-				result.getString("slug"),
-				result.getString("modrinth_id"),
-				result.getString("attributed_to"),
-				authors
+					result.getString("id"),
+					result.getString("slug"),
+					result.getString("modrinth_id"),
+					result.getString("attributed_to"),
+					authors,
+					builders
 			);
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
@@ -80,27 +88,29 @@ public record Project(String id,
 			return;
 		}
 		var queryString = selectAllByUser(user);
-		try {
-			Connection connection = ModGardenBackend.createDatabaseConnection();
-			PreparedStatement prepared = connection.prepareStatement(queryString);
+		try (Connection connection = ModGardenBackend.createDatabaseConnection();
+			 PreparedStatement prepared = connection.prepareStatement(queryString)) {
 			ResultSet result = prepared.executeQuery();
 			var projectList = new JsonArray();
 			while (result.next()) {
 				var projectObject = new JsonObject();
 				var authors = new JsonArray();
+				var builders = new JsonArray();
 
 				for (String author : result.getString("authors").split(",")) {
 					authors.add(author);
+				}
+				for (String builder : result.getString("builders").split(",")) {
+					builders.add(builder);
 				}
 				projectObject.addProperty("id", result.getString("id"));
 				projectObject.addProperty("slug", result.getString("slug"));
 				projectObject.addProperty("modrinth_id", result.getString("modrinth_id"));
 				projectObject.addProperty("attributed_to", result.getString("attributed_to"));
 				projectObject.add("authors", authors);
+				projectObject.add("builders", builders);
 				projectList.add(projectObject);
 			}
-
-
 			ctx.json(projectList);
 		} catch (SQLException ex) {
 			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
@@ -123,19 +133,22 @@ public record Project(String id,
 			while (result.next()) {
 				var projectObject = new JsonObject();
 				var authors = new JsonArray();
+				var builders = new JsonArray();
 
 				for (String author : result.getString("authors").split(",")) {
 					authors.add(author);
+				}
+				for (String builder : result.getString("builders").split(",")) {
+					builders.add(builder);
 				}
 				projectObject.addProperty("id", result.getString("id"));
 				projectObject.addProperty("slug", result.getString("slug"));
 				projectObject.addProperty("modrinth_id", result.getString("modrinth_id"));
 				projectObject.addProperty("attributed_to", result.getString("attributed_to"));
 				projectObject.add("authors", authors);
+				projectObject.add("builders", builders);
 				projectList.add(projectObject);
 			}
-
-
 			ctx.json(projectList);
 		} catch (SQLException ex) {
 			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
@@ -153,14 +166,20 @@ public record Project(String id,
                     "WHEN a.user_id IS NOT NULL THEN group_concat(DISTINCT a.user_id)" +
                     "ELSE '' " +
                 "END AS authors " +
+				"CASE " +
+					"WHEN b.user_id IS NOT NULL THEN group_concat(DISTINCT b.user_id)" +
+					"ELSE '' " +
+				"END AS builders " +
                 "FROM " +
                     "projects p " +
                 "LEFT JOIN " +
                     "project_authors a ON p.id = a.project_id " +
+				"LEFT JOIN " +
+					"project_builders b ON p.id = b.project_id " +
                 "WHERE " +
                     "p." + whereStatement + " " +
                 "GROUP BY " +
-                    "p.id, p.modrinth_id, p.attributed_to";
+                    "p.id, p.slug, p.modrinth_id, p.attributed_to";
     }
 
 	private static String selectAllByUser(String user) {
@@ -170,9 +189,12 @@ public record Project(String id,
 				       p.modrinth_id,
 				       p.attributed_to,
 				       COALESCE(Group_concat(DISTINCT a.user_id), '') AS authors
+				       COALESCE(Group_concat(DISTINCT b.user_id), '') AS builders
 				FROM   projects p
 				       LEFT JOIN project_authors a
 				              ON p.id = a.project_id
+				       LEFT JOIN project_builders b
+				              ON b.id = b.project_id
 				       LEFT JOIN users u
 				              ON a.user_id = u.id
 				WHERE  p.id IN (SELECT pa.project_id
@@ -195,9 +217,12 @@ public record Project(String id,
 				   p.modrinth_id,
 				   p.attributed_to,
 				   COALESCE(Group_concat(DISTINCT a.user_id), '') AS authors
+				   COALESCE(Group_concat(DISTINCT b.user_id), '') AS builders
 			FROM projects p
 				LEFT JOIN project_authors a
 					ON p.id = a.project_id
+				LEFT JOIN project_builders b
+				    ON b.id = b.project_id
 				LEFT JOIN users u
 					ON a.user_id = u.id
 				LEFT JOIN submissions s

@@ -21,7 +21,7 @@ public record Award(String id,
                     String discordEmote,
                     String tooltip) {
     public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(4);
-    public static final Codec<Award> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+    public static final Codec<Award> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Award::id),
             Codec.STRING.fieldOf("slug").forGetter(Award::slug),
             Codec.STRING.fieldOf("display_name").forGetter(Award::displayName),
@@ -30,6 +30,7 @@ public record Award(String id,
             Codec.STRING.fieldOf("tooltip").forGetter(Award::tooltip)
     ).apply(inst, Award::new));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(Award::validate);
+	public static final Codec<Award> CODEC = ID_CODEC.xmap(id -> innerQuery("id = ?", id), Award::id);
 
     public static void getAwardType(Context ctx) {
         String path = ctx.pathParam("award");

@@ -1,4 +1,4 @@
-package net.modgarden.backend.handler;
+package net.modgarden.backend.handler.v1;
 
 import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
@@ -17,7 +17,7 @@ import java.sql.SQLException;
 import java.util.Optional;
 
 public class RegistrationHandler {
-    public static void registerThroughDiscordBot(Context ctx) {
+    public static void discordBotRegister(Context ctx) {
         if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
             ctx.result("Unauthorized.");
             ctx.status(401);

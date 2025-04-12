@@ -3,29 +3,37 @@ package net.modgarden.backend.data.event;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.util.ExtraCodecs;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 
+// TODO: Potentially allow GitHub only submissions. Not necessarily now, but more notes on this will be placed in internal team chats. - Calico
 public record Submission(String id,
-                         String projectId,
                          String event,
+						 String projectId,
                          String modrinthVersionId,
-                         long submitted) {
+						 ZonedDateTime submitted) {
     public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(3);
-    public static final Codec<Submission> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+    public static final Codec<Submission> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Submission::id),
-            Codec.STRING.fieldOf("project_id").forGetter(Submission::projectId),
             Event.ID_CODEC.fieldOf("event").forGetter(Submission::event),
+			Codec.STRING.fieldOf("project_id").forGetter(Submission::projectId),
             Codec.STRING.fieldOf("modrinth_version_id").forGetter(Submission::modrinthVersionId),
-            Codec.LONG.fieldOf("submitted").forGetter(Submission::submitted)
+            ExtraCodecs.ISO_DATE_TIME.fieldOf("submitted").forGetter(Submission::submitted)
     ).apply(inst, Submission::new));
+	public static final Codec<String> ID_CODEC = Codec.STRING.validate(Submission::validate);
+	public static final Codec<Submission> CODEC = ID_CODEC.xmap(Submission::innerQuery, Submission::id);
 
     public static void getSubmission(Context ctx) {
         String path = ctx.pathParam("submission");
@@ -62,10 +70,10 @@ public record Submission(String id,
 			while (result.next()) {
 				var submission = new JsonObject();
 				submission.addProperty("id", result.getString("id"));
-				submission.addProperty("project_id", result.getString("project_id"));
 				submission.addProperty("event", result.getString("event"));
+				submission.addProperty("project_id", result.getString("project_id"));
 				submission.addProperty("modrinth_version_id", result.getString("modrinth_version_id"));
-				submission.addProperty("submitted_at", result.getLong("submitted_at"));
+				submission.addProperty("submitted", result.getLong("submitted"));
 				submissions.add(submission);
 			}
 			ctx.json(submissions);
@@ -90,10 +98,10 @@ public record Submission(String id,
 			while (result.next()) {
 				var submission = new JsonObject();
 				submission.addProperty("id", result.getString("id"));
-				submission.addProperty("project_id", result.getString("project_id"));
 				submission.addProperty("event", result.getString("event"));
+				submission.addProperty("project_id", result.getString("project_id"));
 				submission.addProperty("modrinth_version_id", result.getString("modrinth_version_id"));
-				submission.addProperty("submitted_at", result.getLong("submitted_at"));
+				submission.addProperty("submitted", result.getLong("submitted"));
 				submissions.add(submission);
 			}
 			ctx.json(submissions);
@@ -112,10 +120,10 @@ public record Submission(String id,
                 return null;
 			return new Submission(
 					result.getString("id"),
-					result.getString("project_id"),
 					result.getString("event"),
+					result.getString("project_id"),
 					result.getString("modrinth_version_id"),
-					result.getLong("submitted_at")
+					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("submitted")), ZoneId.of("GMT"))
 			);
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
@@ -129,18 +137,18 @@ public record Submission(String id,
                 "s.project_id, " +
                 "s.event, " +
                 "s.modrinth_version_id, " +
-                "s.submitted_at " +
+                "s.submitted " +
                 "FROM " +
                     "submissions s " +
                 "WHERE " +
                     "s.id = ? " +
                 "GROUP BY " +
-                    "s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted_at";
+                    "s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted";
     }
 
 	private static String selectByUserStatement(String user) {
 		return """
-				SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted_at
+				SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
 				FROM submissions s
 					LEFT JOIN projects p on p.id = s.project_id
 					LEFT JOIN project_authors a on a.project_id = s.project_id
@@ -156,11 +164,24 @@ public record Submission(String id,
 
 	private static String selectByEventStatement(String event) {
 		return """
-			SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted_at
+			SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
 			FROM submissions s
 				LEFT JOIN events e on e.id = s.event
 				WHERE s.event = '%s' OR e.slug = '%s'
 				GROUP BY s.id
 			""".formatted(event, event);
+	}
+
+	private static DataResult<String> validate(String id) {
+		try (Connection connection = ModGardenBackend.createDatabaseConnection();
+			 PreparedStatement prepared = connection.prepareStatement("SELECT 1 FROM submissions WHERE id = ?")) {
+			prepared.setString(1, id);
+			ResultSet result = prepared.executeQuery();
+			if (result != null && result.getBoolean(1))
+				return DataResult.success(id);
+		} catch (SQLException ex) {
+			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
+		}
+		return DataResult.error(() -> "Failed to get project with id '" + id + "'.");
 	}
 }
