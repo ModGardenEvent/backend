@@ -13,6 +13,5 @@ jobs:
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
-          passphrase: ${{ secrets.PASSPHRASE }}
           key: ${{ secrets.SSH_KEY }}
           script: sh ./update_backend.sh
