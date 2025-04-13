@@ -31,6 +31,8 @@ import java.util.Locale;
 import java.util.Optional;
 
 public class DiscordBotSubmissionHandler {
+	public static final String REGEX = "^[a-zA-Z0-9!@$()`.+,_\"-]*$";
+
 	public static void submitModrinth(Context ctx) {
 		if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
 			ctx.result("Unauthorized.");
@@ -54,6 +56,12 @@ public class DiscordBotSubmissionHandler {
 				return;
 			}
 			Body body = bodyResult.getOrThrow().getFirst();
+
+			if (!body.modrinthSlug().matches(REGEX)) {
+				ctx.status(422);
+				ctx.result("Invalid Modrinth slug.");
+				return;
+			}
 
 			User user = User.query(body.discordId, "discord");
 			if (user == null || user.modrinthId().isEmpty()) {
