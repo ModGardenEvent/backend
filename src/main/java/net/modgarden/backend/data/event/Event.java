@@ -69,7 +69,40 @@ public record Event(String id,
 
 	public static void getEvents(Context ctx) {
 		try (Connection connection = ModGardenBackend.createDatabaseConnection()) {
-			var result = connection.createStatement().executeQuery(selectAllStatement());
+			var result = connection.createStatement().executeQuery("SELECT * FROM events");
+			var submissions = new JsonArray();
+			while (result.next()) {
+				var submission = new JsonObject();
+				submission.addProperty("id", result.getString("id"));
+				submission.addProperty("slug", result.getString("slug"));
+				submission.addProperty("display_name", result.getString("display_name"));
+				submission.addProperty("description", result.getString("description"));
+				submission.addProperty("minecraft_version", result.getString("minecraft_version"));
+				submission.addProperty("loader", result.getLong("loader"));
+				submission.addProperty("loader_version", result.getLong("loader_version"));
+				submission.add("start_time",
+						ExtraCodecs.ISO_DATE_TIME
+								.encodeStart(JsonOps.INSTANCE, ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")))
+								.getOrThrow());
+				submission.add("end_time",
+						ExtraCodecs.ISO_DATE_TIME
+								.encodeStart(JsonOps.INSTANCE, ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT")))
+								.getOrThrow());
+				submissions.add(submission);
+			}
+			ctx.json(submissions);
+		} catch (SQLException ex) {
+			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
+		}
+	}
+
+	public static void getActiveEvents(Context ctx) {
+		try (Connection connection = ModGardenBackend.createDatabaseConnection();
+			 PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM events WHERE start_time <= ? AND end_time > ?")) {
+			long currentMillis = System.currentTimeMillis();
+			preparedStatement.setLong(1, currentMillis);
+			preparedStatement.setLong(2, currentMillis);
+			var result = preparedStatement.executeQuery();
 			var submissions = new JsonArray();
 			while (result.next()) {
 				var submission = new JsonObject();
@@ -198,8 +231,4 @@ public record Event(String id,
                 "GROUP BY " +
                     "e.id, e.slug, e.display_name, e.description, e.minecraft_version, e.loader, e.loader_version, e.start_time, e.end_time";
     }
-
-	private static String selectAllStatement() {
-		return "SELECT * FROM events";
-	}
 }
