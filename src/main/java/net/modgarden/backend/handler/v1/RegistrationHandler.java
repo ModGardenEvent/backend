@@ -62,6 +62,10 @@ public class RegistrationHandler {
 				ctx.result("Could not resolve username.");
 				ctx.status(500);
 				return;
+			} else if (username.length() > 32) {
+				ctx.result("Username is too long.");
+				ctx.status(422);
+				return;
 			} else if (!username.matches(User.USERNAME_REGEX)) {
 				ctx.result("Username has invalid characters.");
 				ctx.status(422);
@@ -71,8 +75,8 @@ public class RegistrationHandler {
 				ctx.result("Could not resolve display name.");
 				ctx.status(500);
 				return;
-			} else if (!displayName.matches(User.DISPLAY_NAME_REGEX)) {
-				ctx.result("Display name has invalid characters.");
+			} else if (displayName.length() > 32) {
+				ctx.result("Display name is too long.");
 				ctx.status(422);
 				return;
 			}

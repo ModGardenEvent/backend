@@ -44,8 +44,7 @@ public record User(String id,
 				   List<Permission> permissions) {
     public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(0);
 
-	public static final String USERNAME_REGEX = "^(?=.{2,32}$).?[a-z0-9_]+(?:.[a-z0-9_]+)*.?$";
-	public static final String DISPLAY_NAME_REGEX = "^(?=.{2,32}$)[A-Za-z]+(( )?(('|-|.)?([A-Za-z])+))*$";
+	public static final String USERNAME_REGEX = "^(?=.{2,32}$)[a-z_0-9]+?$";
 
     public static final Codec<User> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
