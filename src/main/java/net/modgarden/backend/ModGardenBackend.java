@@ -161,6 +161,7 @@ public class ModGardenBackend {
                         "discord_id TEXT UNIQUE NOT NULL," +
                         "modrinth_id TEXT UNIQUE," +
                         "created INTEGER NOT NULL," +
+						"permissions INTEGER UNIQUE NOT NULL," +
                         "PRIMARY KEY(id)" +
                     ")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS events (" +

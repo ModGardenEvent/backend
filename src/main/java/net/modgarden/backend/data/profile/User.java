@@ -9,6 +9,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.award.AwardInstance;
 import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Project;
@@ -39,7 +40,8 @@ public record User(String id,
                    List<String> projects,
                    List<String> events,
                    List<UUID> minecraftAccounts,
-                   List<AwardInstance.UserValues> awards) {
+                   List<AwardInstance.UserValues> awards,
+				   List<Permission> permissions) {
     public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(0);
 
 	public static final String USERNAME_REGEX = "^(?=.{2,32}$).?[a-z0-9_]+(?:.[a-z0-9_]+)*.?$";
@@ -57,7 +59,8 @@ public record User(String id,
             Project.ID_CODEC.listOf().fieldOf("projects").forGetter(User::projects),
             Event.ID_CODEC.listOf().fieldOf("events").forGetter(User::events),
             ExtraCodecs.UUID_CODEC.listOf().fieldOf("minecraft_accounts").forGetter(User::minecraftAccounts),
-            AwardInstance.UserValues.CODEC.listOf().fieldOf("awards").forGetter(User::awards)
+            AwardInstance.UserValues.CODEC.listOf().fieldOf("awards").forGetter(User::awards),
+			Permission.LIST_CODEC.fieldOf("permissions").forGetter(User::permissions)
     ).apply(inst, User::new));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(User::validate);
 	public static final Codec<User> CODEC = ID_CODEC.xmap(User::queryFromId, user -> user.id);
@@ -169,6 +172,7 @@ public record User(String id,
 
 			List<UUID> minecraftAccounts = ExtraCodecs.UUID_CODEC.listOf().decode(JsonOps.INSTANCE, JsonParser.parseString(minecraftAccountJson)).getOrThrow().getFirst();
 			List<AwardInstance.UserValues> awards = AwardInstance.UserValues.CODEC.listOf().decode(JsonOps.INSTANCE, JsonParser.parseString(awardJson)).getOrThrow().getFirst();
+
 			return new User(
 					result.getString("id"),
 					result.getString("username"),
@@ -181,7 +185,8 @@ public record User(String id,
 					projects,
 					events,
 					minecraftAccounts,
-					awards
+					awards,
+					Permission.fromLong(result.getLong("permissions"))
 			);
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
@@ -238,6 +243,7 @@ public record User(String id,
                     "u.discord_id, " +
                     "u.modrinth_id, " +
                     "u.created, " +
+					"u.permissions, " +
                     "CASE " +
                         "WHEN p.id NOT NULL THEN group_concat(DISTINCT p.id) " +
                         "ELSE '' " +
@@ -271,6 +277,6 @@ public record User(String id,
                 "WHERE " +
                     "u." + whereStatement + " " +
                 "GROUP BY " +
-                    "u.id, u.username, u.display_name, u.discord_id, u.modrinth_id, u.created";
+                    "u.id, u.username, u.display_name, u.discord_id, u.modrinth_id, u.created, u.permissions";
     }
 }

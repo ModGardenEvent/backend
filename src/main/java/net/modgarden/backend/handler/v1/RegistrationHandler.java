@@ -37,7 +37,7 @@ public class RegistrationHandler {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              var checkDiscordIdStatement = connection.prepareStatement("SELECT 1 FROM users WHERE discord_id = ?");
 			 var checkUsernameStatement = connection.prepareStatement("SELECT 1 FROM users WHERE username = ?");
-             var insertStatement = connection.prepareStatement("INSERT INTO users(id, username, display_name, discord_id, created) VALUES (?, ?, ?, ?, ?)")) {
+             var insertStatement = connection.prepareStatement("INSERT INTO users(id, username, display_name, discord_id, created, permissions) VALUES (?, ?, ?, ?, ?, ?)")) {
 			checkDiscordIdStatement.setString(1, body.id);
             ResultSet existingDiscordUser = checkDiscordIdStatement.executeQuery();
             if (existingDiscordUser != null && existingDiscordUser.getBoolean(1)) {
@@ -92,6 +92,7 @@ public class RegistrationHandler {
             insertStatement.setString(3, displayName);
             insertStatement.setString(4, body.id);
             insertStatement.setLong(5, System.currentTimeMillis());
+			insertStatement.setLong(6, 0);
             insertStatement.execute();
         } catch (SQLException | IOException | InterruptedException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
