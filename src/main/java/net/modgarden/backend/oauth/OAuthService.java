@@ -21,7 +21,7 @@ import java.util.Date;
 
 public enum OAuthService {
     DISCORD("1305609404837527612", OAuthService::authenticateDiscord),
-    MODRINTH("4g0H4NkM", OAuthService::authenticateModrinth),
+    MODRINTH("Q2tuKyb4", OAuthService::authenticateModrinth),
 	GITHUB("Iv23li4vLb7sDuZOiRmf", OAuthService::authenticateGithub);
 
 	public final String clientId;
