@@ -12,14 +12,15 @@ public class DevelopmentModeData {
 	public static void insertDevelopmentModeData() {
 		try {
 			Connection connection = ModGardenBackend.createDatabaseConnection();
-			var userStatement = connection.prepareStatement("INSERT OR IGNORE INTO users(id, username, display_name, discord_id, created, modrinth_id) VALUES (?, ?, ?, ?, ?, ?)");
+			var userStatement = connection.prepareStatement("INSERT OR IGNORE INTO users(id, username, display_name, discord_id, created, permissions, modrinth_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
 			long ultrusId = RANDOM.nextLong(Long.MAX_VALUE);
 			userStatement.setString(1, Long.toString(ultrusId));
 			userStatement.setString(2, "ultrusbot");
 			userStatement.setString(3, "UltrusBot");
 			userStatement.setString(4, "852948197356863528");
 			userStatement.setLong(5, System.currentTimeMillis());
-			userStatement.setString(6, "RlpLaNSn");
+			userStatement.setLong(6, 1);
+			userStatement.setString(7, "RlpLaNSn");
 			userStatement.execute();
 
             long calicoId = RANDOM.nextLong(Long.MAX_VALUE);
@@ -28,7 +29,8 @@ public class DevelopmentModeData {
 			userStatement.setString(3, "Calico");
 			userStatement.setString(4, "680986902240690176");
 			userStatement.setLong(5, System.currentTimeMillis());
-			userStatement.setString(6, "84zsGbft");
+			userStatement.setLong(6, 1);
+			userStatement.setString(7, "84zsGbft");
 			userStatement.execute();
 
 			long greencowId = RANDOM.nextLong(Long.MAX_VALUE);
@@ -37,7 +39,8 @@ public class DevelopmentModeData {
 			userStatement.setString(3, "GreenBot");
 			userStatement.setString(4, "876135519526977587");
 			userStatement.setLong(5, System.currentTimeMillis());
-			userStatement.setNull(6, Types.VARCHAR);
+			userStatement.setLong(6, 0);
+			userStatement.setNull(7, Types.VARCHAR);
 			userStatement.execute();
 
 
