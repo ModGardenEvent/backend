@@ -97,18 +97,21 @@ public record User(String id,
 
         if ("modrinth".equalsIgnoreCase(service)) {
             user = queryFromModrinthUsername(path.toLowerCase(Locale.ROOT));
-            if (user == null)
-                user = queryFromModrinthId(path);
+            if (user == null) {
+				user = queryFromModrinthId(path);
+			}
             return user;
         } else if ("discord".equalsIgnoreCase(service)) {
             user = queryFromDiscordUsername(path.toLowerCase(Locale.ROOT));
-            if (user == null)
-                user = queryFromDiscordId(path);
+            if (user == null) {
+				user = queryFromDiscordId(path);
+			}
             return user;
         } else {
 			user = queryFromUsername(path);
-			if (user == null)
+			if (user == null) {
 				user = queryFromId(path);
+			}
 		}
         return user;
     }
