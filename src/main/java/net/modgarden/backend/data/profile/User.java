@@ -100,18 +100,16 @@ public record User(String id,
             if (user == null)
                 user = queryFromModrinthId(path);
             return user;
-        }
-
-        if ("discord".equalsIgnoreCase(service)) {
+        } else if ("discord".equalsIgnoreCase(service)) {
             user = queryFromDiscordUsername(path.toLowerCase(Locale.ROOT));
             if (user == null)
                 user = queryFromDiscordId(path);
             return user;
-        }
-
-        user = queryFromUsername(path);
-        if (user == null)
-            user = queryFromId(path);
+        } else {
+			user = queryFromUsername(path);
+			if (user == null)
+				user = queryFromId(path);
+		}
         return user;
     }
 
