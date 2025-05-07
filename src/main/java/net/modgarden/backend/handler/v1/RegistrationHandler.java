@@ -62,6 +62,10 @@ public class RegistrationHandler {
 				ctx.result("Could not resolve username.");
 				ctx.status(500);
 				return;
+			} else if (username.length() < 3) {
+				ctx.result("Username is too short.");
+				ctx.status(422);
+				return;
 			} else if (username.length() > 32) {
 				ctx.result("Username is too long.");
 				ctx.status(422);
@@ -71,9 +75,14 @@ public class RegistrationHandler {
 				ctx.status(422);
 				return;
 			}
+
 			if (displayName == null) {
 				ctx.result("Could not resolve display name.");
 				ctx.status(500);
+				return;
+			} else if (displayName.isBlank()) {
+				ctx.result("Display name cannot be exclusively whitespace.");
+				ctx.status(422);
 				return;
 			} else if (displayName.length() > 32) {
 				ctx.result("Display name is too long.");
