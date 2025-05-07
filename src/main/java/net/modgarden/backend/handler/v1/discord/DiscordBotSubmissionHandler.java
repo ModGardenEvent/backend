@@ -121,7 +121,6 @@ public class DiscordBotSubmissionHandler {
 						ResultSet authorsCheck = projectAuthorsCheckStatement.executeQuery();
 						if (!authorsCheck.getBoolean(1)) {
 							ctx.status(401);
-							;
 							ctx.result("Unauthorized to submit Modrinth project '" + title + "' to event '" + event.displayName() + "'.");
 							return;
 						}
