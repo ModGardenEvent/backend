@@ -21,10 +21,7 @@ import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.profile.MinecraftAccount;
 import net.modgarden.backend.data.profile.User;
-import net.modgarden.backend.handler.v1.discord.DiscordBotLinkHandler;
-import net.modgarden.backend.handler.v1.discord.DiscordBotSubmissionHandler;
-import net.modgarden.backend.handler.v1.discord.DiscordBotUnlinkHandler;
-import net.modgarden.backend.handler.v1.discord.DiscordBotOAuthHandler;
+import net.modgarden.backend.handler.v1.discord.*;
 import net.modgarden.backend.handler.v1.RegistrationHandler;
 import net.modgarden.backend.util.AuthUtil;
 import org.jetbrains.annotations.NotNull;
@@ -84,6 +81,8 @@ public class ModGardenBackend {
 
 		CODEC_REGISTRY.put(RegistrationHandler.Body.class, RegistrationHandler.Body.CODEC);
 		CODEC_REGISTRY.put(DiscordBotLinkHandler.Body.class, DiscordBotLinkHandler.Body.CODEC);
+		CODEC_REGISTRY.put(DiscordBotProfileHandler.PostBody.class, DiscordBotProfileHandler.PostBody.CODEC);
+		CODEC_REGISTRY.put(DiscordBotProfileHandler.DeleteBody.class, DiscordBotProfileHandler.DeleteBody.CODEC);
 		CODEC_REGISTRY.put(DiscordBotSubmissionHandler.Body.class, DiscordBotSubmissionHandler.Body.CODEC);
 		CODEC_REGISTRY.put(DiscordBotUnlinkHandler.Body.class, DiscordBotUnlinkHandler.Body.CODEC);
 
@@ -134,6 +133,14 @@ public class ModGardenBackend {
 
 		post(app, 1, "discord/link", DiscordBotLinkHandler::link);
 		post(app, 1, "discord/unlink", DiscordBotUnlinkHandler::unlink);
+
+		post(app, 1, "discord/modify/username", DiscordBotProfileHandler::modifyUsername);
+		post(app, 1, "discord/modify/displayname", DiscordBotProfileHandler::modifyDisplayName);
+		post(app, 1, "discord/modify/pronouns", DiscordBotProfileHandler::modifyPronouns);
+		post(app, 1, "discord/modify/avatar", DiscordBotProfileHandler::modifyAvatarUrl);
+
+		post(app, 1, "discord/remove/pronouns", DiscordBotProfileHandler::removePronouns);
+		post(app, 1, "discord/remove/avatar", DiscordBotProfileHandler::removeAvatarUrl);
 	}
 
 	private static void get(Javalin app, int version, String endpoint, Handler consumer) {
