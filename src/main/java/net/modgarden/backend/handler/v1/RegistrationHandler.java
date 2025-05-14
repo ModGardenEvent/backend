@@ -14,6 +14,7 @@ import java.net.http.HttpResponse;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Locale;
 import java.util.Optional;
 
 public class RegistrationHandler {
@@ -31,7 +32,7 @@ public class RegistrationHandler {
 		}
 
 		Body body = ctx.bodyAsClass(Body.class);
-		String username = body.username.orElse(null);
+		String username = body.username.map(s -> s.toLowerCase(Locale.ROOT)).orElse(null);
 		String displayName = body.displayName.orElse(null);
 
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
