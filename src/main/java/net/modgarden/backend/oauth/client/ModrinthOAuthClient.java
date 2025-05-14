@@ -10,11 +10,12 @@ import java.net.http.HttpResponse;
 
 public record ModrinthOAuthClient() implements OAuthClient {
 	public static final String API_URL = "https://api.modrinth.com/";
+	private static final String USER_AGENT = "ModGardenEvent/backend/" + Landing.getInstance().version() + " (modgarden.net)";
 
     @Override
 	public <T> HttpResponse<T> get(String endpoint, HttpResponse.BodyHandler<T> bodyHandler, String... headers) throws IOException, InterruptedException {
 		var req = HttpRequest.newBuilder(URI.create(API_URL + endpoint))
-				.header("User-Agent", "ModGardenEvent/backend/" + Landing.getInstance().version() + " (modgarden.net)");
+				.header("User-Agent", USER_AGENT);
         if (headers.length > 0)
             req.headers(headers);
 
@@ -24,7 +25,7 @@ public record ModrinthOAuthClient() implements OAuthClient {
     @Override
     public <T> HttpResponse<T> post(String endpoint, HttpRequest.BodyPublisher bodyPublisher, HttpResponse.BodyHandler<T> bodyHandler, String... headers) throws IOException, InterruptedException {
         var req = HttpRequest.newBuilder(URI.create(API_URL + endpoint))
-                .header("User-Agent", "ModGardenEvent/backend/" + Landing.getInstance().version() + " (modgarden.net)");
+                .header("User-Agent", USER_AGENT);
         if (headers.length > 0)
             req.headers(headers);
         req.POST(bodyPublisher);
