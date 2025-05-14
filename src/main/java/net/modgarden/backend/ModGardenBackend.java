@@ -61,7 +61,7 @@ public class ModGardenBackend {
 
         try {
             if (new File("./database.db").createNewFile()) {
-                LOG.info("Successfuly created database file.");
+                LOG.info("Successfully created database file.");
             }
             createDatabaseContents();
             updateSchemaVersion();
