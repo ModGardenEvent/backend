@@ -1,6 +1,7 @@
 package net.modgarden.backend.data.profile;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
@@ -98,19 +99,17 @@ public record User(String id,
         if ("modrinth".equalsIgnoreCase(service)) {
             user = queryFromModrinthUsername(path.toLowerCase(Locale.ROOT));
             if (user == null) {
-				user = queryFromModrinthId(path);
+				return queryFromModrinthId(path);
 			}
-            return user;
         } else if ("discord".equalsIgnoreCase(service)) {
             user = queryFromDiscordUsername(path.toLowerCase(Locale.ROOT));
             if (user == null) {
-				user = queryFromDiscordId(path);
+				return queryFromDiscordId(path);
 			}
-            return user;
         } else {
 			user = queryFromUsername(path);
 			if (user == null) {
-				user = queryFromId(path);
+				return queryFromId(path);
 			}
 		}
         return user;
@@ -226,11 +225,29 @@ public record User(String id,
         if (stream.statusCode() != 200)
             return null;
         try (InputStreamReader reader = new InputStreamReader(stream.body())) {
-            JsonElement element = JsonParser.parseReader(reader);
-            if (!element.isJsonArray() || element.getAsJsonArray().isEmpty() || !element.getAsJsonArray().get(0).isJsonObject())
-                return null;
-            return element.getAsJsonArray().get(0).getAsJsonObject().getAsJsonObject("user").getAsJsonPrimitive("id").getAsString();
-        }
+			JsonElement element = JsonParser.parseReader(reader);
+			if (!element.isJsonArray() || element.getAsJsonArray().isEmpty()) {
+				return null;
+			}
+			for (JsonElement userElement : element.getAsJsonArray()) {
+				if (!userElement.isJsonObject()) {
+					return null;
+				}
+				JsonObject userObject = userElement.getAsJsonObject();
+				if (
+						!userObject.has("user") ||
+						!userObject.getAsJsonObject("user").has("id") ||
+						!userObject.getAsJsonObject("user").getAsJsonPrimitive("id").isString() ||
+						!userObject.getAsJsonObject("user").has("username") ||
+						!userObject.getAsJsonObject("user").getAsJsonPrimitive("username").isString() ||
+						!discordUsername.equals(userObject.getAsJsonObject("user").getAsJsonPrimitive("username").getAsString())
+				) {
+					return null;
+				}
+				return userElement.getAsJsonObject().getAsJsonObject("user").getAsJsonPrimitive("id").getAsString();
+			}
+			return null;
+		}
     }
 
     private static String selectStatement(String whereStatement) {
