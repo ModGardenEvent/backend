@@ -3,8 +3,8 @@ package net.modgarden.backend.data.fixer.fix;
 import net.modgarden.backend.data.fixer.DatabaseFix;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 public class V2ToV3 extends DatabaseFix {
 	public V2ToV3() {
@@ -13,18 +13,14 @@ public class V2ToV3 extends DatabaseFix {
 
 	@Override
 	public void fix(Connection connection) throws SQLException {
-		PreparedStatement renameOldRoleIdToTempValueStatement = connection.prepareStatement("ALTER TABLE events RENAME COLUMN discord_role_id TO temp");
-		PreparedStatement addDiscordRoleIdStatement = connection.prepareStatement("ALTER TABLE events ADD COLUMN registration_time INTEGER NOT NULL");
-		PreparedStatement insertDiscordRoleIdsStatement = connection.prepareStatement("INSERT INTO events(discord_role_id) SELECT temp FROM events");
-		PreparedStatement dropTempStatement = connection.prepareStatement("ALTER TABLE events DROP COLUMN temp");
+		Statement discordRoleIdToNotNullStatement = connection.createStatement();
+		discordRoleIdToNotNullStatement.addBatch("ALTER TABLE events RENAME COLUMN discord_role_id TO temp");
+		discordRoleIdToNotNullStatement.addBatch("ALTER TABLE events ADD COLUMN discord_role_id TEXT");
+		discordRoleIdToNotNullStatement.addBatch("INSERT INTO events(discord_role_id) SELECT temp FROM events");
+		discordRoleIdToNotNullStatement.addBatch("ALTER TABLE events DROP COLUMN temp");
+		discordRoleIdToNotNullStatement.executeBatch();
 
-		PreparedStatement addRegistrationTimeStatement = connection.prepareStatement("ALTER TABLE events ADD COLUMN registration_time INTEGER NOT NULL");
-
-		renameOldRoleIdToTempValueStatement.execute();
-		addDiscordRoleIdStatement.execute();
-		insertDiscordRoleIdsStatement.execute();
-		dropTempStatement.execute();
-
-		addRegistrationTimeStatement.execute();
+		Statement addRegistrationTimeStatement = connection.createStatement();
+		addRegistrationTimeStatement.execute("ALTER TABLE events ADD COLUMN registration_time INTEGER NOT NULL");
 	}
 }

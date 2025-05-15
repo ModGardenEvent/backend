@@ -3,8 +3,8 @@ package net.modgarden.backend.data.fixer.fix;
 import net.modgarden.backend.data.fixer.DatabaseFix;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 public class V1ToV2 extends DatabaseFix {
 	public V1ToV2() {
@@ -13,14 +13,13 @@ public class V1ToV2 extends DatabaseFix {
 
 	@Override
 	public void fix(Connection connection) throws SQLException {
-		PreparedStatement addDiscordRoleStatement = connection.prepareStatement("ALTER TABLE events ADD COLUMN discord_role_id TEXT NOT NULL");
+		Statement addDiscordRoleStatement = connection.createStatement();
+		addDiscordRoleStatement.execute("ALTER TABLE events ADD COLUMN discord_role_id TEXT NOT NULL");
 
-		PreparedStatement dropDescriptionStatement = connection.prepareStatement("ALTER TABLE events DROP COLUMN description");
-		PreparedStatement dropLoaderVersionStatement = connection.prepareStatement("ALTER TABLE events DROP COLUMN loader_version");
+		Statement dropDescriptionStatement = connection.createStatement();
+		dropDescriptionStatement.execute("ALTER TABLE events DROP COLUMN description");
 
-		addDiscordRoleStatement.execute();
-
-		dropDescriptionStatement.execute();
-		dropLoaderVersionStatement.execute();
+		Statement dropLoaderVersionStatement = connection.createStatement();
+		dropLoaderVersionStatement.execute("ALTER TABLE events DROP COLUMN loader_version");
 	}
 }

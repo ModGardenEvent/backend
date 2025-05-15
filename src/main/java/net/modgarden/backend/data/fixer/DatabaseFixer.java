@@ -20,14 +20,15 @@ public class DatabaseFixer {
 
 	public static void fixDatabase() {
 		try (Connection connection = ModGardenBackend.createDatabaseConnection();
-			 PreparedStatement prepared = connection.prepareStatement("SELECT 1 FROM schema WHERE version = ?")) {
-			prepared.setInt(1, ModGardenBackend.DATABASE_SCHEMA_VERSION);
-			ResultSet query = prepared.executeQuery();
-			if (query.getBoolean(1))
+			 PreparedStatement schemaVersion = connection.prepareStatement("SELECT version FROM schema")) {
+			ResultSet query = schemaVersion.executeQuery();
+
+			int version = query.getInt(1);
+			if (version >= ModGardenBackend.DATABASE_SCHEMA_VERSION)
 				return;
 
 			for (DatabaseFix fix : FIXES) {
-				fix.fixInternal(connection);
+				fix.fixInternal(connection, version);
 			}
 		} catch (Exception ex) {
 			ModGardenBackend.LOG.error("Failed to fix data: ", ex);
