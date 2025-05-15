@@ -88,7 +88,7 @@ public class DiscordBotOAuthHandler {
 		String code = ctx.queryParam("code");
 		if (code == null) {
 			ctx.status(422);
-			ctx.result("Modrinth access code is not specified.");
+			ctx.result("Microsoft access code is not specified.");
 			return;
 		}
 
