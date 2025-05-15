@@ -2,7 +2,6 @@ package net.modgarden.backend.data.event;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
@@ -25,10 +24,9 @@ import java.util.Locale;
 public record Event(String id,
                     String slug,
                     String displayName,
-					String description,
+					String discordRoleId,
                     String minecraftVersion,
                     String loader,
-                    String loaderVersion,
                     ZonedDateTime startTime,
                     ZonedDateTime endTime) {
     public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(1);
@@ -36,10 +34,9 @@ public record Event(String id,
             Codec.STRING.fieldOf("id").forGetter(Event::id),
             Codec.STRING.fieldOf("slug").forGetter(Event::slug),
             Codec.STRING.fieldOf("display_name").forGetter(Event::displayName),
-			Codec.STRING.fieldOf("description").forGetter(Event::description),
+			Codec.STRING.fieldOf("discord_role_id").forGetter(Event::discordRoleId),
             Codec.STRING.fieldOf("minecraft_version").forGetter(Event::minecraftVersion),
             Codec.STRING.fieldOf("loader").forGetter(Event::loader),
-            Codec.STRING.fieldOf("loader_version").forGetter(Event::loaderVersion),
             ExtraCodecs.ISO_DATE_TIME.fieldOf("start_time").forGetter(Event::startTime),
 			ExtraCodecs.ISO_DATE_TIME.fieldOf("end_time").forGetter(Event::endTime)
     ).apply(inst, Event::new)));
@@ -76,10 +73,9 @@ public record Event(String id,
 				submission.addProperty("id", result.getString("id"));
 				submission.addProperty("slug", result.getString("slug"));
 				submission.addProperty("display_name", result.getString("display_name"));
-				submission.addProperty("description", result.getString("description"));
+				submission.addProperty("discord_role_id", result.getString("discord_role_id"));
 				submission.addProperty("minecraft_version", result.getString("minecraft_version"));
 				submission.addProperty("loader", result.getLong("loader"));
-				submission.addProperty("loader_version", result.getLong("loader_version"));
 				submission.add("start_time",
 						ExtraCodecs.ISO_DATE_TIME
 								.encodeStart(JsonOps.INSTANCE, ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")))
@@ -109,10 +105,9 @@ public record Event(String id,
 				submission.addProperty("id", result.getString("id"));
 				submission.addProperty("slug", result.getString("slug"));
 				submission.addProperty("display_name", result.getString("display_name"));
-				submission.addProperty("description", result.getString("description"));
+				submission.addProperty("discord_role_id", result.getString("discord_role_id"));
 				submission.addProperty("minecraft_version", result.getString("minecraft_version"));
 				submission.addProperty("loader", result.getLong("loader"));
-				submission.addProperty("loader_version", result.getLong("loader_version"));
 				submission.add("start_time",
 						ExtraCodecs.ISO_DATE_TIME
 								.encodeStart(JsonOps.INSTANCE, ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")))
@@ -150,10 +145,9 @@ public record Event(String id,
 					result.getString("id"),
 					result.getString("slug"),
 					result.getString("display_name"),
-					result.getString("description"),
+					result.getString("discord_role_id"),
 					result.getString("minecraft_version"),
 					result.getString("loader"),
-					result.getString("loader_version"),
 					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")),
 					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT"))
 			);
@@ -174,10 +168,9 @@ public record Event(String id,
 					result.getString("id"),
 					result.getString("slug"),
 					result.getString("display_name"),
-					result.getString("description"),
+					result.getString("discord_role_id"),
 					result.getString("minecraft_version"),
 					result.getString("loader"),
-					result.getString("loader_version"),
 					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")),
 					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT"))
 			);
@@ -221,7 +214,6 @@ public record Event(String id,
 				"e.description, " +
                 "e.minecraft_version, " +
                 "e.loader, " +
-                "e.loader_version, " +
                 "e.start_time, " +
 				"e.end_time " +
                 "FROM " +

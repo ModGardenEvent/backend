@@ -19,6 +19,7 @@ import net.modgarden.backend.data.award.AwardInstance;
 import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
+import net.modgarden.backend.data.fixer.DatabaseFixer;
 import net.modgarden.backend.data.profile.MinecraftAccount;
 import net.modgarden.backend.data.profile.User;
 import net.modgarden.backend.handler.v1.discord.*;
@@ -47,24 +48,31 @@ public class ModGardenBackend {
 
     public static final String URL = "development".equals(DOTENV.get("env")) ? "http://localhost:7070" : "https://api.modgarden.net";
 	public static final Logger LOG = LoggerFactory.getLogger(ModGardenBackend.class);
+
+	public static final int DATABASE_SCHEMA_VERSION = 2;
     private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
 
 	public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
 
     public static final String SAFE_URL_REGEX = "[a-zA-Z0-9!@$()`.+,_\"-]+";
-    private static final int DATABASE_SCHEMA_VERSION = 1;
 
     public static void main(String[] args) {
 		if ("development".equals(DOTENV.get("env")))
 			((ch.qos.logback.classic.Logger)LOG).setLevel(Level.DEBUG);
 
         try {
-            if (new File("./database.db").createNewFile()) {
-                LOG.info("Successfully created database file.");
+			boolean createdFile = new File("./database.db").createNewFile();
+            if (createdFile) {
+				createDatabaseContents();
+				updateSchemaVersion();
+                LOG.debug("Successfully created database file.");
             }
-            createDatabaseContents();
-            updateSchemaVersion();
+			DatabaseFixer.createFixers();
+			DatabaseFixer.fixDatabase();
+			if (!createdFile) {
+				updateSchemaVersion();
+			}
         } catch (IOException ex) {
             LOG.error("Failed to create database file.", ex);
         }
@@ -143,10 +151,12 @@ public class ModGardenBackend {
 		post(app, 1, "discord/remove/avatar", DiscordBotProfileHandler::removeAvatarUrl);
 	}
 
+	@SuppressWarnings("SameParameterValue")
 	private static void get(Javalin app, int version, String endpoint, Handler consumer) {
 		app.get("/v" + version + "/" + endpoint, consumer);
 	}
 
+	@SuppressWarnings("SameParameterValue")
 	private static void post(Javalin app, int version, String endpoint, Handler consumer) {
 		app.post("/v" + version + "/" + endpoint, consumer);
 	}
@@ -178,7 +188,6 @@ public class ModGardenBackend {
 						"description TEXT NOT NULL," +
                         "minecraft_version TEXT NOT NULL," +
                         "loader TEXT NOT NULL," +
-                        "loader_version TEXT NOT NULL," +
                         "start_time INTEGER NOT NULL," +
 						"end_time INTEGER NOT NULL," +
                         "PRIMARY KEY (id)" +
@@ -254,7 +263,7 @@ public class ModGardenBackend {
             LOG.error("Failed to create database tables. ", ex);
             return;
         }
-        LOG.info("Created database tables.");
+        LOG.debug("Created database tables.");
 
 		if ("development".equals(DOTENV.get("env"))) {
 			DevelopmentModeData.insertDevelopmentModeData();
@@ -275,16 +284,16 @@ public class ModGardenBackend {
             LOG.error("Failed to update database schema version. ", ex);
             return;
         }
-        LOG.info("Updated database schema version.");
+        LOG.debug("Updated database schema version.");
     }
 
     private static JsonMapper createDFUMapper() {
         return new JsonMapper() {
             private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-            @NotNull
+			@SuppressWarnings("unchecked")
             @Override
-            public String toJsonString(@NotNull Object obj, @NotNull Type type) {
+            public @NotNull String toJsonString(@NotNull Object obj, @NotNull Type type) {
                 if (obj instanceof JsonElement)
                     return GSON.toJson(obj);
                 if (!CODEC_REGISTRY.containsKey(type))
@@ -292,16 +301,17 @@ public class ModGardenBackend {
                 return ((Codec<Object>)CODEC_REGISTRY.get(type)).encodeStart(JsonOps.INSTANCE, obj).getOrThrow().toString();
             }
 
-            @Override
-            public <T> T fromJsonString(@NotNull String json, @NotNull Type type) {
+			@SuppressWarnings("unchecked")
+			@Override
+            public @NotNull <T> T fromJsonString(@NotNull String json, @NotNull Type type) {
                 if (!CODEC_REGISTRY.containsKey(type))
                     throw new UnsupportedOperationException("Cannot decode object type " + type);
                 return (T) CODEC_REGISTRY.get(type).decode(JsonOps.INSTANCE, JsonParser.parseString(json)).getOrThrow().getFirst();
             }
 
-            @NotNull
+			@SuppressWarnings("unchecked")
             @Override
-            public <T> T fromJsonStream(@NotNull InputStream json, @NotNull Type type) {
+            public @NotNull <T> T fromJsonStream(@NotNull InputStream json, @NotNull Type type) {
                 if (!CODEC_REGISTRY.containsKey(type))
                     throw new UnsupportedOperationException("Cannot decode object type " + type);
                 try (InputStreamReader reader = new InputStreamReader(json)) {

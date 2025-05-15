@@ -36,6 +36,7 @@ dependencies {
 	implementation(libs.jwt.impl)
 	implementation(libs.jwt.gson)
     implementation(libs.base62)
+	implementation(libs.jetbrains.annotations)
 }
 
 tasks {
