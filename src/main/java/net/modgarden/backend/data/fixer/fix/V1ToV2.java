@@ -14,10 +14,12 @@ public class V1ToV2 extends DatabaseFix {
 	@Override
 	public void fix(Connection connection) throws SQLException {
 		PreparedStatement addDiscordRoleStatement = connection.prepareStatement("ALTER TABLE events ADD COLUMN discord_role_id TEXT NOT NULL");
+
 		PreparedStatement dropDescriptionStatement = connection.prepareStatement("ALTER TABLE events DROP COLUMN description");
 		PreparedStatement dropLoaderVersionStatement = connection.prepareStatement("ALTER TABLE events DROP COLUMN loader_version");
 
 		addDiscordRoleStatement.execute();
+
 		dropDescriptionStatement.execute();
 		dropLoaderVersionStatement.execute();
 	}

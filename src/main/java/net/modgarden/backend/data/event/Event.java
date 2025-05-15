@@ -20,13 +20,15 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.Locale;
+import java.util.Optional;
 
 public record Event(String id,
                     String slug,
                     String displayName,
-					String discordRoleId,
+					Optional<String> discordRoleId,
                     String minecraftVersion,
                     String loader,
+					ZonedDateTime registrationTime,
                     ZonedDateTime startTime,
                     ZonedDateTime endTime) {
     public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(1);
@@ -34,9 +36,10 @@ public record Event(String id,
             Codec.STRING.fieldOf("id").forGetter(Event::id),
             Codec.STRING.fieldOf("slug").forGetter(Event::slug),
             Codec.STRING.fieldOf("display_name").forGetter(Event::displayName),
-			Codec.STRING.fieldOf("discord_role_id").forGetter(Event::discordRoleId),
+			Codec.STRING.optionalFieldOf("discord_role_id").forGetter(Event::discordRoleId),
             Codec.STRING.fieldOf("minecraft_version").forGetter(Event::minecraftVersion),
             Codec.STRING.fieldOf("loader").forGetter(Event::loader),
+			ExtraCodecs.ISO_DATE_TIME.fieldOf("registration_time").forGetter(Event::registrationTime),
             ExtraCodecs.ISO_DATE_TIME.fieldOf("start_time").forGetter(Event::startTime),
 			ExtraCodecs.ISO_DATE_TIME.fieldOf("end_time").forGetter(Event::endTime)
     ).apply(inst, Event::new)));
@@ -67,26 +70,30 @@ public record Event(String id,
 	public static void getEvents(Context ctx) {
 		try (Connection connection = ModGardenBackend.createDatabaseConnection()) {
 			var result = connection.createStatement().executeQuery("SELECT * FROM events");
-			var submissions = new JsonArray();
+			var events = new JsonArray();
 			while (result.next()) {
-				var submission = new JsonObject();
-				submission.addProperty("id", result.getString("id"));
-				submission.addProperty("slug", result.getString("slug"));
-				submission.addProperty("display_name", result.getString("display_name"));
-				submission.addProperty("discord_role_id", result.getString("discord_role_id"));
-				submission.addProperty("minecraft_version", result.getString("minecraft_version"));
-				submission.addProperty("loader", result.getLong("loader"));
-				submission.add("start_time",
+				var event = new JsonObject();
+				event.addProperty("id", result.getString("id"));
+				event.addProperty("slug", result.getString("slug"));
+				event.addProperty("display_name", result.getString("display_name"));
+
+				if (result.getString("discord_role_id") != null) {
+					event.addProperty("discord_role_id", result.getString("discord_role_id"));
+				}
+
+				event.addProperty("minecraft_version", result.getString("minecraft_version"));
+				event.addProperty("loader", result.getLong("loader"));
+				event.add("start_time",
 						ExtraCodecs.ISO_DATE_TIME
 								.encodeStart(JsonOps.INSTANCE, ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")))
 								.getOrThrow());
-				submission.add("end_time",
+				event.add("end_time",
 						ExtraCodecs.ISO_DATE_TIME
 								.encodeStart(JsonOps.INSTANCE, ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT")))
 								.getOrThrow());
-				submissions.add(submission);
+				events.add(event);
 			}
-			ctx.json(submissions);
+			ctx.json(events);
 		} catch (SQLException ex) {
 			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
 		}
@@ -99,26 +106,30 @@ public record Event(String id,
 			preparedStatement.setLong(1, currentMillis);
 			preparedStatement.setLong(2, currentMillis);
 			var result = preparedStatement.executeQuery();
-			var submissions = new JsonArray();
+			var events = new JsonArray();
 			while (result.next()) {
-				var submission = new JsonObject();
-				submission.addProperty("id", result.getString("id"));
-				submission.addProperty("slug", result.getString("slug"));
-				submission.addProperty("display_name", result.getString("display_name"));
-				submission.addProperty("discord_role_id", result.getString("discord_role_id"));
-				submission.addProperty("minecraft_version", result.getString("minecraft_version"));
-				submission.addProperty("loader", result.getLong("loader"));
-				submission.add("start_time",
+				var event = new JsonObject();
+				event.addProperty("id", result.getString("id"));
+				event.addProperty("slug", result.getString("slug"));
+				event.addProperty("display_name", result.getString("display_name"));
+
+				if (result.getString("discord_role_id") != null) {
+					event.addProperty("discord_role_id", result.getString("discord_role_id"));
+				}
+
+				event.addProperty("minecraft_version", result.getString("minecraft_version"));
+				event.addProperty("loader", result.getLong("loader"));
+				event.add("start_time",
 						ExtraCodecs.ISO_DATE_TIME
 								.encodeStart(JsonOps.INSTANCE, ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")))
 								.getOrThrow());
-				submission.add("end_time",
+				event.add("end_time",
 						ExtraCodecs.ISO_DATE_TIME
 								.encodeStart(JsonOps.INSTANCE, ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT")))
 								.getOrThrow());
-				submissions.add(submission);
+				events.add(event);
 			}
-			ctx.json(submissions);
+			ctx.json(events);
 		} catch (SQLException ex) {
 			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
 		}
@@ -145,9 +156,10 @@ public record Event(String id,
 					result.getString("id"),
 					result.getString("slug"),
 					result.getString("display_name"),
-					result.getString("discord_role_id"),
+					Optional.ofNullable(result.getString("discord_role_id")),
 					result.getString("minecraft_version"),
 					result.getString("loader"),
+					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("registration_time")), ZoneId.of("GMT")),
 					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")),
 					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT"))
 			);
@@ -168,9 +180,10 @@ public record Event(String id,
 					result.getString("id"),
 					result.getString("slug"),
 					result.getString("display_name"),
-					result.getString("discord_role_id"),
+					Optional.ofNullable(result.getString("discord_role_id")),
 					result.getString("minecraft_version"),
 					result.getString("loader"),
+					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("registration_time")), ZoneId.of("GMT")),
 					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")),
 					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT"))
 			);
@@ -211,9 +224,10 @@ public record Event(String id,
                 "e.id, " +
                 "e.slug, " +
                 "e.display_name, " +
-				"e.description, " +
+				"e.discord_role_id, " +
                 "e.minecraft_version, " +
                 "e.loader, " +
+				"e.registration_time, " +
                 "e.start_time, " +
 				"e.end_time " +
                 "FROM " +
@@ -221,6 +235,6 @@ public record Event(String id,
                 "WHERE " +
                     "e." + whereStatement + " " +
                 "GROUP BY " +
-                    "e.id, e.slug, e.display_name, e.description, e.minecraft_version, e.loader, e.loader_version, e.start_time, e.end_time";
+                    "e.id, e.slug, e.display_name, e.discord_role_id, e.minecraft_version, e.loader, e.registration_time, e.start_time, e.end_time";
     }
 }

@@ -9,6 +9,8 @@ import java.util.Random;
 
 public class DevelopmentModeData {
 	private static final Random RANDOM = new Random(123);
+	private static final long DAY_MILLISECONDS = 86400000L;
+
 	public static void insertDevelopmentModeData() {
 		try {
 			Connection connection = ModGardenBackend.createDatabaseConnection();
@@ -44,56 +46,53 @@ public class DevelopmentModeData {
 			userStatement.execute();
 
 
-			var eventStatement = connection.prepareStatement("INSERT OR IGNORE INTO events(id, slug, display_name, description, start_time, end_time, minecraft_version, loader, loader_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+			var eventStatement = connection.prepareStatement("INSERT OR IGNORE INTO events(id, slug, display_name, discord_role_id, registration_time, start_time, end_time, minecraft_version, loader) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
 			long mojankId = RANDOM.nextLong(Long.MAX_VALUE);
 			eventStatement.setString(1, Long.toString(mojankId));
 			eventStatement.setString(2, "mojank-fest");
 			eventStatement.setString(3, "MoJank Fest");
-			eventStatement.setString(4, "A fest where you create the finest Mojank possible!\nWait? We can't use the word 'Fest' now? Damn it ModFest.");
-			eventStatement.setLong(5, System.currentTimeMillis() - (86400000L * 365));
-			eventStatement.setLong(6, System.currentTimeMillis() - (86400000L * 344));
-			eventStatement.setString(7, "1.20.1");
-			eventStatement.setString(8, "fabric");
-			eventStatement.setString(9, "0.15.11");
+			eventStatement.setNull(4, Types.VARCHAR);
+			eventStatement.setLong(5, System.currentTimeMillis() - (DAY_MILLISECONDS * 365));
+			eventStatement.setLong(6, System.currentTimeMillis() - (DAY_MILLISECONDS * 365));
+			eventStatement.setLong(7, System.currentTimeMillis() - (DAY_MILLISECONDS * 344));
+			eventStatement.setString(8, "1.20.1");
+			eventStatement.setString(9, "fabric");
 			eventStatement.execute();
 
             long festivalId = RANDOM.nextLong(Long.MAX_VALUE);
             eventStatement.setString(1, Long.toString(festivalId));
             eventStatement.setString(2, "festival");
             eventStatement.setString(3, "Mod Garden: Festival");
-			eventStatement.setString(4, "We can't use the word 'Festival' either? Damn it ModFest.");
-            eventStatement.setLong(5, System.currentTimeMillis() - (86400000L * 222));
-			eventStatement.setLong(6, System.currentTimeMillis() - (86400000L * 162));
-			eventStatement.setString(7, "1.21.1");
-			eventStatement.setString(8, "fabric");
-			eventStatement.setString(9, "0.16.8");
+			eventStatement.setNull(4, Types.VARCHAR);
+			eventStatement.setLong(5, System.currentTimeMillis() - (DAY_MILLISECONDS * 229));
+            eventStatement.setLong(6, System.currentTimeMillis() - (DAY_MILLISECONDS * 222));
+			eventStatement.setLong(7, System.currentTimeMillis() - (DAY_MILLISECONDS * 162));
+			eventStatement.setString(8, "1.21.1");
+			eventStatement.setString(9, "fabric");
             eventStatement.execute();
 
 			long exampleGardenId = RANDOM.nextLong(Long.MAX_VALUE);
 			eventStatement.setString(1, Long.toString(exampleGardenId));
-			eventStatement.setString(2, "example-garden");
-			eventStatement.setString(3, "Example Garden");
-			eventStatement.setString(4, "An Example Garden where you create an example mod.");
-			eventStatement.setLong(5, System.currentTimeMillis());
-			eventStatement.setLong(6, System.currentTimeMillis() + (86400000L * 60));
-			eventStatement.setString(7, "1.21.5");
-			eventStatement.setString(8, "fabric");
-			eventStatement.setString(9, "0.16.13");
+			eventStatement.setString(2, "mod-garden-example");
+			eventStatement.setString(3, "Mod Garden: Example");
+			eventStatement.setString(4, ModGardenBackend.DOTENV.get("", ""));
+			eventStatement.setLong(5, System.currentTimeMillis() - (DAY_MILLISECONDS * 7));
+			eventStatement.setLong(6, System.currentTimeMillis());
+			eventStatement.setLong(7, System.currentTimeMillis() + (DAY_MILLISECONDS * 60));
+			eventStatement.setString(8, "1.21.5");
+			eventStatement.setString(9, "fabric");
 			eventStatement.execute();
 
 			long otherEvent = RANDOM.nextLong(Long.MAX_VALUE);
 			eventStatement.setString(1, Long.toString(otherEvent));
 			eventStatement.setString(2, "other-event");
 			eventStatement.setString(3, "Other Event");
-			eventStatement.setString(4, """
-					Super Mario Bros. 2 is a 1988 platform game developed and published by Nintendo for the Nintendo Entertainment System. After the smash hit Super Mario Bros. in 1985, Nintendo quickly released a minor adaptation of the original with advanced difficulty titled Super Mario Bros. 2, for its mature market in Japan in 1986. However, Nintendo of America found this sequel too similar to its predecessor, and its difficulty too frustrating, for the nascent American market. This prompted a second Super Mario Bros. sequel based on Yume Kōjō: Doki Doki Panic,[a] Nintendo's 1987 Family Computer Disk System game which had been based on a prototype platforming game and released as an advergame for Fuji Television's Yume Kōjō '87 media technology expo. The characters, enemies, and themes in Doki Doki Panic have the mascots and theme of the festival, and were adapted into the Super Mario theme to make a Western Super Mario Bros. sequel.
-					\n
-					Super Mario Bros. 2 was a resounding success, becoming the fifth-best-selling game on the NES, and was critically well-received for its design aspects and for differentiating the Super Mario series. It was re-released in Japan for the Famicom as Super Mario USA[b] (1992), and has been remade twice, first included in the Super Mario All-Stars (1993) collection for the Super NES, and as Super Mario Advance (2001) for the Game Boy Advance. It is included as part of the Virtual Console and Nintendo Classics services.""");
-			eventStatement.setLong(5, System.currentTimeMillis());
-			eventStatement.setLong(6, System.currentTimeMillis() + (86400000L * 21));
-			eventStatement.setString(7, "1.21.1");
-			eventStatement.setString(8, "neoforge");
-			eventStatement.setString(9, "21.1.146");
+			eventStatement.setString(4, ModGardenBackend.DOTENV.get("OTHER_EVENT_ROLE_ID", ""));
+			eventStatement.setLong(5, System.currentTimeMillis() + (DAY_MILLISECONDS * 7));
+			eventStatement.setLong(6, System.currentTimeMillis() + (DAY_MILLISECONDS * 14));
+			eventStatement.setLong(7, System.currentTimeMillis() + (DAY_MILLISECONDS * 35));
+			eventStatement.setString(8, "1.21.1");
+			eventStatement.setString(9, "neoforge");
 
 			eventStatement.execute();
 
@@ -339,7 +338,7 @@ public class DevelopmentModeData {
 			minecraftAccountStatement.execute();
 
 		} catch (SQLException e) {
-			ModGardenBackend.LOG.error("Failed to create database connection in insertDevelopmentModeData.", e);
+			ModGardenBackend.LOG.error("Failed to insert development mode data.", e);
 			return;
 		}
 		ModGardenBackend.LOG.debug("Inserted development mode data");

@@ -49,7 +49,7 @@ public class ModGardenBackend {
     public static final String URL = "development".equals(DOTENV.get("env")) ? "http://localhost:7070" : "https://api.modgarden.net";
 	public static final Logger LOG = LoggerFactory.getLogger(ModGardenBackend.class);
 
-	public static final int DATABASE_SCHEMA_VERSION = 2;
+	public static final int DATABASE_SCHEMA_VERSION = 3;
     private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
 
 	public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
@@ -185,9 +185,10 @@ public class ModGardenBackend {
                         "id TEXT UNIQUE NOT NULL," +
                         "slug TEXT UNIQUE NOT NULL," +
                         "display_name TEXT NOT NULL," +
-						"description TEXT NOT NULL," +
+						"discord_role_id TEXT, " +
                         "minecraft_version TEXT NOT NULL," +
                         "loader TEXT NOT NULL," +
+						"registration_time INTEGER NOT NULL," +
                         "start_time INTEGER NOT NULL," +
 						"end_time INTEGER NOT NULL," +
                         "PRIMARY KEY (id)" +
