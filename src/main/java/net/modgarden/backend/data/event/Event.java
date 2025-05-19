@@ -31,6 +31,7 @@ public record Event(String id,
 					ZonedDateTime registrationTime,
                     ZonedDateTime startTime,
                     ZonedDateTime endTime) {
+	// TOOD: Endpoint for creating events.
     public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(1);
     public static final Codec<Event> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Event::id),
@@ -66,6 +67,78 @@ public record Event(String id,
         ModGardenBackend.LOG.debug("Successfully queried event from path '{}'", path);
         ctx.json(event);
     }
+
+	public static void getCurrentRegistrationEvent(Context ctx) {
+		Event event = null;
+		try (Connection connection = ModGardenBackend.createDatabaseConnection();
+			 PreparedStatement preparedStatement = connection.prepareStatement(selectStatement("e.registration_time <= ? AND e.end_time > ?", "start_time"))) {
+			long currentMillis = System.currentTimeMillis();
+			preparedStatement.setLong(1, currentMillis);
+			preparedStatement.setLong(2, currentMillis);
+			ResultSet result = preparedStatement.executeQuery();
+			if (result.isBeforeFirst()) {
+				event = new Event(
+						result.getString("id"),
+						result.getString("slug"),
+						result.getString("display_name"),
+						Optional.ofNullable(result.getString("discord_role_id")),
+						result.getString("minecraft_version"),
+						result.getString("loader"),
+						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("registration_time")), ZoneId.of("GMT")),
+						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")),
+						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT"))
+				);
+			}
+		} catch (SQLException ex) {
+			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
+		}
+
+		if (event == null) {
+			ModGardenBackend.LOG.debug("Could not find a current event with registration time active.");
+			ctx.result("No current event with registration time active.");
+			ctx.status(404);
+			return;
+		}
+
+		ModGardenBackend.LOG.debug("Successfully queried a current event ({}) with registration time active.", event.slug);
+		ctx.json(event);
+	}
+
+	public static void getCurrentDevelopmentEvent(Context ctx) {
+		Event event = null;
+		try (Connection connection = ModGardenBackend.createDatabaseConnection();
+			 PreparedStatement preparedStatement = connection.prepareStatement(selectStatement("start_time <= ? AND end_time > ?", "start_time"))) {
+			long currentMillis = System.currentTimeMillis();
+			preparedStatement.setLong(1, currentMillis);
+			preparedStatement.setLong(2, currentMillis);
+			ResultSet result = preparedStatement.executeQuery();
+			if (result.isBeforeFirst()) {
+				event = new Event(
+						result.getString("id"),
+						result.getString("slug"),
+						result.getString("display_name"),
+						Optional.ofNullable(result.getString("discord_role_id")),
+						result.getString("minecraft_version"),
+						result.getString("loader"),
+						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("registration_time")), ZoneId.of("GMT")),
+						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")),
+						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT"))
+				);
+			}
+		} catch (SQLException ex) {
+			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
+		}
+
+		if (event == null) {
+			ModGardenBackend.LOG.debug("Could not find a current event with development time active.");
+			ctx.result("No current event with development time active.");
+			ctx.status(404);
+			return;
+		}
+
+		ModGardenBackend.LOG.debug("Successfully queried a current event ({}) with development time active.", event.slug);
+		ctx.json(event);
+	}
 
 	public static void getEvents(Context ctx) {
 		try (Connection connection = ModGardenBackend.createDatabaseConnection()) {
@@ -147,7 +220,7 @@ public record Event(String id,
 
     public static Event queryFromId(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement(selectStatement("id = ?"))) {
+             PreparedStatement prepared = connection.prepareStatement(selectStatement("e.id = ?", "id"))) {
             prepared.setString(1, id);
             ResultSet result = prepared.executeQuery();
             if (!result.isBeforeFirst())
@@ -171,7 +244,7 @@ public record Event(String id,
 
     public static Event queryFromSlug(String slug) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement(selectStatement("slug = ?"))) {
+             PreparedStatement prepared = connection.prepareStatement(selectStatement("e.slug = ?", "slug"))) {
             prepared.setString(1, slug);
             ResultSet result = prepared.executeQuery();
             if (!result.isBeforeFirst())
@@ -219,22 +292,23 @@ public record Event(String id,
 		return DataResult.error(() -> "Failed to get event with slug '" + slug + "'.");
 	}
 
-    private static String selectStatement(String whereStatement) {
-        return "SELECT " +
-                "e.id, " +
-                "e.slug, " +
-                "e.display_name, " +
-				"e.discord_role_id, " +
-                "e.minecraft_version, " +
-                "e.loader, " +
-				"e.registration_time, " +
-                "e.start_time, " +
-				"e.end_time " +
-                "FROM " +
-                    "events e " +
-                "WHERE " +
-                    "e." + whereStatement + " " +
-                "GROUP BY " +
-                    "e.id, e.slug, e.display_name, e.discord_role_id, e.minecraft_version, e.loader, e.registration_time, e.start_time, e.end_time";
+    private static String selectStatement(String whereStatement, String orderBy) {
+		return """
+				SELECT
+					e.id,
+					e.slug,
+					e.display_name,
+					e.discord_role_id,
+					e.minecraft_version,
+					e.loader,
+					e.registration_time,
+					e.start_time,
+					e.end_time
+				FROM events e
+				WHERE"""
+				+ " " + whereStatement + " " +
+				"ORDER BY "
+					+ orderBy +
+				" LIMIT 1;";
     }
 }

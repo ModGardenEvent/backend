@@ -119,6 +119,8 @@ public class ModGardenBackend {
 		get(app, 1, "event/{event}/submissions", Submission::getSubmissionsByEvent);
 
 		get(app, 1, "events", Event::getEvents);
+		get(app, 1, "events/current/registration", Event::getCurrentRegistrationEvent);
+		get(app, 1, "events/current/development", Event::getCurrentDevelopmentEvent);
 		get(app, 1, "events/active", Event::getActiveEvents);
 
 		get(app, 1, "mcaccount/{mcaccount}", MinecraftAccount::getAccount);
