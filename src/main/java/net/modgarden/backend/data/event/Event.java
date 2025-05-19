@@ -71,7 +71,7 @@ public record Event(String id,
 	public static void getCurrentRegistrationEvent(Context ctx) {
 		Event event = null;
 		try (Connection connection = ModGardenBackend.createDatabaseConnection();
-			 PreparedStatement preparedStatement = connection.prepareStatement(selectStatement("e.registration_time <= ? AND e.end_time > ?", "start_time"))) {
+			 PreparedStatement preparedStatement = connection.prepareStatement(selectStatement("e.registration_time <= ? AND e.end_time > ?", "registration_time"))) {
 			long currentMillis = System.currentTimeMillis();
 			preparedStatement.setLong(1, currentMillis);
 			preparedStatement.setLong(2, currentMillis);
