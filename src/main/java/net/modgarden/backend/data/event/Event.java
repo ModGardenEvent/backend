@@ -31,7 +31,7 @@ public record Event(String id,
 					ZonedDateTime registrationTime,
                     ZonedDateTime startTime,
                     ZonedDateTime endTime) {
-	// TOOD: Endpoint for creating events.
+	// TODO: Endpoint for creating events.
     public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(1);
     public static final Codec<Event> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Event::id),
