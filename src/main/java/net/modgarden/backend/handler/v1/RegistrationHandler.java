@@ -19,19 +19,9 @@ import java.util.Optional;
 
 public class RegistrationHandler {
     public static void discordBotRegister(Context ctx) {
-        if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
-            ctx.result("Unauthorized.");
-            ctx.status(401);
-            return;
-        }
+	    if (ModGardenBackend.isUnauthorized(ctx)) return;
 
-		if (!("application/json").equals(ctx.header("Content-Type"))) {
-			ctx.result("Invalid Content-Type.");
-			ctx.status(415);
-			return;
-		}
-
-		Body body = ctx.bodyAsClass(Body.class);
+	    Body body = ctx.bodyAsClass(Body.class);
 		String username = body.username.map(s -> s.toLowerCase(Locale.ROOT)).orElse(null);
 		String displayName = body.displayName.orElse(null);
 

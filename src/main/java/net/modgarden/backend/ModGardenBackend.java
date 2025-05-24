@@ -9,6 +9,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 import io.github.cdimascio.dotenv.Dotenv;
 import io.javalin.Javalin;
+import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import io.javalin.json.JsonMapper;
 import net.modgarden.backend.data.BackendError;
@@ -169,6 +170,7 @@ public class ModGardenBackend {
     }
 
     private static void createDatabaseContents() {
+
         try (Connection connection = createDatabaseConnection();
              Statement statement = connection.createStatement()) {
             statement.addBatch("CREATE TABLE IF NOT EXISTS users (" +
@@ -325,4 +327,19 @@ public class ModGardenBackend {
             }
         };
     }
+
+	public static boolean isUnauthorized(Context ctx) {
+		if (!("Basic " + DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
+			ctx.result("Unauthorized.");
+			ctx.status(401);
+			return true;
+		}
+
+		if (!("application/json").equals(ctx.header("Content-Type"))) {
+			ctx.result("Invalid Content-Type.");
+			ctx.status(415);
+			return true;
+		}
+		return false;
+	}
 }

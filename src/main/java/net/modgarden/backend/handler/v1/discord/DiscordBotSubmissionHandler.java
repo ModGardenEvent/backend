@@ -34,17 +34,7 @@ public class DiscordBotSubmissionHandler {
 	public static final String REGEX = "^[a-zA-Z0-9!@$()`.+,_\"-]*$";
 
 	public static void submitModrinth(Context ctx) {
-		if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
-			ctx.result("Unauthorized.");
-			ctx.status(401);
-			return;
-		}
-
-		if (!("application/json").equals(ctx.header("Content-Type"))) {
-			ctx.result("Invalid Content-Type.");
-			ctx.status(415);
-			return;
-		}
+		if (ModGardenBackend.isUnauthorized(ctx)) return;
 
 		try (InputStream bodyStream = ctx.bodyInputStream();
 			 InputStreamReader bodyReader = new InputStreamReader(bodyStream)) {
@@ -196,7 +186,7 @@ public class DiscordBotSubmissionHandler {
 	}
 
 	private static String toFriendlyLoaderString(String value) {
-		if (value.equals("neoforge")) {
+		if (value.equals("neoforge")) { // what about LiteLoader? :tiny_potato:
 			return "NeoForge";
 		}
 		return value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1);

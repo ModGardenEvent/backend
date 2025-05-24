@@ -10,19 +10,9 @@ import java.sql.*;
 
 public class DiscordBotProfileHandler {
     public static void modifyUsername(Context ctx) {
-        if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
-            ctx.result("Unauthorized.");
-            ctx.status(401);
-            return;
-        }
+	    if (ModGardenBackend.isUnauthorized(ctx)) return;
 
-		if (!("application/json").equals(ctx.header("Content-Type"))) {
-			ctx.result("Invalid Content-Type.");
-			ctx.status(415);
-			return;
-		}
-
-		PostBody body = ctx.bodyAsClass(PostBody.class);
+	    PostBody body = ctx.bodyAsClass(PostBody.class);
 
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
 			 var selectStatement = connection.prepareStatement("SELECT username FROM users WHERE discord_id = ?");
@@ -77,17 +67,7 @@ public class DiscordBotProfileHandler {
     }
 
 	public static void modifyDisplayName(Context ctx) {
-		if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
-			ctx.result("Unauthorized.");
-			ctx.status(401);
-			return;
-		}
-
-		if (!("application/json").equals(ctx.header("Content-Type"))) {
-			ctx.result("Invalid Content-Type.");
-			ctx.status(415);
-			return;
-		}
+		if (ModGardenBackend.isUnauthorized(ctx)) return;
 
 		PostBody body = ctx.bodyAsClass(PostBody.class);
 
@@ -124,17 +104,7 @@ public class DiscordBotProfileHandler {
 	}
 
 	public static void modifyPronouns(Context ctx) {
-		if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
-			ctx.result("Unauthorized.");
-			ctx.status(401);
-			return;
-		}
-
-		if (!("application/json").equals(ctx.header("Content-Type"))) {
-			ctx.result("Invalid Content-Type.");
-			ctx.status(415);
-			return;
-		}
+		if (ModGardenBackend.isUnauthorized(ctx)) return;
 
 		PostBody body = ctx.bodyAsClass(PostBody.class);
 
@@ -172,17 +142,7 @@ public class DiscordBotProfileHandler {
 
 
 	public static void modifyAvatarUrl(Context ctx) {
-		if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
-			ctx.result("Unauthorized.");
-			ctx.status(401);
-			return;
-		}
-
-		if (!("application/json").equals(ctx.header("Content-Type"))) {
-			ctx.result("Invalid Content-Type.");
-			ctx.status(415);
-			return;
-		}
+		if (ModGardenBackend.isUnauthorized(ctx)) return;
 
 		PostBody body = ctx.bodyAsClass(PostBody.class);
 
@@ -219,17 +179,7 @@ public class DiscordBotProfileHandler {
 
 
 	public static void removePronouns(Context ctx) {
-		if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
-			ctx.result("Unauthorized.");
-			ctx.status(401);
-			return;
-		}
-
-		if (!("application/json").equals(ctx.header("Content-Type"))) {
-			ctx.result("Invalid Content-Type.");
-			ctx.status(415);
-			return;
-		}
+		if (ModGardenBackend.isUnauthorized(ctx)) return;
 
 		DeleteBody body = ctx.bodyAsClass(DeleteBody.class);
 
@@ -259,17 +209,7 @@ public class DiscordBotProfileHandler {
 
 
 	public static void removeAvatarUrl(Context ctx) {
-		if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
-			ctx.result("Unauthorized.");
-			ctx.status(401);
-			return;
-		}
-
-		if (!("application/json").equals(ctx.header("Content-Type"))) {
-			ctx.result("Invalid Content-Type.");
-			ctx.status(415);
-			return;
-		}
+		if (ModGardenBackend.isUnauthorized(ctx)) return;
 
 		DeleteBody body = ctx.bodyAsClass(DeleteBody.class);
 
