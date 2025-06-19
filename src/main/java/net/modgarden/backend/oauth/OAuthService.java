@@ -2,11 +2,7 @@ package net.modgarden.backend.oauth;
 
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
-import net.modgarden.backend.oauth.client.DiscordOAuthClient;
-import net.modgarden.backend.oauth.client.ModrinthOAuthClient;
-import net.modgarden.backend.oauth.client.OAuthClientSupplier;
-import net.modgarden.backend.oauth.client.OAuthClient;
-import net.modgarden.backend.oauth.client.GithubOAuthClient;
+import net.modgarden.backend.oauth.client.*;
 import net.modgarden.backend.util.KeyUtils;
 import org.jetbrains.annotations.NotNull;
 
@@ -22,7 +18,8 @@ import java.util.Date;
 public enum OAuthService {
     DISCORD("1305609404837527612", OAuthService::authenticateDiscord),
     MODRINTH("Q2tuKyb4", OAuthService::authenticateModrinth),
-	GITHUB("Iv23li4vLb7sDuZOiRmf", OAuthService::authenticateGithub);
+	GITHUB("Iv23li4vLb7sDuZOiRmf", OAuthService::authenticateGithub),
+	MINECRAFT_SERVICES(" e7ee42f6-e542-4ce6-9f7b-1d31941e84c6", OAuthService::authenticateMinecraftServices);
 
 	public final String clientId;
 	private final OAuthClientSupplier authSupplier;
@@ -38,6 +35,7 @@ public enum OAuthService {
         return new DiscordOAuthClient();
     }
 
+	@NotNull
     static OAuthClient authenticateModrinth(String unused) {
         return new ModrinthOAuthClient();
     }
@@ -60,6 +58,10 @@ public enum OAuthService {
 		} catch (IOException | InvalidKeySpecException | NoSuchAlgorithmException ex) {
 			throw new RuntimeException(ex);
 		}
+	}
+
+	static OAuthClient authenticateMinecraftServices(String unused) {
+		return new MinecraftServicesOAuthClient();
 	}
 
 	@NotNull
