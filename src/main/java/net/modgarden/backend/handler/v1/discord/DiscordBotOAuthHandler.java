@@ -4,6 +4,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.gson.*;
 import io.javalin.http.Context;
+import io.jsonwebtoken.Jwts;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.LinkCode;
 import net.modgarden.backend.oauth.OAuthService;
@@ -12,15 +13,16 @@ import net.modgarden.backend.util.AuthUtil;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URI;
+import java.net.URL;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.*;
+import java.security.spec.X509EncodedKeySpec;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class DiscordBotOAuthHandler {
@@ -120,6 +122,8 @@ public class DiscordBotOAuthHandler {
 
 		return codeChallenge;
 	}
+
+	private static PublicKey minecraftPublicKey = null;
 
 	public static void authMinecraftAccount(Context ctx) {
 		String code = ctx.queryParam("code");
@@ -289,20 +293,64 @@ public class DiscordBotOAuthHandler {
 				ctx.json(minecraftAuthJson);
 			}
 
+			boolean ownsGame = false;
 			var minecraftEntitlementsResponse = minecraftServices.get("entitlements/mcstore",
 					HttpResponse.BodyHandlers.ofInputStream(),
 					"Authorization", "Bearer " + minecraftAccessToken);
 			try (InputStreamReader minecraftEntitlementsReader = new InputStreamReader(minecraftEntitlementsResponse.body())) {
 				JsonElement minecraftEntitlementsJson = JsonParser.parseReader(minecraftEntitlementsReader);
 
-				// TODO: Verify whether the Minecraft account owns the game.
 				if (minecraftEntitlementsJson.isJsonObject()) {
 					JsonArray items = minecraftEntitlementsJson.getAsJsonObject().getAsJsonArray("items");
-				}
+					Optional<JsonPrimitive> javaSignaturePrimitive = items.asList().stream().filter(jsonElement ->  {
+						if (!jsonElement.isJsonObject())
+							return false;
+						JsonPrimitive name = jsonElement.getAsJsonObject().getAsJsonPrimitive("name");
+						if (name == null || !name.isString())
+							return false;
+						return "product_minecraft".equals(name.getAsString());
+					}).map(jsonElement -> jsonElement.getAsJsonObject().getAsJsonPrimitive("signature")).filter(Objects::nonNull).findAny();
 
-				ModGardenBackend.LOG.debug(minecraftEntitlementsJson.toString());
+					if (javaSignaturePrimitive.isPresent() && javaSignaturePrimitive.get().isString()) {
+						String javaSignature = javaSignaturePrimitive.get().getAsString();
+
+						if (minecraftPublicKey == null) {
+							URL resource = ModGardenBackend.class.getResource("/mojang_public.key");
+							if (resource == null) {
+								ctx.status(500);
+								ctx.result("Mojang public key is not specified internally.");
+								return;
+							}
+							String key = Files.readString(Path.of(resource.toURI()), Charset.defaultCharset());
+
+							key = key.replace("-----BEGIN PUBLIC KEY-----", "")
+									.replaceAll("\n", "")
+									.replace("-----END PUBLIC KEY-----", "");
+
+							byte[] bytes = Base64.getDecoder().decode(key);
+							var keyFactory = KeyFactory.getInstance("RSA");
+							var keySpec = new X509EncodedKeySpec(bytes);
+							minecraftPublicKey = keyFactory.generatePublic(keySpec);
+						}
+
+						try {
+							Jwts.parserBuilder()
+									.setSigningKey(minecraftPublicKey)
+									.build()
+									.parseClaimsJws(javaSignature);
+							ownsGame = true;
+						} catch (Exception ignored) {
+							// The account cannot be verified with Mojang's publickey, therefore they probably don't own the game.
+						}
+					}
+				}
 			}
 
+			if (!ownsGame) {
+				ctx.status(401);
+				ctx.result("You do not own a copy of Minecraft. Please purchase a copy of the game to proceed.");
+				return;
+			}
 
 			String uuid = null;
 			var minecraftProfileResponse = minecraftServices.get("minecraft/profile",
