@@ -31,7 +31,7 @@ import java.util.Locale;
 import java.util.Optional;
 
 public class DiscordBotSubmissionHandler {
-	public static final String REGEX = "^[a-zA-Z0-9!@$()`.+,_\"-]*$";
+	public static final String REGEX = "^[a-z0-9!@$()`.+,_\"-]*$";
 
 	public static void submitModrinth(Context ctx) {
 		if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
@@ -49,15 +49,16 @@ public class DiscordBotSubmissionHandler {
 		try (InputStream bodyStream = ctx.bodyInputStream();
 			 InputStreamReader bodyReader = new InputStreamReader(bodyStream)) {
 			JsonElement bodyJson = JsonParser.parseReader(bodyReader);
-			var bodyResult = Body.CODEC.decode(JsonOps.INSTANCE, bodyJson);
+			var bodyResult = Body.CODEC.parse(JsonOps.INSTANCE, bodyJson);
 			if (bodyResult.isError()) {
 				ctx.status(422);
 				ctx.result(bodyResult.error().orElseThrow().message());
 				return;
 			}
-			Body body = bodyResult.getOrThrow().getFirst();
+			Body body = bodyResult.getOrThrow();
+			String modrinthSlug = body.modrinthSlug().toLowerCase(Locale.ROOT);
 
-			if (!body.modrinthSlug().matches(REGEX)) {
+			if (!modrinthSlug.matches(REGEX)) {
 				ctx.status(422);
 				ctx.result("Invalid Modrinth slug.");
 				return;
@@ -93,7 +94,7 @@ public class DiscordBotSubmissionHandler {
 					return;
 				}
 
-				var projectStream = modrinthClient.get("v2/project/" + body.modrinthSlug(), HttpResponse.BodyHandlers.ofInputStream());
+				var projectStream = modrinthClient.get("v2/project/" + modrinthSlug, HttpResponse.BodyHandlers.ofInputStream());
 				if (projectStream.statusCode() != 200) {
 					ctx.status(422);
 					ctx.result("Could not find Modrinth project.");
@@ -126,7 +127,7 @@ public class DiscordBotSubmissionHandler {
 						}
 					} else if (!hasModrinthAttribution(ctx,
 							modrinthClient,
-							body.modrinthSlug(),
+							modrinthSlug,
 							user.modrinthId().get(),
 							title,
 							event.displayName(),
@@ -160,7 +161,7 @@ public class DiscordBotSubmissionHandler {
 						long generatedProjectId = Project.ID_GENERATOR.next();
 						projectId = Long.toString(generatedProjectId);
 						projectInsertStatement.setString(1, projectId);
-						projectInsertStatement.setString(2, body.modrinthSlug());
+						projectInsertStatement.setString(2, modrinthSlug);
 						projectInsertStatement.setString(3, modrinthId);
 						projectInsertStatement.setString(4, user.id());
 						projectInsertStatement.execute();
