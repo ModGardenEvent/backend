@@ -139,7 +139,8 @@ public class ModGardenBackend {
 		get(app, 1, "discord/oauth/modrinth", DiscordBotOAuthHandler::authModrinthAccount);
 		get(app, 1, "discord/oauth/minecraft", DiscordBotOAuthHandler::authMinecraftAccount);
 
-		post(app, 1, "discord/submission/create", DiscordBotSubmissionHandler::submitModrinth);
+		post(app, 1, "discord/submission/create/modrinth", DiscordBotSubmissionHandler::submitModrinth);
+		post(app, 1, "discord/submission/delete", DiscordBotSubmissionHandler::unsubmit);
 
 		post(app, 1, "discord/link", DiscordBotLinkHandler::link);
 		post(app, 1, "discord/unlink", DiscordBotUnlinkHandler::unlink);

@@ -56,7 +56,7 @@ public class DiscordBotSubmissionHandler {
 				return;
 			}
 			Body body = bodyResult.getOrThrow();
-			String modrinthSlug = body.modrinthSlug().toLowerCase(Locale.ROOT);
+			String modrinthSlug = body.slug().toLowerCase(Locale.ROOT);
 
 			if (!modrinthSlug.matches(REGEX)) {
 				ctx.status(422);
@@ -196,6 +196,124 @@ public class DiscordBotSubmissionHandler {
 		}
 	}
 
+	public static void unsubmit(Context ctx) {
+		if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
+			ctx.result("Unauthorized.");
+			ctx.status(401);
+			return;
+		}
+
+		if (!("application/json").equals(ctx.header("Content-Type"))) {
+			ctx.result("Invalid Content-Type.");
+			ctx.status(415);
+			return;
+		}
+
+		try (InputStream bodyStream = ctx.bodyInputStream();
+			 InputStreamReader bodyReader = new InputStreamReader(bodyStream)) {
+			JsonElement bodyJson = JsonParser.parseReader(bodyReader);
+			var bodyResult = Body.CODEC.parse(JsonOps.INSTANCE, bodyJson);
+			if (bodyResult.isError()) {
+				ctx.status(422);
+				ctx.result(bodyResult.error().orElseThrow().message());
+				return;
+			}
+			Body body = bodyResult.getOrThrow();
+			String slug = body.slug().toLowerCase(Locale.ROOT);
+
+			if (!slug.matches(REGEX)) {
+				ctx.status(422);
+				ctx.result("Invalid Modrinth slug.");
+				return;
+			}
+
+			User user = User.query(body.discordId, "discord");
+			if (user == null || user.modrinthId().isEmpty()) {
+				ctx.status(404);
+				ctx.result("Could not find a Mod Garden or Modrinth account linked to the specified Discord user.");
+				return;
+			}
+
+			try (Connection connection = ModGardenBackend.createDatabaseConnection();
+				 PreparedStatement projectCheckStatement = connection.prepareStatement("SELECT 1 FROM projects WHERE slug = ?");
+				 PreparedStatement projectAttributionCheckStatement = connection.prepareStatement("SELECT id FROM projects WHERE slug = ? AND attributed_to = ?");
+				 PreparedStatement deleteSubmissionStatement = connection.prepareStatement("DELETE FROM submissions WHERE project_id = ? AND event = ?");
+				 PreparedStatement checkSubmissionStatement = connection.prepareStatement("SELECT 1 FROM submissions WHERE project_id = ?");
+				 PreparedStatement projectDeleteStatement = connection.prepareStatement("DELETE FROM projects WHERE id = ?");
+				 PreparedStatement projectAuthorsDeleteStatement = connection.prepareStatement("DELETE FROM project_authors WHERE project_id = ?")) {
+				Event event;
+				if (body.event().isPresent()) {
+					event = body.event().get();
+				} else {
+					event = getCurrentEvent(connection);
+				}
+
+				if (event == null) {
+					ctx.status(422);
+					ctx.result("Could not find an event to unsubmit from.");
+					return;
+				}
+
+				projectCheckStatement.setString(1, slug);
+				ResultSet projectResult = projectAttributionCheckStatement.executeQuery();
+				if (!projectResult.getBoolean(1)) {
+					ctx.status(200);
+					JsonObject result = new JsonObject();
+					result.addProperty("success", ctx.status().getMessage());
+					result.addProperty("description", "Project '" + slug + "' was never submitted to event '" + event.displayName() + "'.");
+					ctx.json(result);
+					return;
+				}
+
+				projectAttributionCheckStatement.setString(1, slug);
+				projectAttributionCheckStatement.setString(2, user.id());
+				ResultSet projectAttributionResult = projectAttributionCheckStatement.executeQuery();
+				if (!projectResult.getBoolean(1)) {
+					ctx.status(401);
+					ctx.result("Only the original submitter is authorized to unsubmit '" + slug + "' from event '" + event.displayName() + "'.");
+					return;
+				}
+				String projectId = projectAttributionResult.getString(1);
+
+				// Delete the submission from the database.
+				deleteSubmissionStatement.setString(1, projectId);
+				deleteSubmissionStatement.setString(2, event.id());
+				int updated = deleteSubmissionStatement.executeUpdate();
+
+				if (updated == 0) {
+					ctx.status(200);
+					JsonObject result = new JsonObject();
+					result.addProperty("success", ctx.status().getMessage());
+					result.addProperty("description", "Project '" + slug + "' was never submitted to event '" + event.displayName() + "'.");
+					ctx.json(result);
+					return;
+				}
+
+
+				checkSubmissionStatement.setString(1, projectId);
+				ResultSet submissionResult = checkSubmissionStatement.executeQuery();
+				if (submissionResult.getBoolean(1)) {
+					projectDeleteStatement.setString(1, projectId);
+					projectDeleteStatement.execute();
+
+					projectAuthorsDeleteStatement.setString(1, projectId);
+					projectAuthorsDeleteStatement.execute();
+				}
+
+				ctx.status(201);
+
+				JsonObject result = new JsonObject();
+				result.addProperty("success", ctx.status().getMessage());
+					result.addProperty("description", "Unsubmitted project '" + slug + "' from event '" + event.displayName() + "'.");
+				ctx.json(result);
+			}
+		} catch (SQLException | IOException ex) {
+			ModGardenBackend.LOG.error("Failed to unsubmit project.", ex);
+			ctx.status(500);
+			ctx.result("Internal error.");
+		}
+	}
+
 	private static String toFriendlyLoaderString(String value) {
 		if (value.equals("neoforge")) {
 			return "NeoForge";
@@ -325,11 +443,11 @@ public class DiscordBotSubmissionHandler {
 		return null;
 	}
 
-	public record Body(String discordId, Optional<Event> event, String modrinthSlug) {
+	public record Body(String discordId, Optional<Event> event, String slug) {
 		public static final Codec<Body> CODEC = RecordCodecBuilder.create(inst -> inst.group(
 				Codec.STRING.fieldOf("discord_id").forGetter(Body::discordId),
 				Event.FROM_SLUG_CODEC.optionalFieldOf("event").forGetter(Body::event),
-				Codec.STRING.fieldOf("modrinth_slug").forGetter(Body::modrinthSlug)
+				Codec.STRING.fieldOf("slug").forGetter(Body::slug)
 		).apply(inst, Body::new));
 	}
 }
