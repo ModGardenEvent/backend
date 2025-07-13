@@ -255,7 +255,7 @@ public class DiscordBotSubmissionHandler {
 				}
 
 				projectCheckStatement.setString(1, slug);
-				ResultSet projectResult = projectAttributionCheckStatement.executeQuery();
+				ResultSet projectResult = projectCheckStatement.executeQuery();
 				if (!projectResult.getBoolean(1)) {
 					ctx.status(200);
 					JsonObject result = new JsonObject();
