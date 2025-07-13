@@ -275,7 +275,6 @@ public class DiscordBotSubmissionHandler {
 				}
 				String projectId = projectAttributionResult.getString(1);
 
-				// Delete the submission from the database.
 				deleteSubmissionStatement.setString(1, projectId);
 				deleteSubmissionStatement.setString(2, event.id());
 				int updated = deleteSubmissionStatement.executeUpdate();
@@ -292,7 +291,7 @@ public class DiscordBotSubmissionHandler {
 
 				checkSubmissionStatement.setString(1, projectId);
 				ResultSet submissionResult = checkSubmissionStatement.executeQuery();
-				if (submissionResult.getBoolean(1)) {
+				if (!submissionResult.getBoolean(1)) {
 					projectDeleteStatement.setString(1, projectId);
 					projectDeleteStatement.execute();
 
