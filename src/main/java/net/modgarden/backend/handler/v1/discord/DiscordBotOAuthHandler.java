@@ -29,7 +29,7 @@ public class DiscordBotOAuthHandler {
     public static void authModrinthAccount(Context ctx) {
         String code = ctx.queryParam("code");
         if (code == null) {
-            ctx.status(422);
+            ctx.status(400);
             ctx.result("Modrinth access code is not specified.");
             return;
         }
@@ -46,7 +46,7 @@ public class DiscordBotOAuthHandler {
             try (InputStreamReader reader = new InputStreamReader(tokenResponse.body())) {
                 JsonElement tokenJson = JsonParser.parseReader(reader);
                 if (!tokenJson.isJsonObject() || !tokenJson.getAsJsonObject().has("access_token")) {
-                    ctx.status(422);
+                    ctx.status(400);
                     ctx.result("Invalid Modrinth access token.");
                     return;
                 }
@@ -128,20 +128,20 @@ public class DiscordBotOAuthHandler {
 	public static void authMinecraftAccount(Context ctx) {
 		String code = ctx.queryParam("code");
 		if (code == null) {
-			ctx.status(422);
+			ctx.status(400);
 			ctx.result("Microsoft access code is not specified.");
 			return;
 		}
 
 		String challengeCode = ctx.queryParam("state");
 		if (challengeCode == null) {
-			ctx.status(422);
+			ctx.status(400);
 			ctx.result("Code challenge state is not specified.");
 			return;
 		}
 		String verifier = CODE_CHALLENGE_TO_VERIFIER.getIfPresent(challengeCode);
 		if (verifier == null) {
-			ctx.status(422);
+			ctx.status(400);
 			ctx.result("Code challenge verifier has expired. Please retry.");
 			return;
 		}
@@ -220,7 +220,6 @@ public class DiscordBotOAuthHandler {
 						JsonPrimitive xErr = xerrJson.getAsJsonObject().getAsJsonPrimitive("xErr");
 						if (xErr.isNumber()) {
 							long err = xErr.getAsLong();
-							// Why can't longs be used in switch statements...
 							if (err == 2148916227L) {
 								errorResponse = "You are banned from Xbox.";
 							}
@@ -289,16 +288,19 @@ public class DiscordBotOAuthHandler {
 						minecraftAccessToken = accessToken.getAsString();
 					}
 				}
-				ctx.status(200);
-				ctx.json(minecraftAuthJson);
+			}
+			if (minecraftAccessToken == null) {
+				ctx.status(500);
+				ctx.result("Internal error whilst generating token.");
+				return;
 			}
 
 			boolean ownsGame = false;
-			var minecraftEntitlementsResponse = minecraftServices.get("entitlements/mcstore",
+			var entitlementsResponse = minecraftServices.get("entitlements/mcstore",
 					HttpResponse.BodyHandlers.ofInputStream(),
 					"Authorization", "Bearer " + minecraftAccessToken);
-			try (InputStreamReader minecraftEntitlementsReader = new InputStreamReader(minecraftEntitlementsResponse.body())) {
-				JsonElement minecraftEntitlementsJson = JsonParser.parseReader(minecraftEntitlementsReader);
+			try (InputStreamReader entitlementsReader = new InputStreamReader(entitlementsResponse.body())) {
+				JsonElement minecraftEntitlementsJson = JsonParser.parseReader(entitlementsReader);
 
 				if (minecraftEntitlementsJson.isJsonObject()) {
 					JsonArray items = minecraftEntitlementsJson.getAsJsonObject().getAsJsonArray("items");
@@ -362,6 +364,11 @@ public class DiscordBotOAuthHandler {
 					uuid = minecraftProfileJson.getAsJsonObject().getAsJsonPrimitive("id").getAsString();
 				}
 			}
+			if (uuid == null) {
+				ctx.status(500);
+				ctx.result("Internal error whilst generating token.");
+				return;
+			}
 
 			String linkToken = AuthUtil.insertTokenIntoDatabase(ctx, uuid, LinkCode.Service.MINECRAFT);
 			if (linkToken == null) {
@@ -370,7 +377,7 @@ public class DiscordBotOAuthHandler {
 				return;
 			}
 			ctx.status(200);
-			ctx.header("Content-Type", "");
+			ctx.header("Content-Type", "application/json");
 			ctx.result("Successfully created link code for Minecraft account.\n\n" +
 					"Your link code is: " + linkToken + "\n\n" +
 					"This code will expire when used or in approximately 15 minutes.\n\n" +

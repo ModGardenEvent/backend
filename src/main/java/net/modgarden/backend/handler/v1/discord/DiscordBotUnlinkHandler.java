@@ -48,7 +48,7 @@ public class DiscordBotUnlinkHandler {
 			if (body.service.equals(LinkCode.Service.MINECRAFT.serializedName())) {
 				if (body.minecraftUuid.isEmpty()) {
 					ctx.result("'minecraft_uuid' field was not specified.");
-					ctx.status(422);
+					ctx.status(400);
 					return;
 				}
 

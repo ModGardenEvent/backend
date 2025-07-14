@@ -43,7 +43,7 @@ public class DiscordBotLinkHandler {
             deleteStatement.execute();
             if (accountId == null) {
                 ctx.result("Invalid link code for " + capitalisedService + ".");
-                ctx.status(422);
+                ctx.status(400);
                 return;
             }
 
@@ -55,7 +55,7 @@ public class DiscordBotLinkHandler {
 				return;
 			}
 			ctx.result("Invalid link code service '" + capitalisedService + "'.");
-			ctx.status(422);
+			ctx.status(400);
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
             ctx.result("Internal Error.");
@@ -74,7 +74,7 @@ public class DiscordBotLinkHandler {
 			ResultSet accountCheckResult = accountCheckStatement.executeQuery();
 			if (accountCheckResult.isBeforeFirst() && accountCheckResult.getBoolean(1)) {
 				ctx.result("The specified Modrinth account has already been linked to a Mod Garden account.");
-				ctx.status(422);
+				ctx.status(400);
 				return;
 			}
 
@@ -82,7 +82,7 @@ public class DiscordBotLinkHandler {
 			ResultSet userCheckResult = userCheckStatement.executeQuery();
 			if (userCheckResult.isBeforeFirst() && userCheckResult.getBoolean(1)) {
 				ctx.result("The specified Mod Garden account is already linked with Modrinth.");
-				ctx.status(422);
+				ctx.status(400);
 				return;
 			}
 
@@ -104,7 +104,7 @@ public class DiscordBotLinkHandler {
 			User user = User.query(discordId, "discord");
 			if (user == null) {
 				ctx.result("Could not find user from Discord ID '" + discordId + "'.");
-				ctx.status(422);
+				ctx.status(400);
 				return;
 			}
 
@@ -117,7 +117,7 @@ public class DiscordBotLinkHandler {
 					return;
 				}
 				ctx.result("The specified Minecraft account has already been linked to a Mod Garden account.");
-				ctx.status(422);
+				ctx.status(400);
 				return;
 			}
 

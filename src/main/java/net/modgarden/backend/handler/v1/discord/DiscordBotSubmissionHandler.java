@@ -51,7 +51,7 @@ public class DiscordBotSubmissionHandler {
 			JsonElement bodyJson = JsonParser.parseReader(bodyReader);
 			var bodyResult = Body.CODEC.parse(JsonOps.INSTANCE, bodyJson);
 			if (bodyResult.isError()) {
-				ctx.status(422);
+				ctx.status(400);
 				ctx.result(bodyResult.error().orElseThrow().message());
 				return;
 			}
@@ -59,7 +59,7 @@ public class DiscordBotSubmissionHandler {
 			String modrinthSlug = body.slug().toLowerCase(Locale.ROOT);
 
 			if (!modrinthSlug.matches(REGEX)) {
-				ctx.status(422);
+				ctx.status(400);
 				ctx.result("Invalid Modrinth slug.");
 				return;
 			}
@@ -89,14 +89,14 @@ public class DiscordBotSubmissionHandler {
 				}
 
 				if (event == null) {
-					ctx.status(422);
+					ctx.status(400);
 					ctx.result("Could not find an event to submit to.");
 					return;
 				}
 
 				var projectStream = modrinthClient.get("v2/project/" + modrinthSlug, HttpResponse.BodyHandlers.ofInputStream());
 				if (projectStream.statusCode() != 200) {
-					ctx.status(422);
+					ctx.status(400);
 					ctx.result("Could not find Modrinth project.");
 					return;
 				}
@@ -104,7 +104,7 @@ public class DiscordBotSubmissionHandler {
 				try (InputStreamReader projectReader = new InputStreamReader(projectStream.body())) {
 					JsonElement projectJson = JsonParser.parseReader(projectReader);
 					if (!projectJson.isJsonObject() || !projectJson.getAsJsonObject().has("id") || !projectJson.getAsJsonObject().has("versions") || !projectJson.getAsJsonObject().has("title")) {
-						ctx.status(422);
+						ctx.status(400);
 						ctx.result("Invalid Modrinth project.");
 						return;
 					}
@@ -152,7 +152,7 @@ public class DiscordBotSubmissionHandler {
 					String modrinthVersion = getModrinthVersion(projectJson.getAsJsonObject(), modrinthClient, event.minecraftVersion(), event.loader());
 
 					if (modrinthVersion == null) {
-						ctx.status(422);
+						ctx.status(400);
 						ctx.result("Could not find a valid Modrinth version for " + toFriendlyLoaderString(event.loader()) + " on Minecraft " + event.minecraftVersion() + ".");
 						return;
 					}
@@ -214,7 +214,7 @@ public class DiscordBotSubmissionHandler {
 			JsonElement bodyJson = JsonParser.parseReader(bodyReader);
 			var bodyResult = Body.CODEC.parse(JsonOps.INSTANCE, bodyJson);
 			if (bodyResult.isError()) {
-				ctx.status(422);
+				ctx.status(400);
 				ctx.result(bodyResult.error().orElseThrow().message());
 				return;
 			}
@@ -222,7 +222,7 @@ public class DiscordBotSubmissionHandler {
 			String slug = body.slug().toLowerCase(Locale.ROOT);
 
 			if (!slug.matches(REGEX)) {
-				ctx.status(422);
+				ctx.status(400);
 				ctx.result("Invalid Modrinth slug.");
 				return;
 			}
@@ -249,7 +249,7 @@ public class DiscordBotSubmissionHandler {
 				}
 
 				if (event == null) {
-					ctx.status(422);
+					ctx.status(400);
 					ctx.result("Could not find an event to unsubmit from.");
 					return;
 				}
