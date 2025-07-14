@@ -35,22 +35,22 @@ public class DiscordBotProfileHandler {
 
 			if (body.value.length() < 3) {
 				ctx.result("Username is too short.");
-				ctx.status(422);
+				ctx.status(400);
 				return;
 			}
 			if (body.value.length() > 32) {
 				ctx.result("Username is too long.");
-				ctx.status(422);
+				ctx.status(400);
 				return;
 			}
 			if (!body.value.matches(User.USERNAME_REGEX)) {
 				ctx.result("Username has invalid characters.");
-				ctx.status(422);
+				ctx.status(400);
 				return;
 			}
 			if (body.value.equals(oldUsername)) {
 				ctx.result("Your username is already '" + body.value + "'.");
-				ctx.status(200);
+				ctx.status(400);
 				return;
 			}
 
@@ -58,7 +58,7 @@ public class DiscordBotProfileHandler {
 			ResultSet existingUser = existingUserStatement.executeQuery();
 			if (existingUser.getBoolean(1)) {
 				ctx.result("Username '" + body.value + " ' has already been taken.");
-				ctx.status(422);
+				ctx.status(400);
 				return;
 			}
 
@@ -100,12 +100,12 @@ public class DiscordBotProfileHandler {
 
 			if (body.value.isBlank()) {
 				ctx.result("Display name cannot be exclusively whitespace.");
-				ctx.status(422);
+				ctx.status(400);
 				return;
 			}
 			if (body.value.length() > 32) {
 				ctx.result("Display name is too long.");
-				ctx.status(422);
+				ctx.status(400);
 				return;
 			}
 
@@ -147,7 +147,7 @@ public class DiscordBotProfileHandler {
 
 			if (body.value.isBlank()) {
 				ctx.result("Pronouns cannot be exclusively whitespace.");
-				ctx.status(422);
+				ctx.status(400);
 				return;
 			}
 			if (body.value.equals(oldPronouns)) {
@@ -191,7 +191,7 @@ public class DiscordBotProfileHandler {
 
 			if (!ModGardenBackend.SAFE_URL_REGEX.matches(body.value)) {
 				ctx.result("Avatar URL has invalid characters.");
-				ctx.status(422);
+				ctx.status(400);
 				return;
 			}
 
