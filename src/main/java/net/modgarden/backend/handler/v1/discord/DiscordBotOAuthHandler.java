@@ -377,7 +377,6 @@ public class DiscordBotOAuthHandler {
 				return;
 			}
 			ctx.status(200);
-			ctx.header("Content-Type", "application/json");
 			ctx.result("Successfully created link code for Minecraft account.\n\n" +
 					"Your link code is: " + linkToken + "\n\n" +
 					"This code will expire when used or in approximately 15 minutes.\n\n" +
