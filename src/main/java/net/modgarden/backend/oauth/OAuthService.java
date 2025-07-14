@@ -64,6 +64,7 @@ public enum OAuthService {
 		return new MinecraftServicesOAuthClient();
 	}
 
+	@SuppressWarnings("unchecked")
 	@NotNull
 	public <T extends OAuthClient> T authenticate() {
 		return (T) authSupplier.authenticate(clientId);
