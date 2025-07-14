@@ -52,6 +52,7 @@ public class DiscordBotLinkHandler {
 				return;
 			} else if (body.service.equals(LinkCode.Service.MINECRAFT.serializedName())) {
 				handleMinecraft(ctx, connection, body.discordId, accountId);
+				DiscordBotOAuthHandler.invalidateFromUuid(body.linkCode);
 				return;
 			}
 			ctx.result("Invalid link code service '" + capitalisedService + "'.");
@@ -96,9 +97,9 @@ public class DiscordBotLinkHandler {
 	}
 
 	private static void handleMinecraft(Context ctx,
-									   Connection connection,
-									   String discordId,
-									   String uuid) throws SQLException {
+										Connection connection,
+										String discordId,
+										String uuid) throws SQLException {
 		try (var accountCheckStatement = connection.prepareStatement("SELECT user_id FROM minecraft_accounts WHERE uuid = ?");
 			 var insertStatement = connection.prepareStatement("INSERT INTO minecraft_accounts (uuid, user_id) VALUES (?, ?)")) {
 			User user = User.query(discordId, "discord");

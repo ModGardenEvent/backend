@@ -87,9 +87,20 @@ public class DiscordBotOAuthHandler {
         }
     }
 
+	private static final Cache<String, String> LINK_CODE_TO_CODE_CHALLENGE = CacheBuilder.newBuilder()
+			.expireAfterWrite(15, TimeUnit.MINUTES)
+			.build();
 	private static final Cache<String, String> CODE_CHALLENGE_TO_VERIFIER = CacheBuilder.newBuilder()
 			.expireAfterWrite(15, TimeUnit.MINUTES)
 			.build();
+
+	public static void invalidateFromUuid(String linkCode) {
+		String codeChallenge = LINK_CODE_TO_CODE_CHALLENGE.getIfPresent(linkCode);
+		if (codeChallenge != null) {
+			CODE_CHALLENGE_TO_VERIFIER.invalidate(codeChallenge);
+		}
+		LINK_CODE_TO_CODE_CHALLENGE.invalidate(linkCode);
+	}
 
 	public static void getMicrosoftCodeChallenge(Context ctx) {
 		if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
@@ -133,19 +144,18 @@ public class DiscordBotOAuthHandler {
 			return;
 		}
 
-		String challengeCode = ctx.queryParam("state");
-		if (challengeCode == null) {
+		String codeChallenge = ctx.queryParam("state");
+		if (codeChallenge == null) {
 			ctx.status(400);
 			ctx.result("Code challenge state is not specified.");
 			return;
 		}
-		String verifier = CODE_CHALLENGE_TO_VERIFIER.getIfPresent(challengeCode);
+		String verifier = CODE_CHALLENGE_TO_VERIFIER.getIfPresent(codeChallenge);
 		if (verifier == null) {
 			ctx.status(400);
 			ctx.result("Code challenge verifier has expired. Please retry.");
 			return;
 		}
-		CODE_CHALLENGE_TO_VERIFIER.invalidate(challengeCode);
 
 		try {
 			String microsoftToken = null;
@@ -376,6 +386,7 @@ public class DiscordBotOAuthHandler {
 				ctx.result("Internal error whilst generating token.");
 				return;
 			}
+			LINK_CODE_TO_CODE_CHALLENGE.put(linkToken, codeChallenge);
 			ctx.status(200);
 			ctx.result("Successfully created link code for Minecraft account.\n\n" +
 					"Your link code is: " + linkToken + "\n\n" +
