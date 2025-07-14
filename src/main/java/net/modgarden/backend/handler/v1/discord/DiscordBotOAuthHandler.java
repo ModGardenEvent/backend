@@ -111,7 +111,8 @@ public class DiscordBotOAuthHandler {
 		ctx.status(200);
 		try {
 			ctx.result(createCodeChallenge());
-		} catch (NoSuchAlgorithmException e) {
+		} catch (NoSuchAlgorithmException ex) {
+			ModGardenBackend.LOG.error("Failed to generate code challenge.", ex);
 			ctx.result("Failed to generate code challenge, this shouldn't happen.");
 			ctx.status(500);
 		}
