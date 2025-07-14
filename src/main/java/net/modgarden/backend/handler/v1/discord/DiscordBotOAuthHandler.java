@@ -338,6 +338,7 @@ public class DiscordBotOAuthHandler {
 
 							key = key.replace("-----BEGIN PUBLIC KEY-----", "")
 									.replaceAll("\n", "")
+									.replaceAll("\r", "")
 									.replace("-----END PUBLIC KEY-----", "");
 
 							byte[] bytes = Base64.getDecoder().decode(key);
