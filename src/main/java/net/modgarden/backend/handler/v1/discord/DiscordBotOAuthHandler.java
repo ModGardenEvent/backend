@@ -159,7 +159,7 @@ public class DiscordBotOAuthHandler {
 			String microsoftToken = null;
 			var microsoftTokenRequest = HttpRequest.newBuilder(URI.create("https://login.microsoftonline.com/consumers/oauth2/v2.0/token"))
 					.header("Content-Type", "application/x-www-form-urlencoded")
-					.headers("Origin", ModGardenBackend.URL + "/v1/discord/oauth/modrinth")
+					.headers("Origin", ModGardenBackend.URL + "/v1/discord/oauth/minecraft")
 					.POST(HttpRequest.BodyPublishers.ofString(AuthUtil.createBody(getMicrosoftAuthorizationBody(code, verifier))));
 			var microsoftTokenResponse = ModGardenBackend.HTTP_CLIENT.send(microsoftTokenRequest.build(), HttpResponse.BodyHandlers.ofInputStream());
 
