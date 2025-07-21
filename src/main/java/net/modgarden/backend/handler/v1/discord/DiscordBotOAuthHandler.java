@@ -11,15 +11,12 @@ import net.modgarden.backend.oauth.OAuthService;
 import net.modgarden.backend.util.AuthUtil;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
-import java.net.URL;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.security.*;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.*;
@@ -328,23 +325,24 @@ public class DiscordBotOAuthHandler {
 						String javaSignature = javaSignaturePrimitive.get().getAsString();
 
 						if (minecraftPublicKey == null) {
-							URL resource = ModGardenBackend.class.getResource("/mojang_public.key");
-							if (resource == null) {
-								ctx.status(500);
-								ctx.result("Mojang public key is not specified internally.");
-								return;
+							try (InputStream resource = ModGardenBackend.class.getResourceAsStream("./mojang_public.key")) {
+								if (resource == null) {
+									ctx.status(500);
+									ctx.result("Mojang public key is not specified internally.");
+									return;
+								}
+								String key = new String(resource.readAllBytes(), StandardCharsets.UTF_8);
+
+								key = key.replace("-----BEGIN PUBLIC KEY-----", "")
+										.replaceAll("\n", "")
+										.replaceAll("\r", "")
+										.replace("-----END PUBLIC KEY-----", "");
+
+								byte[] bytes = Base64.getDecoder().decode(key);
+								var keyFactory = KeyFactory.getInstance("RSA");
+								var keySpec = new X509EncodedKeySpec(bytes);
+								minecraftPublicKey = keyFactory.generatePublic(keySpec);
 							}
-							String key = Files.readString(Path.of(resource.toURI()), Charset.defaultCharset());
-
-							key = key.replace("-----BEGIN PUBLIC KEY-----", "")
-									.replaceAll("\n", "")
-									.replaceAll("\r", "")
-									.replace("-----END PUBLIC KEY-----", "");
-
-							byte[] bytes = Base64.getDecoder().decode(key);
-							var keyFactory = KeyFactory.getInstance("RSA");
-							var keySpec = new X509EncodedKeySpec(bytes);
-							minecraftPublicKey = keyFactory.generatePublic(keySpec);
 						}
 
 						try {
