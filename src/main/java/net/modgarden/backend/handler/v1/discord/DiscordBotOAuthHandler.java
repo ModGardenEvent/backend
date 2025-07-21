@@ -325,7 +325,7 @@ public class DiscordBotOAuthHandler {
 						String javaSignature = javaSignaturePrimitive.get().getAsString();
 
 						if (minecraftPublicKey == null) {
-							try (InputStream resource = ModGardenBackend.class.getResourceAsStream("./mojang_public.key")) {
+							try (InputStream resource = ModGardenBackend.class.getResourceAsStream("/mojang_public.key")) {
 								if (resource == null) {
 									ctx.status(500);
 									ctx.result("Mojang public key is not specified internally.");
