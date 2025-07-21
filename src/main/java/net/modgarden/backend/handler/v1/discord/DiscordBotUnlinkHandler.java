@@ -29,8 +29,6 @@ public class DiscordBotUnlinkHandler {
 
 		Body body = ctx.bodyAsClass(Body.class);
 
-        String capitalisedService = body.service.substring(0, 1).toUpperCase(Locale.ROOT) + body.service.substring(1);
-
         try (Connection connection = ModGardenBackend.createDatabaseConnection()) {
             if (body.service.equals(LinkCode.Service.MODRINTH.serializedName())) {
                 try (var deleteStatement = connection.prepareStatement("UPDATE users SET modrinth_id = NULL WHERE discord_id = ?")) {
@@ -38,11 +36,11 @@ public class DiscordBotUnlinkHandler {
 					int resultSet = deleteStatement.executeUpdate();
 
 					if (resultSet == 0) {
-						ctx.result("Mod Garden account associated with Discord ID '" + body.discordId + "' does not have a " + capitalisedService + " account linked.");
+						ctx.result("Mod Garden account associated with Discord ID '" + body.discordId + "' does not have a Modrinth account linked.");
 						ctx.status(200);
 					}
 
-					ctx.result("Successfully unlinked " + capitalisedService + " account from Mod Garden account associated with Discord ID '" + body.discordId + "'.");
+					ctx.result("Successfully unlinked Modrinth account from Mod Garden account associated with Discord ID '" + body.discordId + "'.");
 					ctx.status(201);
                 }
 				return;
@@ -50,47 +48,21 @@ public class DiscordBotUnlinkHandler {
 			if (body.service.equals(LinkCode.Service.MINECRAFT.serializedName())) {
 				if (body.minecraftUuid.isEmpty()) {
 					ctx.result("'minecraft_uuid' field was not specified.");
-					ctx.status(422);
+					ctx.status(400);
 					return;
 				}
 
-				try (var insertStatement = connection.prepareStatement("UPDATE users SET minecraft_accounts = ? WHERE discord_id = ?");
-					 var deleteStatement = connection.prepareStatement("UPDATE users SET minecraft_accounts = NULL WHERE discord_id = ?")) {
-					User user = User.query(body.discordId, "discord");
-					if (user == null) {
-						ctx.result("Could not find user from Discord ID '" + body.discordId + "'.");
-						ctx.status(422);
-						return;
-					}
+				try (var deleteStatement = connection.prepareStatement("DELETE FROM minecraft_accounts WHERE uuid = ?")) {
+					deleteStatement.setString(1, body.minecraftUuid.get().toString().replace("-", ""));
+					int resultSet = deleteStatement.executeUpdate();
 
-					List<UUID> uuids = new ArrayList<>(user.minecraftAccounts());
-					if (!uuids.contains(body.minecraftUuid.get())) {
-						ctx.result("Minecraft account " + body.minecraftUuid.get() + " is not linked with user '" + user.username() + "'.");
+					if (resultSet == 0) {
+						ctx.result("Mod Garden account associated with Discord ID '" + body.discordId + "' does not have the specified Minecraft account linked to it.");
 						ctx.status(200);
 						return;
 					}
-					uuids.remove(body.minecraftUuid.get());
 
-					if (uuids.isEmpty()) {
-						deleteStatement.setString(1, body.discordId);
-						ctx.result("Successfully unlinked " + capitalisedService + " account " + body.minecraftUuid.get() + " from Mod Garden account associated with Discord ID '" + body.discordId + "'.");
-						ctx.status(201);
-						return;
-					}
-
-					var dataResult = ExtraCodecs.UUID_CODEC.listOf().encodeStart(JsonOps.INSTANCE, uuids);
-					if (!dataResult.hasResultOrPartial()) {
-						ModGardenBackend.LOG.error("Failed to create Minecraft account data. {}", dataResult.error().orElseThrow().message());
-						ctx.result("Failed to create Minecraft account data.");
-						ctx.status(500);
-						return;
-					}
-
-					insertStatement.setString(1, dataResult.getOrThrow().toString());
-					insertStatement.setString(2, body.discordId);
-					insertStatement.execute();
-
-					ctx.result("Successfully unlinked " + capitalisedService + " account " + body.minecraftUuid.get() + " from Mod Garden account associated with Discord ID '" + body.discordId + "'.");
+					ctx.result("Successfully unlinked Minecraft account " + body.minecraftUuid.get() + " from Mod Garden account associated with Discord ID '" + body.discordId + "'.");
 					ctx.status(201);
 				}
 			}

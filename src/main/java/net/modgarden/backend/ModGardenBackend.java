@@ -35,6 +35,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.net.http.HttpClient;
+import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -108,6 +109,7 @@ public class ModGardenBackend {
         app.error(422, BackendError::handleError);
         app.error(500, BackendError::handleError);
 		app.start(7070);
+
 		LOG.info("Mod Garden Backend Started!");
     }
 
@@ -138,6 +140,7 @@ public class ModGardenBackend {
 
 		get(app, 1, "discord/oauth/modrinth", DiscordBotOAuthHandler::authModrinthAccount);
 		get(app, 1, "discord/oauth/minecraft", DiscordBotOAuthHandler::authMinecraftAccount);
+		get(app, 1, "discord/oauth/minecraft/challenge", DiscordBotOAuthHandler::getMicrosoftCodeChallenge);
 
 		post(app, 1, "discord/submission/create/modrinth", DiscordBotSubmissionHandler::submitModrinth);
 		post(app, 1, "discord/submission/delete", DiscordBotSubmissionHandler::unsubmit);
