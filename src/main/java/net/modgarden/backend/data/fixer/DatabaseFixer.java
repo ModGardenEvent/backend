@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.fixer.fix.V1ToV2;
 import net.modgarden.backend.data.fixer.fix.V2ToV3;
+import net.modgarden.backend.data.fixer.fix.V3ToV4;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -16,6 +17,7 @@ public class DatabaseFixer {
 	public static void createFixers() {
 		FIXES.add(new V1ToV2());
 		FIXES.add(new V2ToV3());
+		FIXES.add(new V3ToV4());
 	}
 
 	public static void fixDatabase() {

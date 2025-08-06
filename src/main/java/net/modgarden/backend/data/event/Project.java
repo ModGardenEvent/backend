@@ -45,7 +45,10 @@ public record Project(String id,
             return;
         }
         // TODO: Allow Modrinth as a service.
-        Project project = queryFromId(path);
+        Project project = queryFromSlug(path);
+		if (project == null) {
+			project = queryFromId(path);
+		}
         if (project == null) {
             ModGardenBackend.LOG.debug("Could not find project '{}'.", path);
             ctx.result("Could not find project '" + path + "'.");
@@ -57,9 +60,36 @@ public record Project(String id,
         ctx.json(project);
     }
 
+	public static Project queryFromSlug(String slug) {
+		try (Connection connection = ModGardenBackend.createDatabaseConnection();
+			 PreparedStatement prepared = connection.prepareStatement(selectBySlug())) {
+			prepared.setString(1, slug);
+			ResultSet result = prepared.executeQuery();
+			if (!result.isBeforeFirst())
+				return null;
+			List<String> authors = Arrays.stream(result.getString("authors").split(","))
+					.filter(s -> !s.isBlank())
+					.toList();
+			List<String> builders = Arrays.stream(result.getString("builders").split(","))
+					.filter(s -> !s.isBlank())
+					.toList();
+			return new Project(
+					result.getString("id"),
+					result.getString("slug"),
+					result.getString("modrinth_id"),
+					result.getString("attributed_to"),
+					authors,
+					builders
+			);
+		} catch (SQLException ex) {
+			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
+		}
+		return null;
+	}
+
     public static Project queryFromId(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement(selectStatement())) {
+             PreparedStatement prepared = connection.prepareStatement(selectById())) {
             prepared.setString(1, id);
             ResultSet result = prepared.executeQuery();
             if (!result.isBeforeFirst())
@@ -160,9 +190,8 @@ public record Project(String id,
 		}
 	}
 
-
-    private static String selectStatement() {
-        return """
+	private static String selectById() {
+		return """
 				SELECT
 					p.id,
 					p.slug,
@@ -177,6 +206,30 @@ public record Project(String id,
 							ON p.id = b.project_id
 				WHERE
 					p.id = ?
+				GROUP BY
+					p.id,
+					p.slug,
+					p.modrinth_id,
+					p.attributed_to
+				""";
+	}
+
+	private static String selectBySlug() {
+		return """
+				SELECT
+					p.id,
+					p.slug,
+					p.modrinth_id,
+					p.attributed_to,
+				 	COALESCE(Group_concat(DISTINCT a.user_id), '') AS authors,
+					COALESCE(Group_concat(DISTINCT b.user_id), '') AS builders
+				FROM projects p
+					LEFT JOIN project_authors a
+				    	ON p.id = a.project_id
+						LEFT JOIN project_builders b
+							ON p.id = b.project_id
+				WHERE
+					p.slug = ?
 				GROUP BY
 					p.id,
 					p.slug,

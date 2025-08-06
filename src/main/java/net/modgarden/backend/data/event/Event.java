@@ -30,7 +30,8 @@ public record Event(String id,
                     String loader,
 					ZonedDateTime registrationTime,
                     ZonedDateTime startTime,
-                    ZonedDateTime endTime) {
+                    ZonedDateTime endTime,
+                    ZonedDateTime freezeTime) {
 	// TODO: Endpoint for creating events.
     public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(1);
     public static final Codec<Event> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
@@ -42,7 +43,8 @@ public record Event(String id,
             Codec.STRING.fieldOf("loader").forGetter(Event::loader),
 			ExtraCodecs.ISO_DATE_TIME.fieldOf("registration_time").forGetter(Event::registrationTime),
             ExtraCodecs.ISO_DATE_TIME.fieldOf("start_time").forGetter(Event::startTime),
-			ExtraCodecs.ISO_DATE_TIME.fieldOf("end_time").forGetter(Event::endTime)
+			ExtraCodecs.ISO_DATE_TIME.fieldOf("end_time").forGetter(Event::endTime),
+			ExtraCodecs.ISO_DATE_TIME.fieldOf("freeze_time").forGetter(Event::freezeTime)
     ).apply(inst, Event::new)));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(Event::validateFromId);
 	public static final Codec<String> SLUG_CODEC = Codec.STRING.validate(Event::validateFromSlug);
@@ -86,7 +88,8 @@ public record Event(String id,
 						result.getString("loader"),
 						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("registration_time")), ZoneId.of("GMT")),
 						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")),
-						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT"))
+						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT")),
+						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("freeze_time")), ZoneId.of("GMT"))
 				);
 			}
 		} catch (SQLException ex) {
@@ -122,7 +125,8 @@ public record Event(String id,
 						result.getString("loader"),
 						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("registration_time")), ZoneId.of("GMT")),
 						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")),
-						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT"))
+						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT")),
+						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("freeze_time")), ZoneId.of("GMT"))
 				);
 			}
 		} catch (SQLException ex) {
@@ -137,6 +141,44 @@ public record Event(String id,
 		}
 
 		ModGardenBackend.LOG.debug("Successfully queried a current event ({}) with development time active.", event.slug);
+		ctx.json(event);
+	}
+
+
+	public static void getCurrentPreFreezeEvent(Context ctx) {
+		Event event = null;
+		try (Connection connection = ModGardenBackend.createDatabaseConnection();
+			 PreparedStatement preparedStatement = connection.prepareStatement(selectStatement("start_time <= ? AND freeze_time > ?", "start_time"))) {
+			long currentMillis = System.currentTimeMillis();
+			preparedStatement.setLong(1, currentMillis);
+			preparedStatement.setLong(2, currentMillis);
+			ResultSet result = preparedStatement.executeQuery();
+			if (result.isBeforeFirst()) {
+				event = new Event(
+						result.getString("id"),
+						result.getString("slug"),
+						result.getString("display_name"),
+						Optional.ofNullable(result.getString("discord_role_id")),
+						result.getString("minecraft_version"),
+						result.getString("loader"),
+						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("registration_time")), ZoneId.of("GMT")),
+						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")),
+						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT")),
+						ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("freeze_time")), ZoneId.of("GMT"))
+				);
+			}
+		} catch (SQLException ex) {
+			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
+		}
+
+		if (event == null) {
+			ModGardenBackend.LOG.debug("Could not find a current event pre-freeze.");
+			ctx.result("No current event pre-freeze.");
+			ctx.status(404);
+			return;
+		}
+
+		ModGardenBackend.LOG.debug("Successfully queried a current event ({}) pre-freeze.", event.slug);
 		ctx.json(event);
 	}
 
@@ -156,6 +198,10 @@ public record Event(String id,
 
 				event.addProperty("minecraft_version", result.getString("minecraft_version"));
 				event.addProperty("loader", result.getLong("loader"));
+				event.add("registration_time",
+						ExtraCodecs.ISO_DATE_TIME
+								.encodeStart(JsonOps.INSTANCE, ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("registration_time")), ZoneId.of("GMT")))
+								.getOrThrow());
 				event.add("start_time",
 						ExtraCodecs.ISO_DATE_TIME
 								.encodeStart(JsonOps.INSTANCE, ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")))
@@ -163,6 +209,10 @@ public record Event(String id,
 				event.add("end_time",
 						ExtraCodecs.ISO_DATE_TIME
 								.encodeStart(JsonOps.INSTANCE, ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT")))
+								.getOrThrow());
+				event.add("freeze_time",
+						ExtraCodecs.ISO_DATE_TIME
+								.encodeStart(JsonOps.INSTANCE, ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("freeze_time")), ZoneId.of("GMT")))
 								.getOrThrow());
 				events.add(event);
 			}
@@ -192,6 +242,10 @@ public record Event(String id,
 
 				event.addProperty("minecraft_version", result.getString("minecraft_version"));
 				event.addProperty("loader", result.getLong("loader"));
+				event.add("registration_time",
+						ExtraCodecs.ISO_DATE_TIME
+								.encodeStart(JsonOps.INSTANCE, ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("registration_time")), ZoneId.of("GMT")))
+								.getOrThrow());
 				event.add("start_time",
 						ExtraCodecs.ISO_DATE_TIME
 								.encodeStart(JsonOps.INSTANCE, ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")))
@@ -199,6 +253,10 @@ public record Event(String id,
 				event.add("end_time",
 						ExtraCodecs.ISO_DATE_TIME
 								.encodeStart(JsonOps.INSTANCE, ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT")))
+								.getOrThrow());
+				event.add("freeze_time",
+						ExtraCodecs.ISO_DATE_TIME
+								.encodeStart(JsonOps.INSTANCE, ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("freeze_time")), ZoneId.of("GMT")))
 								.getOrThrow());
 				events.add(event);
 			}
@@ -234,7 +292,8 @@ public record Event(String id,
 					result.getString("loader"),
 					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("registration_time")), ZoneId.of("GMT")),
 					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")),
-					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT"))
+					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT")),
+					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("freeze_time")), ZoneId.of("GMT"))
 			);
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
@@ -258,7 +317,8 @@ public record Event(String id,
 					result.getString("loader"),
 					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("registration_time")), ZoneId.of("GMT")),
 					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("start_time")), ZoneId.of("GMT")),
-					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT"))
+					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("end_time")), ZoneId.of("GMT")),
+					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("freeze_time")), ZoneId.of("GMT"))
 			);
 		} catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
@@ -303,7 +363,8 @@ public record Event(String id,
 					e.loader,
 					e.registration_time,
 					e.start_time,
-					e.end_time
+					e.end_time,
+					e.freeze_time
 				FROM events e
 				WHERE"""
 				+ " " + whereStatement + " " +

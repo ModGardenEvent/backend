@@ -3,7 +3,6 @@ package net.modgarden.backend.handler.v1.discord;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import com.google.gson.annotations.SerializedName;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -15,6 +14,7 @@ import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.profile.User;
 import net.modgarden.backend.oauth.OAuthService;
 import net.modgarden.backend.oauth.client.OAuthClient;
+import net.modgarden.backend.util.ExtraCodecs;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -26,11 +26,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 
+// TODO: Rewrite to use a faster deserialization library than GSON.
 public class DiscordBotSubmissionHandler {
 	public static final String REGEX = "^[a-z0-9!@$()`.+,_\"-]*$";
 
@@ -49,71 +50,50 @@ public class DiscordBotSubmissionHandler {
 
 		try (InputStream bodyStream = ctx.bodyInputStream();
 			 InputStreamReader bodyReader = new InputStreamReader(bodyStream)) {
-			JsonElement bodyJson = JsonParser.parseReader(bodyReader);
-			var bodyResult = Body.CODEC.parse(JsonOps.INSTANCE, bodyJson);
-			if (bodyResult.isError()) {
-				ctx.status(400);
-				ctx.result(bodyResult.error().orElseThrow().message());
-				return;
-			}
-			Body body = bodyResult.getOrThrow();
-			String modrinthSlug = body.slug().toLowerCase(Locale.ROOT);
+			Body body = Body.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseReader(bodyReader)).getOrThrow();
+			String slug = body.slug.toLowerCase(Locale.ROOT);
 
-			if (!modrinthSlug.matches(REGEX)) {
-				ctx.status(400);
+			if (!slug.matches(REGEX)) {
+				ctx.status(422);
 				ctx.result("Invalid Modrinth slug.");
 				return;
 			}
 
 			User user = User.query(body.discordId, "discord");
 			if (user == null || user.modrinthId().isEmpty()) {
-				ctx.status(404);
+				ctx.status(422);
 				ctx.result("Could not find a Mod Garden or Modrinth account linked to the specified Discord user.");
 				return;
 			}
 
 			OAuthClient modrinthClient = OAuthService.MODRINTH.authenticate();
 			try (Connection connection = ModGardenBackend.createDatabaseConnection();
-				 PreparedStatement projectCheckStatement = connection.prepareStatement("SELECT id FROM projects WHERE modrinth_id = ?");
-				 PreparedStatement projectAuthorsCheckStatement = connection.prepareStatement("SELECT 1 FROM project_authors WHERE project_id = ? AND user_id = ?");
-				 PreparedStatement projectInsertStatement = connection.prepareStatement("INSERT INTO projects(id, slug, modrinth_id, attributed_to) VALUES (?, ?, ?, ?)");
-				 PreparedStatement projectAuthorsStatement = connection.prepareStatement("INSERT INTO project_authors(project_id, user_id) VALUES (?, ?)");
-				 PreparedStatement submissionCheckStatement = connection.prepareStatement("SELECT 1 FROM submissions WHERE project_id = ? AND event = ?");
-				 PreparedStatement submissionStatement = connection.prepareStatement("INSERT INTO submissions(id, project_id, event, modrinth_version_id, submitted) VALUES (?, ?, ?, ?, ?)")) {
+				PreparedStatement projectCheckStatement = connection.prepareStatement("SELECT id FROM projects WHERE modrinth_id = ?");
+				PreparedStatement projectAuthorsCheckStatement = connection.prepareStatement("SELECT 1 FROM project_authors WHERE project_id = ? AND user_id = ?");
+				PreparedStatement projectInsertStatement = connection.prepareStatement("INSERT INTO projects(id, slug, modrinth_id, attributed_to) VALUES (?, ?, ?, ?)");
+				PreparedStatement projectAuthorsStatement = connection.prepareStatement("INSERT INTO project_authors(project_id, user_id) VALUES (?, ?)");
+				PreparedStatement submissionCheckStatement = connection.prepareStatement("SELECT 1 FROM submissions WHERE project_id = ? AND event = ?");
+				PreparedStatement submissionStatement = connection.prepareStatement("INSERT INTO submissions(id, project_id, event, modrinth_version_id, submitted) VALUES (?, ?, ?, ?, ?)")) {
 
-				Event event;
-
-				if (body.event().isPresent()) {
-					event = body.event().get();
-				} else {
-					event = getCurrentEvent(connection);
-				}
+				Event event = getCurrentEvent(connection);
 
 				if (event == null) {
-					ctx.status(400);
-					ctx.result("Could not find an event to submit to.");
+					ctx.status(422);
+					ctx.result("A Mod Garden event is not currently open for submissions.");
 					return;
 				}
 
-				var projectStream = modrinthClient.get("v2/project/" + modrinthSlug, HttpResponse.BodyHandlers.ofInputStream());
+				var projectStream = modrinthClient.get("v2/project/" + slug, HttpResponse.BodyHandlers.ofInputStream());
 				if (projectStream.statusCode() != 200) {
-					ctx.status(400);
+					ctx.status(422);
 					ctx.result("Could not find Modrinth project.");
 					return;
 				}
 
 				try (InputStreamReader projectReader = new InputStreamReader(projectStream.body())) {
-					JsonElement projectJson = JsonParser.parseReader(projectReader);
-					if (!projectJson.isJsonObject() || !projectJson.getAsJsonObject().has("id") || !projectJson.getAsJsonObject().has("versions") || !projectJson.getAsJsonObject().has("title")) {
-						ctx.status(400);
-						ctx.result("Invalid Modrinth project.");
-						return;
-					}
+					ModrinthProject modrinthProject = ModrinthProject.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseReader(projectReader)).getOrThrow();
 
-					String title = projectJson.getAsJsonObject().get("title").getAsString();
-					String modrinthId = projectJson.getAsJsonObject().get("id").getAsString();
-
-					projectCheckStatement.setString(1, modrinthId);
+					projectCheckStatement.setString(1, modrinthProject.id);
 					ResultSet projectCheck = projectCheckStatement.executeQuery();
 					String projectId = projectCheck.getString(1);
 
@@ -123,16 +103,14 @@ public class DiscordBotSubmissionHandler {
 						ResultSet authorsCheck = projectAuthorsCheckStatement.executeQuery();
 						if (!authorsCheck.getBoolean(1)) {
 							ctx.status(401);
-							ctx.result("Unauthorized to submit Modrinth project '" + title + "' to event '" + event.displayName() + "'.");
+							ctx.result("Unauthorized to submit Modrinth project '" + modrinthProject.title + "' to event '" + event.displayName() + "'.");
 							return;
 						}
 					} else if (!hasModrinthAttribution(ctx,
 							modrinthClient,
-							modrinthSlug,
+							modrinthProject,
 							user.modrinthId().get(),
-							title,
-							event.displayName(),
-							projectJson.getAsJsonObject().get("organization").isJsonNull() ? null : projectJson.getAsJsonObject().get("organization").getAsString()
+							event.displayName()
 					)) {
 						return;
 					}
@@ -140,20 +118,18 @@ public class DiscordBotSubmissionHandler {
 					submissionCheckStatement.setString(1, projectId);
 					submissionCheckStatement.setString(2, event.id());
 					var submissionCheck = submissionCheckStatement.executeQuery();
-
 					if (submissionCheck.getBoolean(1)) {
 						ctx.status(200);
 						JsonObject result = new JsonObject();
 						result.addProperty("success", ctx.status().getMessage());
-						result.addProperty("description", "Modrinth project '" + title + "' has already been submitted to event '" + event.displayName() + "'.");
+						result.addProperty("description", "Modrinth project '" + modrinthProject.title + "' has already been submitted to event '" + event.displayName() + "'.");
 						ctx.json(result);
 						return;
 					}
 
-					String modrinthVersion = getModrinthVersion(projectJson.getAsJsonObject(), modrinthClient, event.minecraftVersion(), event.loader());
-
+					ModrinthVersion modrinthVersion = getModrinthVersion(modrinthClient, modrinthProject, event.minecraftVersion(), event.loader(), null);
 					if (modrinthVersion == null) {
-						ctx.status(400);
+						ctx.status(422);
 						ctx.result("Could not find a valid Modrinth version for " + toFriendlyLoaderString(event.loader()) + " on Minecraft " + event.minecraftVersion() + ".");
 						return;
 					}
@@ -162,8 +138,8 @@ public class DiscordBotSubmissionHandler {
 						long generatedProjectId = Project.ID_GENERATOR.next();
 						projectId = Long.toString(generatedProjectId);
 						projectInsertStatement.setString(1, projectId);
-						projectInsertStatement.setString(2, modrinthSlug);
-						projectInsertStatement.setString(3, modrinthId);
+						projectInsertStatement.setString(2, slug);
+						projectInsertStatement.setString(3, modrinthProject.id);
 						projectInsertStatement.setString(4, user.id());
 						projectInsertStatement.execute();
 
@@ -178,7 +154,7 @@ public class DiscordBotSubmissionHandler {
 					submissionStatement.setString(1, submissionId);
 					submissionStatement.setString(2, projectId);
 					submissionStatement.setString(3, event.id());
-					submissionStatement.setString(4, modrinthVersion);
+					submissionStatement.setString(4, modrinthVersion.id());
 					submissionStatement.setLong(5, System.currentTimeMillis());
 					submissionStatement.execute();
 
@@ -186,7 +162,7 @@ public class DiscordBotSubmissionHandler {
 
 					JsonObject result = new JsonObject();
 					result.addProperty("success", ctx.status().getMessage());
-					result.addProperty("description", "Submitted Modrinth project '" + title + "' to event '" + event.displayName() + "'.");
+					result.addProperty("description", "Submitted Modrinth project '" + modrinthProject.title + "' to event '" + event.displayName() + "'.");
 					ctx.json(result);
 				}
 			}
@@ -205,9 +181,93 @@ public class DiscordBotSubmissionHandler {
 			return;
 		}
 
-		// TODO: Implement set version.
-		 ctx.result("Unimplemented.");
-		ctx.status(500);
+		try (InputStream bodyStream = ctx.bodyInputStream();
+			 InputStreamReader bodyReader = new InputStreamReader(bodyStream)) {
+			Body body = Body.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseReader(bodyReader)).getOrThrow();
+			String slug = body.slug.toLowerCase(Locale.ROOT);
+
+			if (!slug.matches(REGEX)) {
+				ctx.status(422);
+				ctx.result("Invalid Modrinth slug.");
+				return;
+			}
+
+			User user = User.query(body.discordId, "discord");
+			if (user == null || user.modrinthId().isEmpty()) {
+				ctx.status(422);
+				ctx.result("Could not find a Mod Garden or Modrinth account linked to the specified Discord user.");
+				return;
+			}
+
+			try (Connection connection = ModGardenBackend.createDatabaseConnection();
+				 PreparedStatement selectProjectDataStatement = connection.prepareStatement("SELECT id, modrinth_id FROM projects WHERE slug = ?");
+				 PreparedStatement projectAuthorCheckStatement = connection.prepareStatement("SELECT 1 FROM project_authors WHERE project_id = ? AND user_id = ?");
+				 PreparedStatement updateSubmissionVersionStatement = connection.prepareStatement("UPDATE submissions SET modrinth_version_id = ? WHERE event = ? AND project_id = ?")) {
+				Event event = getNonFrozenEvent(connection);
+				if (event == null) {
+					ctx.status(422);
+					ctx.result("A Mod Garden event is not currently open for updating.");
+					return;
+				}
+
+				selectProjectDataStatement.setString(1, body.slug);
+				ResultSet projectDataQuery = selectProjectDataStatement.executeQuery();
+
+				String projectId = projectDataQuery.getString("id");
+				String modrinthId = projectDataQuery.getString("modrinth_id");
+
+				var modrinthClient = OAuthService.MODRINTH.authenticate();
+				var modrinthStream = modrinthClient.get("v2/project/" + modrinthId, HttpResponse.BodyHandlers.ofInputStream());
+				if (modrinthStream.statusCode() != 200) {
+					ctx.status(422);
+					ctx.result("Could not find the specified Modrinth project.");
+					return;
+				}
+				InputStreamReader modrinthProjectReader = new InputStreamReader(modrinthStream.body());
+				ModrinthProject modrinthProject = ModrinthProject.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseReader(modrinthProjectReader)).getOrThrow();
+
+				projectAuthorCheckStatement.setString(1, projectId);
+				projectAuthorCheckStatement.setString(2, user.id());
+				ResultSet projectAuthorQuery = projectAuthorCheckStatement.executeQuery();
+
+				if (!projectAuthorQuery.getBoolean(1)) {
+					ctx.status(401);
+					ctx.result("Only an author of a project is authorized to change the version of the project '" + modrinthProject.title + "' from event '" + event.displayName() + "'.");
+					return;
+				}
+
+				ModrinthVersion modrinthVersion = getModrinthVersion(modrinthClient, modrinthProject, event.minecraftVersion(), event.loader(), body.version);
+				if (modrinthVersion == null) {
+					ctx.status(422);
+					if (body.version != null) {
+						ctx.result("Could not find a valid Modrinth version '" + body.version + "' for " + toFriendlyLoaderString(event.loader()) + " on Minecraft " + event.minecraftVersion() + ".");
+					} else {
+						ctx.result("Could not find a valid Modrinth version for " + toFriendlyLoaderString(event.loader()) + " on Minecraft " + event.minecraftVersion() + ".");
+					}
+					return;
+				}
+				updateSubmissionVersionStatement.setString(1, modrinthVersion.id());
+				updateSubmissionVersionStatement.setString(2, event.id());
+				updateSubmissionVersionStatement.setString(3, projectId);
+				if (updateSubmissionVersionStatement.executeUpdate() == 0) {
+					ctx.status(200);
+					JsonObject result = new JsonObject();
+					result.addProperty("success", ctx.status().getMessage());
+					result.addProperty("description", "Modrinth project '" + modrinthProject.title + "' is already set to version '" + modrinthVersion.name + "'.");
+					ctx.json(result);
+					return;
+				}
+				ctx.status(201);
+				JsonObject result = new JsonObject();
+				result.addProperty("success", ctx.status().getMessage());
+				result.addProperty("description", "Successfully updated Modrinth project '" + modrinthProject.title + "' to '" + modrinthVersion.name + "' within the Mod Garden database.");
+				ctx.json(result);
+			}
+		} catch (Exception ex) {
+			ModGardenBackend.LOG.error("Failed to unsubmit project.", ex);
+			ctx.status(500);
+			ctx.result("Internal error.");
+		}
 	}
 
 	public static void unsubmit(Context ctx) {
@@ -225,68 +285,69 @@ public class DiscordBotSubmissionHandler {
 
 		try (InputStream bodyStream = ctx.bodyInputStream();
 			 InputStreamReader bodyReader = new InputStreamReader(bodyStream)) {
-			JsonElement bodyJson = JsonParser.parseReader(bodyReader);
-			var bodyResult = Body.CODEC.parse(JsonOps.INSTANCE, bodyJson);
-			if (bodyResult.isError()) {
-				ctx.status(400);
-				ctx.result(bodyResult.error().orElseThrow().message());
-				return;
-			}
-			Body body = bodyResult.getOrThrow();
-			String slug = body.slug().toLowerCase(Locale.ROOT);
+			Body body = Body.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseReader(bodyReader)).getOrThrow();
+			String slug = body.slug.toLowerCase(Locale.ROOT);
 
 			if (!slug.matches(REGEX)) {
-				ctx.status(400);
+				ctx.status(422);
 				ctx.result("Invalid Mod Garden slug.");
 				return;
 			}
 
 			User user = User.query(body.discordId, "discord");
 			if (user == null || user.modrinthId().isEmpty()) {
-				ctx.status(404);
+				ctx.status(422);
 				ctx.result("Could not find a Mod Garden or Modrinth account linked to the specified Discord user.");
 				return;
 			}
 
 			try (Connection connection = ModGardenBackend.createDatabaseConnection();
-				 PreparedStatement getModrinthIdStatement = connection.prepareStatement("SELECT modrinth_id FROM projects WHERE slug = ?");
-				 PreparedStatement projectCheckStatement = connection.prepareStatement("SELECT 1 FROM projects WHERE slug = ?");
+				 PreparedStatement getModrinthIdStatement = connection.prepareStatement("SELECT id, modrinth_id FROM projects WHERE slug = ?");
+				 PreparedStatement checkSubmissionStatement = connection.prepareStatement("SELECT 1 FROM submissions WHERE project_id = ? AND event = ?");
 				 PreparedStatement projectAttributionCheckStatement = connection.prepareStatement("SELECT 1 FROM projects WHERE slug = ? AND attributed_to = ?");
 				 PreparedStatement deleteSubmissionStatement = connection.prepareStatement("DELETE FROM submissions WHERE project_id = ? AND event = ?");
-				 PreparedStatement checkSubmissionStatement = connection.prepareStatement("SELECT 1 FROM submissions WHERE project_id = ?");
+				 PreparedStatement checkSubmissionPreDeletionStatement = connection.prepareStatement("SELECT 1 FROM submissions WHERE project_id = ?");
 				 PreparedStatement projectDeleteStatement = connection.prepareStatement("DELETE FROM projects WHERE id = ?");
 				 PreparedStatement projectAuthorsDeleteStatement = connection.prepareStatement("DELETE FROM project_authors WHERE project_id = ?")) {
-				Event event;
-				if (body.event().isPresent()) {
-					event = body.event().get();
-				} else {
-					event = getCurrentEvent(connection);
-				}
+				Event event = getCurrentEvent(connection);
 
 				if (event == null) {
-					ctx.status(400);
-					ctx.result("Could not find an event to unsubmit from.");
+					ctx.status(422);
+					ctx.result("A Mod Garden event is not currently open for unsubmitting.");
 					return;
 				}
 
 				getModrinthIdStatement.setString(1, slug);
 				ResultSet modrinthResult = getModrinthIdStatement.executeQuery();
-				String potentialModrinthId = modrinthResult.getString(1);
+				String potentialModrinthId = modrinthResult.getString("modrinth_id");
 				String modrinthId = slug;
 				if (potentialModrinthId != null) {
 					modrinthId = potentialModrinthId;
 				}
 
+				String projectId = modrinthResult.getString("id");
+
 				var modrinthStream = OAuthService.MODRINTH.authenticate().get("v2/project/" + modrinthId, HttpResponse.BodyHandlers.ofInputStream());
 				String title = slug;
 				if (modrinthStream.statusCode() == 200) {
-					ModrinthProject modrinthProject = ModGardenBackend.GSON.fromJson(new InputStreamReader(modrinthStream.body()), ModrinthProject.class);
+					InputStreamReader modrinthProjectReader = new InputStreamReader(modrinthStream.body());
+					ModrinthProject modrinthProject = ModrinthProject.CODEC.parse(JsonOps.INSTANCE, JsonParser.parseReader(modrinthProjectReader)).getOrThrow();
 					title = modrinthProject.title;
 				}
 
-				projectCheckStatement.setString(1, slug);
-				ResultSet projectResult = projectCheckStatement.executeQuery();
-				if (!projectResult.getBoolean(1)) {
+				if (projectId == null) {
+					ctx.status(200);
+					JsonObject result = new JsonObject();
+					result.addProperty("success", ctx.status().getMessage());
+					result.addProperty("description", "Project '" + title + "' has never been submitted to a Mod Garden event.");
+					ctx.json(result);
+					return;
+				}
+
+				checkSubmissionStatement.setString(1, projectId);
+				checkSubmissionStatement.setString(2, event.id());
+				ResultSet submissionResult = checkSubmissionStatement.executeQuery();
+				if (!submissionResult.getBoolean(1)) {
 					ctx.status(200);
 					JsonObject result = new JsonObject();
 					result.addProperty("success", ctx.status().getMessage());
@@ -303,25 +364,14 @@ public class DiscordBotSubmissionHandler {
 					ctx.result("Only the original submitter is authorized to unsubmit '" + title + "' from event '" + event.displayName() + "'.");
 					return;
 				}
-				String projectId = projectAttributionResult.getString(1);
 
 				deleteSubmissionStatement.setString(1, projectId);
 				deleteSubmissionStatement.setString(2, event.id());
-				int updated = deleteSubmissionStatement.executeUpdate();
+				deleteSubmissionStatement.execute();
 
-				if (updated == 0) {
-					ctx.status(200);
-					JsonObject result = new JsonObject();
-					result.addProperty("success", ctx.status().getMessage());
-					result.addProperty("description", "Project '" + title + "' was never submitted to event '" + event.displayName() + "'.");
-					ctx.json(result);
-					return;
-				}
-
-
-				checkSubmissionStatement.setString(1, projectId);
-				ResultSet submissionResult = checkSubmissionStatement.executeQuery();
-				if (!submissionResult.getBoolean(1)) {
+				checkSubmissionPreDeletionStatement.setString(1, projectId);
+				ResultSet submissionPreDeletionResult = checkSubmissionPreDeletionStatement.executeQuery();
+				if (!submissionPreDeletionResult.getBoolean(1)) {
 					projectDeleteStatement.setString(1, projectId);
 					projectDeleteStatement.execute();
 
@@ -333,7 +383,7 @@ public class DiscordBotSubmissionHandler {
 
 				JsonObject result = new JsonObject();
 				result.addProperty("success", ctx.status().getMessage());
-					result.addProperty("description", "Unsubmitted project '" + title + "' from event '" + event.displayName() + "'.");
+				result.addProperty("description", "Unsubmitted project '" + title + "' from event '" + event.displayName() + "'.");
 				ctx.json(result);
 			}
 		} catch (Exception ex) {
@@ -352,12 +402,10 @@ public class DiscordBotSubmissionHandler {
 
 	private static boolean hasModrinthAttribution(Context ctx,
 												  OAuthClient modrinthClient,
-												  String projectSlug,
+												  ModrinthProject project,
 												  String userId,
-												  String projectDisplayName,
-												  String eventDisplayName,
-												  @Nullable String organisationId) throws IOException, InterruptedException {
-		var membersStream = modrinthClient.get("v2/project/" + projectSlug + "/members", HttpResponse.BodyHandlers.ofInputStream());
+												  String eventDisplayName) throws IOException, InterruptedException {
+		var membersStream = modrinthClient.get("v2/project/" + project.id + "/members", HttpResponse.BodyHandlers.ofInputStream());
 		if (membersStream.statusCode() == 200) {
 			try (InputStreamReader membersReader = new InputStreamReader(membersStream.body())) {
 				JsonElement membersJson = JsonParser.parseReader(membersReader);
@@ -381,8 +429,8 @@ public class DiscordBotSubmissionHandler {
 			}
 		}
 
-		if (organisationId != null) {
-			var organizationStream = modrinthClient.get("v3/organization/" + organisationId, HttpResponse.BodyHandlers.ofInputStream());
+		if (project.organization != null) {
+			var organizationStream = modrinthClient.get("v3/organization/" + project.organization, HttpResponse.BodyHandlers.ofInputStream());
 			try (InputStreamReader organizationReader = new InputStreamReader(organizationStream.body())) {
 				JsonElement organizationJson = JsonParser.parseReader(organizationReader);
 				if (!organizationJson.isJsonObject()) {
@@ -407,48 +455,55 @@ public class DiscordBotSubmissionHandler {
 		}
 
 		ctx.status(401);
-		ctx.result("Unauthorized to submit Modrinth project '" + projectDisplayName + "' to Mod Garden event '" + eventDisplayName + "'.");
+		ctx.result("Unauthorized to submit Modrinth project '" + project.title + "' to Mod Garden event '" + eventDisplayName + "'.");
 		return false;
 	}
 
 	@Nullable
-	private static String getModrinthVersion(JsonObject json, OAuthClient modrinthClient, String minecraftVersion, String loader) throws IOException, InterruptedException {
-		String modrinthVersion = null;
+	private static ModrinthVersion getModrinthVersion(OAuthClient modrinthClient, ModrinthProject modrinthProject, String minecraftVersion, String loader, @Nullable String versionString) throws IOException, InterruptedException {
+		ModrinthVersion modrinthVersion = null;
 		ZonedDateTime latestVersionTime = null;
 		boolean isNative = false; // Used within NeoForge events to make sure that Modrinth will prioritise NeoForge projects over Connector-ran Fabric projects.
 
-		for (JsonElement element : json.getAsJsonArray("versions")) {
-			String versionSlug = element.getAsString();
-			var versionStream = modrinthClient.get("v2/version/" + versionSlug, HttpResponse.BodyHandlers.ofInputStream());
+
+		if (versionString != null) {
+			var versionStream = modrinthClient.get("v2/project/" + modrinthProject.id + "/version/" + versionString, HttpResponse.BodyHandlers.ofInputStream());
+			if (versionStream.statusCode() == 200) {
+				try (InputStreamReader versionReader = new InputStreamReader(versionStream.body())) {
+					JsonElement versionJson = JsonParser.parseReader(versionReader);
+					ModrinthVersion potentialVersion = ModrinthVersion.CODEC.parse(JsonOps.INSTANCE, versionJson).getOrThrow();
+
+					if (versionString.equals(potentialVersion.id) || versionString.equals(potentialVersion.versionNumber)) {
+						if (potentialVersion.loaders.contains(loader) || loader.equals("neoforge") && potentialVersion.loaders.contains("fabric")) {
+							modrinthVersion = potentialVersion;
+						}
+					}
+				}
+			}
+			return modrinthVersion;
+		}
+
+		for (String versionId : modrinthProject.versions) {
+			var versionStream = modrinthClient.get("v2/version/" + versionId, HttpResponse.BodyHandlers.ofInputStream());
 			if (versionStream.statusCode() != 200)
 				continue;
 
 			try (InputStreamReader versionReader = new InputStreamReader(versionStream.body())) {
 				JsonElement versionJson = JsonParser.parseReader(versionReader);
+				ModrinthVersion potentialVersion = ModrinthVersion.CODEC.parse(JsonOps.INSTANCE, versionJson).getOrThrow();
 
-				if (!versionJson.isJsonObject())
+				if (!potentialVersion.gameVersions.contains(minecraftVersion))
 					continue;
 
-				JsonObject versionJsonObject = versionJson.getAsJsonObject();
-				if (versionJsonObject.has("date_published") && versionJsonObject.has("game_versions") && versionJsonObject.has("loaders")) {
-					List<String> gameVersions = Codec.STRING.listOf().decode(JsonOps.INSTANCE, versionJsonObject.getAsJsonArray("game_versions")).getOrThrow().getFirst();
-					List<String> loaders = Codec.STRING.listOf().decode(JsonOps.INSTANCE, versionJsonObject.getAsJsonArray("loaders")).getOrThrow().getFirst();
-					ZonedDateTime datePublished = ZonedDateTime.parse(versionJsonObject.get("date_published").getAsString(), DateTimeFormatter.ISO_DATE_TIME);
-
-					if (!gameVersions.contains(minecraftVersion))
-						continue;
-
-					// Handle natively supported mods for the event's loader.
-					if (loaders.contains(loader) && (!isNative || datePublished.isAfter(latestVersionTime))) {
-						modrinthVersion = versionSlug;
-						latestVersionTime = datePublished;
-						isNative = true;
-						// Handle Fabric mods loaded via Connector on NeoForge.
-					} else if (loader.equals("neoforge") && loaders.contains("fabric") && (latestVersionTime == null || datePublished.isAfter(latestVersionTime))) {
-						modrinthVersion = versionSlug;
-						latestVersionTime = datePublished;
-						isNative = false;
-					}
+				// Handle natively supported mods for the event's loader.
+				if (potentialVersion.loaders.contains(loader) && (latestVersionTime == null || potentialVersion.datePublished.isAfter(latestVersionTime))) {
+					modrinthVersion = potentialVersion;
+					latestVersionTime = potentialVersion.datePublished;
+					isNative = true;
+				// Handle Fabric mods loaded via Connector on NeoForge.
+				} else if (!isNative && loader.equals("neoforge") && potentialVersion.loaders.contains("fabric") && (latestVersionTime == null || potentialVersion.datePublished.isAfter(latestVersionTime))) {
+					modrinthVersion = potentialVersion;
+					latestVersionTime = potentialVersion.datePublished;
 				}
 			}
 		}
@@ -472,16 +527,69 @@ public class DiscordBotSubmissionHandler {
 		return null;
 	}
 
-	public record Body(String discordId, Optional<Event> event, String slug) {
-		public static final Codec<Body> CODEC = RecordCodecBuilder.create(inst -> inst.group(
-				Codec.STRING.fieldOf("discord_id").forGetter(Body::discordId),
-				Event.FROM_SLUG_CODEC.optionalFieldOf("event").forGetter(Body::event),
-				Codec.STRING.fieldOf("slug").forGetter(Body::slug)
-		).apply(inst, Body::new));
+
+	private static Event getNonFrozenEvent(Connection connection) throws SQLException {
+		PreparedStatement slugStatement = connection.prepareStatement("SELECT slug FROM events WHERE start_time <= ? AND freeze_time > ? LIMIT 1");
+
+		long currentMillis = System.currentTimeMillis();
+		slugStatement.setLong(1, currentMillis);
+		slugStatement.setLong(2, currentMillis);
+		ResultSet query = slugStatement.executeQuery();
+
+		@Nullable String slug = query.getString(1);
+
+		if (slug != null)
+			return Event.queryFromSlug(slug);
+
+		return null;
+	}
+
+	private record Body(String discordId, String slug, @Nullable String version) {
+			private static final Codec<Body> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+					Codec.STRING
+							.fieldOf("discord_id")
+							.forGetter(b -> b.discordId),
+					Codec.STRING
+							.fieldOf("slug")
+							.forGetter(b -> b.slug),
+					Codec.STRING
+							.optionalFieldOf("version")
+							.forGetter(b -> Optional.ofNullable(b.version))
+			).apply(inst, (discordId, slug, version) ->
+					new Body(discordId, slug, version.orElse(null))));
+
 	}
 
 	private static class ModrinthProject {
-		@SerializedName("title")
-		String title;
+		protected static final Codec<ModrinthProject> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+				Codec.STRING.fieldOf("title").forGetter(p -> p.title),
+				Codec.STRING.fieldOf("id").forGetter(p -> p.id),
+				Codec.STRING.listOf().xmap(Set::copyOf, List::copyOf).fieldOf("versions").forGetter(p -> p.versions)
+		).apply(inst, ModrinthProject::new));
+
+		protected final String title;
+		protected final String id;
+		protected final Set<String> versions;
+
+		@Nullable
+		protected String organization;
+
+		private ModrinthProject(String title, String id, Set<String> versions) {
+			this.title = title;
+			this.id = id;
+			this.versions = versions;
+		}
+	}
+
+	private record ModrinthVersion(String id, String name, String versionNumber, ZonedDateTime datePublished,
+								   Set<String> gameVersions, Set<String> loaders) {
+			private static final Codec<ModrinthVersion> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+					Codec.STRING.fieldOf("id").forGetter(v -> v.id),
+					Codec.STRING.fieldOf("name").forGetter(v -> v.name),
+					Codec.STRING.fieldOf("version_number").forGetter(v -> v.versionNumber),
+					ExtraCodecs.ISO_DATE_TIME.fieldOf("date_published").forGetter(v -> v.datePublished),
+					Codec.STRING.listOf().xmap(Set::copyOf, List::copyOf).fieldOf("game_versions").forGetter(v -> v.gameVersions),
+					Codec.STRING.listOf().xmap(Set::copyOf, List::copyOf).fieldOf("loaders").forGetter(v -> v.loaders)
+			).apply(inst, ModrinthVersion::new));
 	}
 }

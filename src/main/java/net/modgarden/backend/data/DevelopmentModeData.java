@@ -46,7 +46,7 @@ public class DevelopmentModeData {
 			userStatement.execute();
 
 
-			var eventStatement = connection.prepareStatement("INSERT OR IGNORE INTO events(id, slug, display_name, discord_role_id, registration_time, start_time, end_time, minecraft_version, loader) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+			var eventStatement = connection.prepareStatement("INSERT OR IGNORE INTO events(id, slug, display_name, discord_role_id, registration_time, start_time, end_time, freeze_time, minecraft_version, loader) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 			long mojankId = RANDOM.nextLong(Long.MAX_VALUE);
 			eventStatement.setString(1, Long.toString(mojankId));
 			eventStatement.setString(2, "mojank-fest");
@@ -55,8 +55,9 @@ public class DevelopmentModeData {
 			eventStatement.setLong(5, System.currentTimeMillis() - (DAY_MILLISECONDS * 365));
 			eventStatement.setLong(6, System.currentTimeMillis() - (DAY_MILLISECONDS * 365));
 			eventStatement.setLong(7, System.currentTimeMillis() - (DAY_MILLISECONDS * 344));
-			eventStatement.setString(8, "1.20.1");
-			eventStatement.setString(9, "fabric");
+			eventStatement.setLong(8, System.currentTimeMillis() - (DAY_MILLISECONDS * 304));
+			eventStatement.setString(9, "1.20.1");
+			eventStatement.setString(10, "fabric");
 			eventStatement.execute();
 
             long festivalId = RANDOM.nextLong(Long.MAX_VALUE);
@@ -67,8 +68,9 @@ public class DevelopmentModeData {
 			eventStatement.setLong(5, System.currentTimeMillis() - (DAY_MILLISECONDS * 229));
             eventStatement.setLong(6, System.currentTimeMillis() - (DAY_MILLISECONDS * 222));
 			eventStatement.setLong(7, System.currentTimeMillis() - (DAY_MILLISECONDS * 162));
-			eventStatement.setString(8, "1.21.1");
-			eventStatement.setString(9, "fabric");
+			eventStatement.setLong(8, System.currentTimeMillis() - (DAY_MILLISECONDS * 102));
+			eventStatement.setString(9, "1.21.1");
+			eventStatement.setString(10, "fabric");
             eventStatement.execute();
 
 			long exampleGardenId = RANDOM.nextLong(Long.MAX_VALUE);
@@ -79,8 +81,9 @@ public class DevelopmentModeData {
 			eventStatement.setLong(5, System.currentTimeMillis() - (DAY_MILLISECONDS * 7));
 			eventStatement.setLong(6, System.currentTimeMillis());
 			eventStatement.setLong(7, System.currentTimeMillis() + (DAY_MILLISECONDS * 60));
-			eventStatement.setString(8, "1.21.5");
-			eventStatement.setString(9, "fabric");
+			eventStatement.setLong(8, System.currentTimeMillis() + (DAY_MILLISECONDS * 120));
+			eventStatement.setString(9, "1.21.5");
+			eventStatement.setString(10, "fabric");
 			eventStatement.execute();
 
 			long otherEvent = RANDOM.nextLong(Long.MAX_VALUE);
@@ -91,8 +94,9 @@ public class DevelopmentModeData {
 			eventStatement.setLong(5, System.currentTimeMillis() + (DAY_MILLISECONDS * 7));
 			eventStatement.setLong(6, System.currentTimeMillis() + (DAY_MILLISECONDS * 14));
 			eventStatement.setLong(7, System.currentTimeMillis() + (DAY_MILLISECONDS * 35));
-			eventStatement.setString(8, "1.21.1");
-			eventStatement.setString(9, "neoforge");
+			eventStatement.setLong(8, System.currentTimeMillis() + (DAY_MILLISECONDS * 98));
+			eventStatement.setString(9, "1.21.1");
+			eventStatement.setString(10, "neoforge");
 
 			eventStatement.execute();
 

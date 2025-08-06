@@ -51,7 +51,6 @@ public class ModGardenBackend {
 
 	public static final int DATABASE_SCHEMA_VERSION = 3;
     private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
-	public static final Gson GSON = new Gson();
 
 	public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
@@ -92,7 +91,6 @@ public class ModGardenBackend {
 		CODEC_REGISTRY.put(DiscordBotLinkHandler.Body.class, DiscordBotLinkHandler.Body.CODEC);
 		CODEC_REGISTRY.put(DiscordBotProfileHandler.PostBody.class, DiscordBotProfileHandler.PostBody.CODEC);
 		CODEC_REGISTRY.put(DiscordBotProfileHandler.DeleteBody.class, DiscordBotProfileHandler.DeleteBody.CODEC);
-		CODEC_REGISTRY.put(DiscordBotSubmissionHandler.Body.class, DiscordBotSubmissionHandler.Body.CODEC);
 		CODEC_REGISTRY.put(DiscordBotUnlinkHandler.Body.class, DiscordBotUnlinkHandler.Body.CODEC);
 
         Landing.createInstance();
@@ -123,6 +121,7 @@ public class ModGardenBackend {
 		get(app, 1, "events", Event::getEvents);
 		get(app, 1, "events/current/registration", Event::getCurrentRegistrationEvent);
 		get(app, 1, "events/current/development", Event::getCurrentDevelopmentEvent);
+		get(app, 1, "events/current/prefreeze", Event::getCurrentPreFreezeEvent);
 		get(app, 1, "events/active", Event::getActiveEvents);
 
 		get(app, 1, "mcaccount/{mcaccount}", MinecraftAccount::getAccount);
@@ -199,6 +198,7 @@ public class ModGardenBackend {
 						"registration_time INTEGER NOT NULL," +
                         "start_time INTEGER NOT NULL," +
 						"end_time INTEGER NOT NULL," +
+						"freeze_time INTEGER NOT NULL," +
                         "PRIMARY KEY (id)" +
                     ")");
             statement.addBatch("CREATE TABLE IF NOT EXISTS projects (" +
