@@ -59,13 +59,17 @@ public record Project(String id,
 
     public static Project queryFromId(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement(selectStatement("id = ?"))) {
+             PreparedStatement prepared = connection.prepareStatement(selectStatement())) {
             prepared.setString(1, id);
             ResultSet result = prepared.executeQuery();
             if (!result.isBeforeFirst())
                 return null;
-			List<String> authors = List.of(result.getString("authors").split(","));
-			List<String> builders = List.of(result.getString("builders").split(","));
+			List<String> authors = Arrays.stream(result.getString("authors").split(","))
+					.filter(s -> !s.isBlank())
+					.toList();
+			List<String> builders = Arrays.stream(result.getString("builders").split(","))
+					.filter(s -> !s.isBlank())
+					.toList();
 			return new Project(
 					result.getString("id"),
 					result.getString("slug"),
@@ -157,31 +161,29 @@ public record Project(String id,
 	}
 
 
-    private static String selectStatement(String whereStatement) {
-        return "SELECT " +
-                "p.id, " +
-                "p.slug, " +
-                "p.modrinth_id, " +
-                "p.attributed_to, " +
-                "CASE " +
-                    "WHEN a.user_id IS NOT NULL THEN group_concat(DISTINCT a.user_id)" +
-                    "ELSE '' " +
-                "END AS authors " +
-				"CASE " +
-					"WHEN b.user_id IS NOT NULL THEN group_concat(DISTINCT b.user_id)" +
-					"ELSE '' " +
-				"END AS builders " +
-                "FROM " +
-                    "projects p " +
-                "LEFT JOIN " +
-                    "project_authors a ON p.id = a.project_id " +
-				"LEFT JOIN " +
-					"project_builders b ON p.id = b.project_id " +
-                "WHERE " +
-                    "p." + whereStatement + " " +
-                "GROUP BY " +
-                    "p.id, p.slug, p.modrinth_id, p.attributed_to";
-    }
+    private static String selectStatement() {
+        return """
+				SELECT
+					p.id,
+					p.slug,
+					p.modrinth_id,
+					p.attributed_to,
+				 	COALESCE(Group_concat(DISTINCT a.user_id), '') AS authors,
+					COALESCE(Group_concat(DISTINCT b.user_id), '') AS builders
+				FROM projects p
+					LEFT JOIN project_authors a
+				    	ON p.id = a.project_id
+						LEFT JOIN project_builders b
+							ON p.id = b.project_id
+				WHERE
+					p.id = ?
+				GROUP BY
+					p.id,
+					p.slug,
+					p.modrinth_id,
+					p.attributed_to
+				""";
+	}
 
 	private static String selectAllByUser() {
 		return """
