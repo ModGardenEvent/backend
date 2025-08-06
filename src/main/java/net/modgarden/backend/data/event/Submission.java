@@ -61,10 +61,12 @@ public record Submission(String id,
 			ctx.status(422);
 			return;
 		}
-		var queryString = selectByUserStatement(user);
+		var queryString = selectByUserStatement();
 		try {
 			Connection connection = ModGardenBackend.createDatabaseConnection();
 			PreparedStatement prepared = connection.prepareStatement(queryString);
+			prepared.setString(1, user);
+			prepared.setString(2, user);
 			ResultSet result = prepared.executeQuery();
 			var submissions = new JsonArray();
 			while (result.next()) {
@@ -89,10 +91,12 @@ public record Submission(String id,
 			ctx.status(422);
 			return;
 		}
-		var queryString = selectByEventStatement(event);
+		var queryString = selectByEventStatement();
 		try {
 			Connection connection = ModGardenBackend.createDatabaseConnection();
 			PreparedStatement prepared = connection.prepareStatement(queryString);
+			prepared.setString(1, event);
+			prepared.setString(2, event);
 			ResultSet result = prepared.executeQuery();
 			var submissions = new JsonArray();
 			while (result.next()) {
@@ -110,6 +114,43 @@ public record Submission(String id,
 		}
 	}
 
+	public static void getSubmissionsByUserAndEvent(Context ctx) {
+		String user = ctx.pathParam("user");
+		String event = ctx.pathParam("event");
+		if (!user.matches(ModGardenBackend.SAFE_URL_REGEX)) {
+			ctx.result("Illegal characters in path '" + user + "'.");
+			ctx.status(422);
+			return;
+		}
+		if (!event.matches(ModGardenBackend.SAFE_URL_REGEX)) {
+			ctx.result("Illegal characters in path '" + event + "'.");
+			ctx.status(422);
+			return;
+		}
+		var queryString = selectByUserAndEventStatement();
+		try {
+			Connection connection = ModGardenBackend.createDatabaseConnection();
+			PreparedStatement prepared = connection.prepareStatement(queryString);
+			prepared.setString(1, user);
+			prepared.setString(2, user);
+			prepared.setString(3, event);
+			prepared.setString(4, event);
+			ResultSet result = prepared.executeQuery();
+			var submissions = new JsonArray();
+			while (result.next()) {
+				var submission = new JsonObject();
+				submission.addProperty("id", result.getString("id"));
+				submission.addProperty("event", result.getString("event"));
+				submission.addProperty("project_id", result.getString("project_id"));
+				submission.addProperty("modrinth_version_id", result.getString("modrinth_version_id"));
+				submission.addProperty("submitted", result.getLong("submitted"));
+				submissions.add(submission);
+			}
+			ctx.json(submissions);
+		} catch (SQLException ex) {
+			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
+		}
+	}
 
     public static Submission innerQuery(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
@@ -132,44 +173,59 @@ public record Submission(String id,
     }
 
     private static String selectStatement() {
-        return "SELECT " +
-                "s.id, " +
-                "s.project_id, " +
-                "s.event, " +
-                "s.modrinth_version_id, " +
-                "s.submitted " +
-                "FROM " +
-                    "submissions s " +
-                "WHERE " +
-                    "s.id = ? " +
-                "GROUP BY " +
-                    "s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted";
+        return """
+					SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
+					FROM
+						submissions s
+					WHERE
+						s.id = ?
+					GROUP BY
+						s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
+				""";
     }
 
-	private static String selectByUserStatement(String user) {
+	private static String selectByUserStatement() {
+		return """
+			SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
+			FROM submissions s
+				LEFT JOIN projects p on p.id = s.project_id
+				LEFT JOIN project_authors a on a.project_id = s.project_id
+				WHERE p.id IN (SELECT pa.project_id
+					FROM project_authors pa
+						JOIN users uu
+							ON pa.user_id = uu.id
+						WHERE  uu.id = ?
+							OR uu.username = ?)
+				GROUP BY s.id
+			""";
+	}
+
+	private static String selectByEventStatement() {
+		return """
+			SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
+			FROM submissions s
+				LEFT JOIN events e on e.id = s.event
+				WHERE s.event = ? OR e.slug = ?
+				GROUP BY s.id
+			""";
+	}
+
+	private static String selectByUserAndEventStatement() {
 		return """
 				SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
 				FROM submissions s
 					LEFT JOIN projects p on p.id = s.project_id
 					LEFT JOIN project_authors a on a.project_id = s.project_id
-					WHERE  p.id IN (SELECT pa.project_id
-									FROM   project_authors pa
-										   JOIN users uu
-											 ON pa.user_id = uu.id
-									WHERE  uu.id = '%s'
-											OR uu.username = '%s')
+					LEFT JOIN events e on e.id = s.event
+					WHERE p.id IN (SELECT pa.project_id
+						FROM project_authors pa
+							JOIN users uu
+								ON pa.user_id = uu.id
+							WHERE  uu.id = ?
+								OR uu.username = ?) AND
+						s.event = ? OR e.slug = ?
 					GROUP BY s.id
-				""".formatted(user, user);
-	}
-
-	private static String selectByEventStatement(String event) {
-		return """
-			SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
-			FROM submissions s
-				LEFT JOIN events e on e.id = s.event
-				WHERE s.event = '%s' OR e.slug = '%s'
-				GROUP BY s.id
-			""".formatted(event, event);
+				""";
 	}
 
 	private static DataResult<String> validate(String id) {

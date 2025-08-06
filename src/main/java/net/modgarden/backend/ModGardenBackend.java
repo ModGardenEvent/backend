@@ -134,6 +134,7 @@ public class ModGardenBackend {
 		get(app, 1, "user/{user}", User::getUser);
 		get(app, 1, "user/{user}/projects", Project::getProjectsByUser);
 		get(app, 1, "user/{user}/submissions", Submission::getSubmissionsByUser);
+		get(app, 1, "user/{user}/submissions/{event}", Submission::getSubmissionsByUserAndEvent);
 		get(app, 1, "user/{user}/awards", Award::getAwardsByUser);
 
 		post(app, 1, "discord/register", RegistrationHandler::discordBotRegister);
