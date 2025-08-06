@@ -3,6 +3,7 @@ package net.modgarden.backend.handler.v1.discord;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.annotations.SerializedName;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -196,6 +197,19 @@ public class DiscordBotSubmissionHandler {
 		}
 	}
 
+
+	public static void setVersionModrinth(Context ctx) {
+		if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
+			ctx.result("Unauthorized.");
+			ctx.status(401);
+			return;
+		}
+
+		// TODO: Implement set version.
+		 ctx.result("Unimplemented.");
+		ctx.status(500);
+	}
+
 	public static void unsubmit(Context ctx) {
 		if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
 			ctx.result("Unauthorized.");
@@ -223,7 +237,7 @@ public class DiscordBotSubmissionHandler {
 
 			if (!slug.matches(REGEX)) {
 				ctx.status(400);
-				ctx.result("Invalid Modrinth slug.");
+				ctx.result("Invalid Mod Garden slug.");
 				return;
 			}
 
@@ -235,8 +249,9 @@ public class DiscordBotSubmissionHandler {
 			}
 
 			try (Connection connection = ModGardenBackend.createDatabaseConnection();
+				 PreparedStatement getModrinthIdStatement = connection.prepareStatement("SELECT modrinth_id FROM projects WHERE slug = ?");
 				 PreparedStatement projectCheckStatement = connection.prepareStatement("SELECT 1 FROM projects WHERE slug = ?");
-				 PreparedStatement projectAttributionCheckStatement = connection.prepareStatement("SELECT id FROM projects WHERE slug = ? AND attributed_to = ?");
+				 PreparedStatement projectAttributionCheckStatement = connection.prepareStatement("SELECT 1 FROM projects WHERE slug = ? AND attributed_to = ?");
 				 PreparedStatement deleteSubmissionStatement = connection.prepareStatement("DELETE FROM submissions WHERE project_id = ? AND event = ?");
 				 PreparedStatement checkSubmissionStatement = connection.prepareStatement("SELECT 1 FROM submissions WHERE project_id = ?");
 				 PreparedStatement projectDeleteStatement = connection.prepareStatement("DELETE FROM projects WHERE id = ?");
@@ -254,13 +269,28 @@ public class DiscordBotSubmissionHandler {
 					return;
 				}
 
+				getModrinthIdStatement.setString(1, slug);
+				ResultSet modrinthResult = getModrinthIdStatement.executeQuery();
+				String potentialModrinthId = modrinthResult.getString(1);
+				String modrinthId = slug;
+				if (potentialModrinthId != null) {
+					modrinthId = potentialModrinthId;
+				}
+
+				var modrinthStream = OAuthService.MODRINTH.authenticate().get("v2/project/" + modrinthId, HttpResponse.BodyHandlers.ofInputStream());
+				String title = slug;
+				if (modrinthStream.statusCode() == 200) {
+					ModrinthProject modrinthProject = ModGardenBackend.GSON.fromJson(new InputStreamReader(modrinthStream.body()), ModrinthProject.class);
+					title = modrinthProject.title;
+				}
+
 				projectCheckStatement.setString(1, slug);
 				ResultSet projectResult = projectCheckStatement.executeQuery();
 				if (!projectResult.getBoolean(1)) {
 					ctx.status(200);
 					JsonObject result = new JsonObject();
 					result.addProperty("success", ctx.status().getMessage());
-					result.addProperty("description", "Project '" + slug + "' was never submitted to event '" + event.displayName() + "'.");
+					result.addProperty("description", "Project '" + title + "' was never submitted to event '" + event.displayName() + "'.");
 					ctx.json(result);
 					return;
 				}
@@ -268,9 +298,9 @@ public class DiscordBotSubmissionHandler {
 				projectAttributionCheckStatement.setString(1, slug);
 				projectAttributionCheckStatement.setString(2, user.id());
 				ResultSet projectAttributionResult = projectAttributionCheckStatement.executeQuery();
-				if (!projectResult.getBoolean(1)) {
+				if (!projectAttributionResult.getBoolean(1)) {
 					ctx.status(401);
-					ctx.result("Only the original submitter is authorized to unsubmit '" + slug + "' from event '" + event.displayName() + "'.");
+					ctx.result("Only the original submitter is authorized to unsubmit '" + title + "' from event '" + event.displayName() + "'.");
 					return;
 				}
 				String projectId = projectAttributionResult.getString(1);
@@ -283,7 +313,7 @@ public class DiscordBotSubmissionHandler {
 					ctx.status(200);
 					JsonObject result = new JsonObject();
 					result.addProperty("success", ctx.status().getMessage());
-					result.addProperty("description", "Project '" + slug + "' was never submitted to event '" + event.displayName() + "'.");
+					result.addProperty("description", "Project '" + title + "' was never submitted to event '" + event.displayName() + "'.");
 					ctx.json(result);
 					return;
 				}
@@ -303,10 +333,10 @@ public class DiscordBotSubmissionHandler {
 
 				JsonObject result = new JsonObject();
 				result.addProperty("success", ctx.status().getMessage());
-					result.addProperty("description", "Unsubmitted project '" + slug + "' from event '" + event.displayName() + "'.");
+					result.addProperty("description", "Unsubmitted project '" + title + "' from event '" + event.displayName() + "'.");
 				ctx.json(result);
 			}
-		} catch (SQLException | IOException ex) {
+		} catch (Exception ex) {
 			ModGardenBackend.LOG.error("Failed to unsubmit project.", ex);
 			ctx.status(500);
 			ctx.result("Internal error.");
@@ -448,5 +478,10 @@ public class DiscordBotSubmissionHandler {
 				Event.FROM_SLUG_CODEC.optionalFieldOf("event").forGetter(Body::event),
 				Codec.STRING.fieldOf("slug").forGetter(Body::slug)
 		).apply(inst, Body::new));
+	}
+
+	private static class ModrinthProject {
+		@SerializedName("title")
+		String title;
 	}
 }

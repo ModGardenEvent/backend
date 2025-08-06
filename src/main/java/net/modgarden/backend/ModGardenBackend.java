@@ -35,7 +35,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.net.http.HttpClient;
-import java.security.NoSuchAlgorithmException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -52,6 +51,7 @@ public class ModGardenBackend {
 
 	public static final int DATABASE_SCHEMA_VERSION = 3;
     private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
+	public static final Gson GSON = new Gson();
 
 	public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
@@ -143,6 +143,7 @@ public class ModGardenBackend {
 		get(app, 1, "discord/oauth/minecraft/challenge", DiscordBotOAuthHandler::getMicrosoftCodeChallenge);
 
 		post(app, 1, "discord/submission/create/modrinth", DiscordBotSubmissionHandler::submitModrinth);
+		post(app, 1, "discord/submission/modify/version/modrinth", DiscordBotSubmissionHandler::setVersionModrinth);
 		post(app, 1, "discord/submission/delete", DiscordBotSubmissionHandler::unsubmit);
 
 		post(app, 1, "discord/link", DiscordBotLinkHandler::link);
