@@ -49,7 +49,7 @@ public class ModGardenBackend {
     public static final String URL = "development".equals(DOTENV.get("env")) ? "http://localhost:7070" : "https://api.modgarden.net";
 	public static final Logger LOG = LoggerFactory.getLogger(ModGardenBackend.class);
 
-	public static final int DATABASE_SCHEMA_VERSION = 3;
+	public static final int DATABASE_SCHEMA_VERSION = 4;
     private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
 
 	public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
