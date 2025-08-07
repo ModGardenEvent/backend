@@ -26,10 +26,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.ZonedDateTime;
-import java.util.List;
-import java.util.Locale;
-import java.util.Optional;
-import java.util.Set;
+import java.time.temporal.ChronoField;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 // TODO: Rewrite to use a faster deserialization library than GSON.
 public class DiscordBotSubmissionHandler {
@@ -461,11 +461,6 @@ public class DiscordBotSubmissionHandler {
 
 	@Nullable
 	private static ModrinthVersion getModrinthVersion(OAuthClient modrinthClient, ModrinthProject modrinthProject, String minecraftVersion, String loader, @Nullable String versionString) throws IOException, InterruptedException {
-		ModrinthVersion modrinthVersion = null;
-		ZonedDateTime latestVersionTime = null;
-		boolean isNative = false; // Used within NeoForge events to make sure that Modrinth will prioritise NeoForge projects over Connector-ran Fabric projects.
-
-
 		if (versionString != null) {
 			var versionStream = modrinthClient.get("v2/project/" + modrinthProject.id + "/version/" + versionString, HttpResponse.BodyHandlers.ofInputStream());
 			if (versionStream.statusCode() == 200) {
@@ -475,40 +470,53 @@ public class DiscordBotSubmissionHandler {
 
 					if (versionString.equals(potentialVersion.id) || versionString.equals(potentialVersion.versionNumber)) {
 						if (potentialVersion.loaders.contains(loader) || loader.equals("neoforge") && potentialVersion.loaders.contains("fabric")) {
-							modrinthVersion = potentialVersion;
+							return potentialVersion;
 						}
 					}
 				}
 			}
-			return modrinthVersion;
+			return null;
 		}
 
-		for (String versionId : modrinthProject.versions) {
-			var versionStream = modrinthClient.get("v2/version/" + versionId, HttpResponse.BodyHandlers.ofInputStream());
-			if (versionStream.statusCode() != 200)
-				continue;
+		ModrinthVersion modrinthVersion = null;
+		ZonedDateTime latestVersionTime = null;
 
-			try (InputStreamReader versionReader = new InputStreamReader(versionStream.body())) {
-				JsonElement versionJson = JsonParser.parseReader(versionReader);
-				ModrinthVersion potentialVersion = ModrinthVersion.CODEC.parse(JsonOps.INSTANCE, versionJson).getOrThrow();
+		List<ModrinthVersion> modrinthVersions = modrinthProject.versions.parallelStream().map(versionId -> {
+			try {
+				var versionStream = modrinthClient.get("v2/version/" + versionId, HttpResponse.BodyHandlers.ofInputStream());
+				if (versionStream.statusCode() != 200)
+					return null;
 
-				if (!potentialVersion.gameVersions.contains(minecraftVersion))
-					continue;
+				try (InputStreamReader versionReader = new InputStreamReader(versionStream.body())) {
+					JsonElement versionJson = JsonParser.parseReader(versionReader);
+					ModrinthVersion potentialVersion = ModrinthVersion.CODEC.parse(JsonOps.INSTANCE, versionJson).getOrThrow();
 
-				// Handle natively supported mods for the event's loader.
-				if (potentialVersion.loaders.contains(loader) && (latestVersionTime == null || potentialVersion.datePublished.isAfter(latestVersionTime))) {
-					modrinthVersion = potentialVersion;
-					latestVersionTime = potentialVersion.datePublished;
-					isNative = true;
-				// Handle Fabric mods loaded via Connector on NeoForge.
-				} else if (!isNative && loader.equals("neoforge") && potentialVersion.loaders.contains("fabric") && (latestVersionTime == null || potentialVersion.datePublished.isAfter(latestVersionTime))) {
-					modrinthVersion = potentialVersion;
-					latestVersionTime = potentialVersion.datePublished;
+					if (!potentialVersion.gameVersions.contains(minecraftVersion))
+						return null;
+
+					// Handle natively supported mods for the event's loader.
+					if (potentialVersion.loaders.contains(loader)) {
+						return potentialVersion;
+					// Handle Fabric mods loaded via Connector on NeoForge.
+					} else if (loader.equals("neoforge") && potentialVersion.loaders.contains("fabric")) {
+						return potentialVersion;
+					}
 				}
+			} catch (Exception ex) {
+				ModGardenBackend.LOG.error("Failed to read Modrinth version.", ex);
 			}
+			return null;
+		}).filter(Objects::nonNull).collect(Collectors.toCollection(ArrayList::new));
+
+		// Filter out non-native options if the mod has a native version.
+		// Handles cases like Sinytra Connector.
+		if (modrinthVersions.stream().anyMatch(v -> v.loaders.contains(loader))) {
+			modrinthVersions.removeIf(v -> !v.loaders.contains(loader));
 		}
 
-		return modrinthVersion;
+		return modrinthVersions.stream()
+				.max(Comparator.comparingLong(value -> value.datePublished.getLong(ChronoField.INSTANT_SECONDS)))
+				.orElse(null);
 	}
 
 	private static Event getCurrentEvent(Connection connection) throws SQLException {
