@@ -215,12 +215,15 @@ public record Submission(String id,
 					FROM submissions s
 						LEFT JOIN projects p on p.id = s.project_id
 						LEFT JOIN project_authors a on a.project_id = s.project_id
-						LEFT JOIN events e on e.id = s.event
 					WHERE a.user_id IN (
 						SELECT u.id
 						FROM users u
 						WHERE u.id = ? OR u.username = ?
-					) AND e.id = ? OR e.slug = ?
+					) AND s.event IN (
+						SELECT e.id
+						FROM events e
+						WHERE e.id = ? OR e.slug = ?
+					)
 					GROUP BY s.id
 			""";
 	}
