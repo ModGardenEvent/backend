@@ -186,17 +186,16 @@ public record Submission(String id,
 
 	private static String selectByUserStatement() {
 		return """
-			SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
-			FROM submissions s
-				LEFT JOIN projects p on p.id = s.project_id
-				LEFT JOIN project_authors a on a.project_id = s.project_id
-				WHERE p.id IN (SELECT pa.project_id
-					FROM project_authors pa
-						JOIN users uu
-							ON pa.user_id = uu.id
-						WHERE  uu.id = ?
-							OR uu.username = ?)
-				GROUP BY s.id
+					SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
+					FROM submissions s
+						LEFT JOIN projects p on p.id = s.project_id
+						LEFT JOIN project_authors a on a.project_id = s.project_id
+					WHERE a.user_id IN (
+						SELECT u.id
+						FROM users u
+						WHERE u.id = ? OR u.username = ?
+					)
+					GROUP BY s.id
 			""";
 	}
 
@@ -212,20 +211,18 @@ public record Submission(String id,
 
 	private static String selectByUserAndEventStatement() {
 		return """
-				SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
-				FROM submissions s
-					LEFT JOIN projects p on p.id = s.project_id
-					LEFT JOIN project_authors a on a.project_id = s.project_id
-					LEFT JOIN events e on e.id = s.event
-					WHERE p.id IN (SELECT pa.project_id
-						FROM project_authors pa
-							JOIN users uu
-								ON pa.user_id = uu.id
-							WHERE  uu.id = ?
-								OR uu.username = ?) AND
-						s.event = ? OR e.slug = ?
+					SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
+					FROM submissions s
+						LEFT JOIN projects p on p.id = s.project_id
+						LEFT JOIN project_authors a on a.project_id = s.project_id
+						LEFT JOIN events e on e.id = s.event
+					WHERE a.user_id IN (
+						SELECT u.id
+						FROM users u
+						WHERE u.id = ? OR u.username = ?
+					) AND e.id = ? OR e.slug = ?
 					GROUP BY s.id
-				""";
+			""";
 	}
 
 	private static DataResult<String> validate(String id) {
