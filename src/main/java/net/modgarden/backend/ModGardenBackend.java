@@ -115,7 +115,6 @@ public class ModGardenBackend {
 		get(app, 1, "award/{award}", Award::getAwardType);
 
 		get(app, 1, "event/{event}", Event::getEvent);
-		get(app, 1, "event/{event}/projects", Project::getProjectsByEvent);
 		get(app, 1, "event/{event}/submissions", Submission::getSubmissionsByEvent);
 
 		get(app, 1, "events", Event::getEvents);

@@ -152,44 +152,6 @@ public record Project(String id,
 		}
 	}
 
-	public static void getProjectsByEvent(Context ctx) {
-		String event = ctx.pathParam("event");
-		if (!event.matches(ModGardenBackend.SAFE_URL_REGEX)) {
-			ctx.result("Illegal characters in path '" + event + "'.");
-			ctx.status(422);
-			return;
-		}
-		try (Connection connection = ModGardenBackend.createDatabaseConnection();
-			 PreparedStatement prepared = connection.prepareStatement(selectAllByEvent())) {
-			prepared.setString(1, event);
-			prepared.setString(2, event);
-			ResultSet result = prepared.executeQuery();
-			var projectList = new JsonArray();
-			while (result.next()) {
-				var projectObject = new JsonObject();
-				var authors = new JsonArray();
-				var builders = new JsonArray();
-
-				for (String author : result.getString("authors").split(",")) {
-					authors.add(author);
-				}
-				for (String builder : result.getString("builders").split(",")) {
-					builders.add(builder);
-				}
-				projectObject.addProperty("id", result.getString("id"));
-				projectObject.addProperty("slug", result.getString("slug"));
-				projectObject.addProperty("modrinth_id", result.getString("modrinth_id"));
-				projectObject.addProperty("attributed_to", result.getString("attributed_to"));
-				projectObject.add("authors", authors);
-				projectObject.add("builders", builders);
-				projectList.add(projectObject);
-			}
-			ctx.json(projectList);
-		} catch (SQLException ex) {
-			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
-		}
-	}
-
 	private static String selectById() {
 		return """
 				SELECT

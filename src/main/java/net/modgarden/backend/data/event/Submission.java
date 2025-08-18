@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
+import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
@@ -21,14 +22,14 @@ import java.time.ZonedDateTime;
 // TODO: Potentially allow GitHub only submissions. Not necessarily now, but more notes on this will be placed in internal team chats. - Calico
 public record Submission(String id,
                          String event,
-						 String projectId,
+						 Project project,
                          String modrinthVersionId,
 						 ZonedDateTime submitted) {
     public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(3);
     public static final Codec<Submission> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Submission::id),
             Event.ID_CODEC.fieldOf("event").forGetter(Submission::event),
-			Codec.STRING.fieldOf("project_id").forGetter(Submission::projectId),
+			Project.DIRECT_CODEC.fieldOf("project").forGetter(Submission::project),
             Codec.STRING.fieldOf("modrinth_version_id").forGetter(Submission::modrinthVersionId),
             ExtraCodecs.ISO_DATE_TIME.fieldOf("submitted").forGetter(Submission::submitted)
     ).apply(inst, Submission::new));
@@ -73,9 +74,15 @@ public record Submission(String id,
 				var submission = new JsonObject();
 				submission.addProperty("id", result.getString("id"));
 				submission.addProperty("event", result.getString("event"));
-				submission.addProperty("project_id", result.getString("project_id"));
 				submission.addProperty("modrinth_version_id", result.getString("modrinth_version_id"));
 				submission.addProperty("submitted", result.getLong("submitted"));
+
+				String projectId = result.getString("project_id");
+				Project project = Project.queryFromId(projectId);
+				if (project == null)
+					throw new SQLException("Could not find project '" + projectId + "'.");
+				submission.add("project", Project.DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, project).getOrThrow(SQLException::new));
+
 				submissions.add(submission);
 			}
 			ctx.json(submissions);
@@ -103,9 +110,15 @@ public record Submission(String id,
 				var submission = new JsonObject();
 				submission.addProperty("id", result.getString("id"));
 				submission.addProperty("event", result.getString("event"));
-				submission.addProperty("project_id", result.getString("project_id"));
 				submission.addProperty("modrinth_version_id", result.getString("modrinth_version_id"));
 				submission.addProperty("submitted", result.getLong("submitted"));
+
+				String projectId = result.getString("project_id");
+				Project project = Project.queryFromId(projectId);
+				if (project == null)
+					throw new SQLException("Could not find project '" + projectId + "'.");
+				submission.add("project", Project.DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, project).getOrThrow(SQLException::new));
+
 				submissions.add(submission);
 			}
 			ctx.json(submissions);
@@ -128,22 +141,27 @@ public record Submission(String id,
 			return;
 		}
 		var queryString = selectByUserAndEventStatement();
-		try {
-			Connection connection = ModGardenBackend.createDatabaseConnection();
-			PreparedStatement prepared = connection.prepareStatement(queryString);
-			prepared.setString(1, user);
-			prepared.setString(2, user);
-			prepared.setString(3, event);
-			prepared.setString(4, event);
-			ResultSet result = prepared.executeQuery();
+		try (Connection connection = ModGardenBackend.createDatabaseConnection();
+			 PreparedStatement eventStatement = connection.prepareStatement(queryString)) {
+			eventStatement.setString(1, user);
+			eventStatement.setString(2, user);
+			eventStatement.setString(3, event);
+			eventStatement.setString(4, event);
+			ResultSet result = eventStatement.executeQuery();
 			var submissions = new JsonArray();
 			while (result.next()) {
 				var submission = new JsonObject();
 				submission.addProperty("id", result.getString("id"));
 				submission.addProperty("event", result.getString("event"));
-				submission.addProperty("project_id", result.getString("project_id"));
 				submission.addProperty("modrinth_version_id", result.getString("modrinth_version_id"));
 				submission.addProperty("submitted", result.getLong("submitted"));
+
+				String projectId = result.getString("project_id");
+				Project project = Project.queryFromId(projectId);
+				if (project == null)
+					throw new SQLException("Could not find project '" + projectId + "'.");
+				submission.add("project", Project.DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, project).getOrThrow(SQLException::new));
+
 				submissions.add(submission);
 			}
 			ctx.json(submissions);
@@ -159,10 +177,17 @@ public record Submission(String id,
             ResultSet result = prepared.executeQuery();
             if (!result.isBeforeFirst())
                 return null;
+
+
+			String projectId = result.getString("project_id");
+			Project project = Project.queryFromId(projectId);
+			if (project == null)
+				throw new SQLException("Could not find project '" + projectId + "'.");
+
 			return new Submission(
 					result.getString("id"),
 					result.getString("event"),
-					result.getString("project_id"),
+					project,
 					result.getString("modrinth_version_id"),
 					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("submitted")), ZoneId.of("GMT"))
 			);
