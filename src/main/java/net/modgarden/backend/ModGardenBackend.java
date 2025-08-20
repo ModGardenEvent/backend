@@ -49,7 +49,7 @@ public class ModGardenBackend {
     public static final String URL = "development".equals(DOTENV.get("env")) ? "http://localhost:7070" : "https://api.modgarden.net";
 	public static final Logger LOG = LoggerFactory.getLogger(ModGardenBackend.class);
 
-	public static final int DATABASE_SCHEMA_VERSION = 4;
+	public static final int DATABASE_SCHEMA_VERSION = 5;
     private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
 
 	public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
@@ -93,7 +93,12 @@ public class ModGardenBackend {
 		CODEC_REGISTRY.put(DiscordBotProfileHandler.DeleteBody.class, DiscordBotProfileHandler.DeleteBody.CODEC);
 		CODEC_REGISTRY.put(DiscordBotUnlinkHandler.Body.class, DiscordBotUnlinkHandler.Body.CODEC);
 
-        Landing.createInstance();
+		CODEC_REGISTRY.put(DiscordBotTeamManagementHandler.InviteBody.class, DiscordBotTeamManagementHandler.InviteBody.CODEC);
+		CODEC_REGISTRY.put(DiscordBotTeamManagementHandler.AcceptInviteBody.class, DiscordBotTeamManagementHandler.AcceptInviteBody.CODEC);
+		CODEC_REGISTRY.put(DiscordBotTeamManagementHandler.DenyInviteBody.class, DiscordBotTeamManagementHandler.DenyInviteBody.CODEC);
+		CODEC_REGISTRY.put(DiscordBotTeamManagementHandler.RemoveMemberBody.class, DiscordBotTeamManagementHandler.RemoveMemberBody.CODEC);
+
+		Landing.createInstance();
         AuthUtil.clearTokensEachFifteenMinutes();
 
 		Javalin app = Javalin.create(config -> config.jsonMapper(createDFUMapper()));
@@ -155,6 +160,11 @@ public class ModGardenBackend {
 
 		post(app, 1, "discord/remove/pronouns", DiscordBotProfileHandler::removePronouns);
 		post(app, 1, "discord/remove/avatar", DiscordBotProfileHandler::removeAvatarUrl);
+
+		post(app, 1, "discord/project/user/invite", DiscordBotTeamManagementHandler::sendInvite);
+		post(app, 1, "discord/project/user/accept", DiscordBotTeamManagementHandler::acceptInvite);
+		post(app, 1, "discord/project/user/deny", DiscordBotTeamManagementHandler::denyInvite);
+		post(app, 1, "discord/project/user/remove", DiscordBotTeamManagementHandler::removeMember);
 	}
 
 	@SuppressWarnings("SameParameterValue")
@@ -266,6 +276,15 @@ public class ModGardenBackend {
                         "expires INTEGER NOT NULL," +
                         "PRIMARY KEY (code)" +
                     ")");
+			statement.addBatch("CREATE TABLE IF NOT EXISTS team_invites (" +
+					"code TEXT NOT NULL," +
+					"project_id TEXT NOT NULL," +
+					"user_id TEXT NOT NULL," +
+					"role TEXT NOT NULL CHECK (role IN ('author', 'builder'))," +
+					"FOREIGN KEY (project_id) REFERENCES projects(id)," +
+					"FOREIGN KEY (user_id) REFERENCES users(id)," +
+					"PRIMARY KEY (code)" +
+					")");
             statement.executeBatch();
         } catch (SQLException ex) {
             LOG.error("Failed to create database tables. ", ex);
