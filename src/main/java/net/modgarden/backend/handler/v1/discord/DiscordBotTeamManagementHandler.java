@@ -9,6 +9,7 @@ import net.modgarden.backend.util.AuthUtil;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -29,10 +30,11 @@ public class DiscordBotTeamManagementHandler {
 		}
 
 		InviteBody inviteBody = ctx.bodyAsClass(InviteBody.class);
+		String role = inviteBody.role.toLowerCase(Locale.ROOT);
 
 		try (Connection connection = ModGardenBackend.createDatabaseConnection()) {
-			if (!"author".equals(inviteBody.role) && !"builder".equals(inviteBody.role)) {
-				ctx.result("Invalid role '" + inviteBody.role + "'.");
+			if (!"author".equals(role) && !"builder".equals(role)) {
+				ctx.result("Invalid role '" + role + "'.");
 				ctx.status(400);
 				return;
 			}
@@ -46,7 +48,7 @@ public class DiscordBotTeamManagementHandler {
 				ctx.status(200);
 				return;
 			}
-			if ("builder".equals(inviteBody.role)) {
+			if ("builder".equals(role)) {
 				var checkBuilderStatement = connection.prepareStatement(
 						"SELECT user_id FROM project_builders WHERE project_id = ? AND user_id = ?");
 				checkBuilderStatement.setString(1, inviteBody.projectId);
@@ -84,7 +86,7 @@ public class DiscordBotTeamManagementHandler {
 			insertTeamInviteStatement.setString(2, inviteBody.projectId);
 			insertTeamInviteStatement.setString(3, inviteBody.userId);
 			insertTeamInviteStatement.setLong(4, getInviteExpirationTime());
-			insertTeamInviteStatement.setString(5, inviteBody.role);
+			insertTeamInviteStatement.setString(5, role);
 			insertTeamInviteStatement.execute();
 			ctx.result(code);
 			ctx.status(201);
