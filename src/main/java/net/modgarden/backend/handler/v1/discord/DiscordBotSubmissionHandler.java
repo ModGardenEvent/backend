@@ -29,9 +29,7 @@ import java.time.ZonedDateTime;
 import java.time.temporal.ChronoField;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
-// TODO: Rewrite to use a faster deserialization library than GSON.
 public class DiscordBotSubmissionHandler {
 	public static final String REGEX = "^[a-z0-9!@$()`.+,_\"-]*$";
 
@@ -477,9 +475,6 @@ public class DiscordBotSubmissionHandler {
 			}
 			return null;
 		}
-
-		ModrinthVersion modrinthVersion = null;
-		ZonedDateTime latestVersionTime = null;
 
 		List<ModrinthVersion> modrinthVersions = modrinthProject.versions.parallelStream().map(versionId -> {
 			try {
