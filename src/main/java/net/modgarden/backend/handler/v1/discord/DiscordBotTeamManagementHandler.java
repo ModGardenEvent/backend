@@ -31,34 +31,52 @@ public class DiscordBotTeamManagementHandler {
 		InviteBody inviteBody = ctx.bodyAsClass(InviteBody.class);
 
 		try (Connection connection = ModGardenBackend.createDatabaseConnection()) {
-			if ("author".equals(inviteBody.role)) {
-				var checkAuthorStatement = connection.prepareStatement(
-						"SELECT user_id FROM project_authors WHERE project_id = ? AND user_id = ?");
-				checkAuthorStatement.setString(1, inviteBody.projectId);
-				checkAuthorStatement.setString(2, inviteBody.userId);
-				var checkAuthorResult = checkAuthorStatement.executeQuery();
-				if (checkAuthorResult.next()) {
-					ctx.result("User already member of project as author.");
-					ctx.status(200);
-					return;
-				}
-			} else if ("builder".equals(inviteBody.role)) {
+			if (!"author".equals(inviteBody.role) && !"builder".equals(inviteBody.role)) {
+				ctx.result("Invalid role '" + inviteBody.role + "'.");
+				ctx.status(400);
+				return;
+			}
+			var checkAuthorStatement = connection.prepareStatement(
+					"SELECT user_id FROM project_authors WHERE project_id = ? AND user_id = ?");
+			checkAuthorStatement.setString(1, inviteBody.projectId);
+			checkAuthorStatement.setString(2, inviteBody.userId);
+			var checkAuthorResult = checkAuthorStatement.executeQuery();
+			if (checkAuthorResult.next()) {
+				ctx.result("User is already a member of the project as an author.");
+				ctx.status(200);
+				return;
+			}
+			if ("builder".equals(inviteBody.role)) {
 				var checkBuilderStatement = connection.prepareStatement(
 						"SELECT user_id FROM project_builders WHERE project_id = ? AND user_id = ?");
 				checkBuilderStatement.setString(1, inviteBody.projectId);
 				checkBuilderStatement.setString(2, inviteBody.userId);
 				var checkBuilderResult = checkBuilderStatement.executeQuery();
 				if (checkBuilderResult.next()) {
-					ctx.result("User already member of project as builder.");
+					ctx.result("User is already a member of the project as a builder.");
 					ctx.status(200);
 					return;
 				}
-			} else {
-				ctx.result("Invalid role '" + inviteBody.role + "'.");
-				ctx.status(400);
-				return;
 			}
 
+			var updateTeamExpiresStatement = connection.prepareStatement(
+					"""
+					UPDATE team_invites
+						SET expires = ?
+					WHERE
+						project_id = ?
+						AND
+						user_id = ?
+					""");
+			updateTeamExpiresStatement.setLong(1, getInviteExpirationTime());
+			updateTeamExpiresStatement.setString(2, inviteBody.projectId);
+			updateTeamExpiresStatement.setString(3, inviteBody.userId);
+			int expiryCount = updateTeamExpiresStatement.executeUpdate();
+			if (expiryCount > 0) {
+				ctx.result("Updated expiry for project invitation to a later time.");
+				ctx.status(201);
+				return;
+			}
 			var code = AuthUtil.generateRandomToken();
 			var insertTeamInviteStatement = connection.prepareStatement(
 					"INSERT INTO team_invites (code, project_id, user_id, expires, role) VALUES (?, ?, ?, ?, ?)");
