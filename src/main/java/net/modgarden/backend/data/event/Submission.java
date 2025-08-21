@@ -63,8 +63,7 @@ public record Submission(String id,
 			return;
 		}
 		var queryString = selectByUserStatement();
-		try {
-			Connection connection = ModGardenBackend.createDatabaseConnection();
+		try (Connection connection = ModGardenBackend.createDatabaseConnection()) {
 			PreparedStatement prepared = connection.prepareStatement(queryString);
 			prepared.setString(1, user);
 			prepared.setString(2, user);
@@ -99,8 +98,7 @@ public record Submission(String id,
 			return;
 		}
 		var queryString = selectByEventStatement();
-		try {
-			Connection connection = ModGardenBackend.createDatabaseConnection();
+		try (Connection connection = ModGardenBackend.createDatabaseConnection()) {
 			PreparedStatement prepared = connection.prepareStatement(queryString);
 			prepared.setString(1, event);
 			prepared.setString(2, event);
