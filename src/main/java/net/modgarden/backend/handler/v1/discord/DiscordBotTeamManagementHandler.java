@@ -61,6 +61,24 @@ public class DiscordBotTeamManagementHandler {
 				}
 			}
 
+
+			var deleteDifferentTeamRoleInvitationsStatement = connection.prepareStatement(
+					"""
+					UPDATE team_invites
+						SET expires = ?
+					WHERE
+						project_id = ?
+						AND
+						user_id = ?
+						AND
+						role != ?
+					""");
+			deleteDifferentTeamRoleInvitationsStatement.setLong(1, getInviteExpirationTime());
+			deleteDifferentTeamRoleInvitationsStatement.setString(2, inviteBody.projectId);
+			deleteDifferentTeamRoleInvitationsStatement.setString(3, inviteBody.userId);
+			deleteDifferentTeamRoleInvitationsStatement.setString(4, inviteBody.role);
+			deleteDifferentTeamRoleInvitationsStatement.execute();
+
 			var updateTeamExpiresStatement = connection.prepareStatement(
 					"""
 					UPDATE team_invites
