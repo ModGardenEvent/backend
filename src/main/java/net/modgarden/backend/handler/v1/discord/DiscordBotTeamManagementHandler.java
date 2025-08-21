@@ -31,7 +31,7 @@ public class DiscordBotTeamManagementHandler {
 		InviteBody inviteBody = ctx.bodyAsClass(InviteBody.class);
 
 		try (Connection connection = ModGardenBackend.createDatabaseConnection()) {
-			if (Objects.equals(inviteBody.role, "author")) {
+			if ("author".equals(inviteBody.role)) {
 				var checkAuthorStatement = connection.prepareStatement(
 						"SELECT user_id FROM project_authors WHERE project_id = ? AND user_id = ?");
 				checkAuthorStatement.setString(1, inviteBody.projectId);
@@ -42,8 +42,7 @@ public class DiscordBotTeamManagementHandler {
 					ctx.status(200);
 					return;
 				}
-			}
-			if (Objects.equals(inviteBody.role, "builder")) {
+			} else if ("builder".equals(inviteBody.role)) {
 				var checkBuilderStatement = connection.prepareStatement(
 						"SELECT user_id FROM project_builders WHERE project_id = ? AND user_id = ?");
 				checkBuilderStatement.setString(1, inviteBody.projectId);
