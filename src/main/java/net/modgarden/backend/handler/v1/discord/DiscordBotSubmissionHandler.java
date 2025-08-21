@@ -295,7 +295,7 @@ public class DiscordBotSubmissionHandler {
 			}
 
 			User user = User.query(body.discordId, "discord");
-			if (user == null || user.modrinthId().isEmpty()) {
+			if (user == null) {
 				ctx.status(422);
 				ctx.result("Could not find a Mod Garden or Modrinth account linked to the specified Discord user.");
 				return;
@@ -339,7 +339,7 @@ public class DiscordBotSubmissionHandler {
 					ctx.status(200);
 					JsonObject result = new JsonObject();
 					result.addProperty("success", ctx.status().getMessage());
-					result.addProperty("description", "Project '" + title + "' has never been submitted to a Mod Garden event.");
+					result.addProperty("description", "Project '" + title + "' was never submitted to a Mod Garden event.");
 					ctx.json(result);
 					return;
 				}
