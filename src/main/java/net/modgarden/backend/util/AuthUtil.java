@@ -86,9 +86,9 @@ public class AuthUtil {
              PreparedStatement statement = connection.prepareStatement("DELETE FROM link_codes WHERE expires <= ?")) {
             statement.setLong(1, System.currentTimeMillis());
             int total = statement.executeUpdate();
-			ModGardenBackend.LOG.debug("Cleared {} tokens.", total);
+			ModGardenBackend.LOG.debug("Cleared {} link codes.", total);
         } catch (SQLException ex) {
-            ModGardenBackend.LOG.error("Failed to clear tokens from database.");
+            ModGardenBackend.LOG.error("Failed to clear link codes from database.");
         }
     }
 }

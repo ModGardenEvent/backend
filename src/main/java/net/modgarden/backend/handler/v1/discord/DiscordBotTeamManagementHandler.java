@@ -7,8 +7,12 @@ import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.util.AuthUtil;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Objects;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class DiscordBotTeamManagementHandler {
 	public static void sendInvite(Context ctx) {
@@ -35,7 +39,7 @@ public class DiscordBotTeamManagementHandler {
 				var checkAuthorResult = checkAuthorStatement.executeQuery();
 				if (checkAuthorResult.next()) {
 					ctx.result("User already member of project as author.");
-					ctx.status(400);
+					ctx.status(200);
 					return;
 				}
 			}
@@ -47,7 +51,7 @@ public class DiscordBotTeamManagementHandler {
 				var checkBuilderResult = checkBuilderStatement.executeQuery();
 				if (checkBuilderResult.next()) {
 					ctx.result("User already member of project as builder.");
-					ctx.status(400);
+					ctx.status(200);
 					return;
 				}
 			} else {
@@ -58,14 +62,15 @@ public class DiscordBotTeamManagementHandler {
 
 			var code = AuthUtil.generateRandomToken();
 			var insertTeamInviteStatement = connection.prepareStatement(
-					"INSERT INTO team_invites (code, project_id, user_id, role) VALUES (?, ?, ?, ?)");
+					"INSERT INTO team_invites (code, project_id, user_id, expires, role) VALUES (?, ?, ?, ?, ?)");
 			insertTeamInviteStatement.setString(1, code);
 			insertTeamInviteStatement.setString(2, inviteBody.projectId);
 			insertTeamInviteStatement.setString(3, inviteBody.userId);
-			insertTeamInviteStatement.setString(4, inviteBody.role);
+			insertTeamInviteStatement.setLong(4, getInviteExpirationTime());
+			insertTeamInviteStatement.setString(5, inviteBody.role);
 			insertTeamInviteStatement.execute();
-			ctx.result("Code:" + code);
-			ctx.status(200);
+			ctx.result(code);
+			ctx.status(201);
 		} catch (SQLException ex) {
 			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
 			ctx.result("Internal Error.");
@@ -120,7 +125,7 @@ public class DiscordBotTeamManagementHandler {
 				insertBuilderStatement.setString(2, userId);
 				insertBuilderStatement.execute();
 				ctx.result("Successfully joined project as " + role + ".");
-				ctx.status(200);
+				ctx.status(201);
 			} else {
 				ctx.result("Invalid role in invite.");
 				ctx.status(500);
@@ -132,7 +137,7 @@ public class DiscordBotTeamManagementHandler {
 		}
 	}
 
-	public static void denyInvite(Context ctx) {
+	public static void declineInvite(Context ctx) {
 		if (!("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(ctx.header("Authorization"))) {
 			ctx.result("Unauthorized.");
 			ctx.status(401);
@@ -144,11 +149,11 @@ public class DiscordBotTeamManagementHandler {
 			return;
 		}
 
-		DenyInviteBody denyInviteBody = ctx.bodyAsClass(DenyInviteBody.class);
+		DeclineInviteBody declineInviteBody = ctx.bodyAsClass(DeclineInviteBody.class);
 		try (Connection connection = ModGardenBackend.createDatabaseConnection()) {
 			var checkInviteStatement = connection.prepareStatement(
 					"SELECT * FROM team_invites WHERE code = ?");
-			checkInviteStatement.setString(1, denyInviteBody.inviteCode);
+			checkInviteStatement.setString(1, declineInviteBody.inviteCode);
 			var checkInviteResult = checkInviteStatement.executeQuery();
 			if (!checkInviteResult.next()) {
 				ctx.result("Invalid Team Invite Code.");
@@ -157,11 +162,11 @@ public class DiscordBotTeamManagementHandler {
 			}
 			var deleteInviteStatement = connection.prepareStatement(
 					"DELETE FROM team_invites WHERE code = ?");
-			deleteInviteStatement.setString(1, denyInviteBody.inviteCode);
+			deleteInviteStatement.setString(1, declineInviteBody.inviteCode);
 			deleteInviteStatement.execute();
 
-			ctx.result("Successfully denied invite to project.");
-			ctx.status(200);
+			ctx.result("Successfully declined invite to project.");
+			ctx.status(201);
 		} catch (SQLException ex) {
 			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
 			ctx.result("Internal Error.");
@@ -200,7 +205,7 @@ public class DiscordBotTeamManagementHandler {
 			}
 
 			ctx.result("Successfully removed member from project.");
-			ctx.status(200);
+			ctx.status(201);
 		} catch (SQLException ex) {
 			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
 			ctx.result("Internal Error.");
@@ -222,10 +227,10 @@ public class DiscordBotTeamManagementHandler {
 		).apply(inst, AcceptInviteBody::new));
 	}
 
-	public record DenyInviteBody(String inviteCode) {
-		public static final Codec<DenyInviteBody> CODEC = RecordCodecBuilder.create(inst -> inst.group(
-				Codec.STRING.fieldOf("invite_code").forGetter(DenyInviteBody::inviteCode)
-		).apply(inst, DenyInviteBody::new));
+	public record DeclineInviteBody(String inviteCode) {
+		public static final Codec<DeclineInviteBody> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+				Codec.STRING.fieldOf("invite_code").forGetter(DeclineInviteBody::inviteCode)
+		).apply(inst, DeclineInviteBody::new));
 	}
 
 	public record RemoveMemberBody(String projectId, String userId) {
@@ -233,5 +238,33 @@ public class DiscordBotTeamManagementHandler {
 				Codec.STRING.fieldOf("project_id").forGetter(RemoveMemberBody::projectId),
 				Codec.STRING.fieldOf("user_id").forGetter(RemoveMemberBody::userId)
 		).apply(inst, RemoveMemberBody::new));
+	}
+
+
+	public static long getInviteExpirationTime() {
+		return (long) (Math.floor((double) (System.currentTimeMillis() + 86400000) / 86400000) * 86400000); // 24 hours later, rounded to the nearest day.
+	}
+
+	public static void clearInvitesEachDay() {
+		new Thread(() -> {
+			try (ScheduledExecutorService executor = Executors.newScheduledThreadPool(1)) {
+				long scheduleTime = (long) (Math.floor((double) (System.currentTimeMillis() + 86400000) / 86400000) * 86400000) - System.currentTimeMillis();
+				executor.schedule(() -> {
+					clearTokens();
+					executor.schedule(AuthUtil::getTokenExpirationTime, 86400000, TimeUnit.MILLISECONDS);
+				}, scheduleTime, TimeUnit.MILLISECONDS);
+			}
+		}).start();
+	}
+
+	private static void clearTokens() {
+		try (Connection connection = ModGardenBackend.createDatabaseConnection();
+			 PreparedStatement statement = connection.prepareStatement("DELETE FROM team_invites WHERE expires <= ?")) {
+			statement.setLong(1, System.currentTimeMillis());
+			int total = statement.executeUpdate();
+			ModGardenBackend.LOG.debug("Cleared {} team invite tokens.", total);
+		} catch (SQLException ex) {
+			ModGardenBackend.LOG.error("Failed to clear team invite tokens from database.");
+		}
 	}
 }

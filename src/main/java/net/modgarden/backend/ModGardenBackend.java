@@ -95,11 +95,12 @@ public class ModGardenBackend {
 
 		CODEC_REGISTRY.put(DiscordBotTeamManagementHandler.InviteBody.class, DiscordBotTeamManagementHandler.InviteBody.CODEC);
 		CODEC_REGISTRY.put(DiscordBotTeamManagementHandler.AcceptInviteBody.class, DiscordBotTeamManagementHandler.AcceptInviteBody.CODEC);
-		CODEC_REGISTRY.put(DiscordBotTeamManagementHandler.DenyInviteBody.class, DiscordBotTeamManagementHandler.DenyInviteBody.CODEC);
+		CODEC_REGISTRY.put(DiscordBotTeamManagementHandler.DeclineInviteBody.class, DiscordBotTeamManagementHandler.DeclineInviteBody.CODEC);
 		CODEC_REGISTRY.put(DiscordBotTeamManagementHandler.RemoveMemberBody.class, DiscordBotTeamManagementHandler.RemoveMemberBody.CODEC);
 
 		Landing.createInstance();
         AuthUtil.clearTokensEachFifteenMinutes();
+		DiscordBotTeamManagementHandler.clearInvitesEachDay();
 
 		Javalin app = Javalin.create(config -> config.jsonMapper(createDFUMapper()));
 		app.get("", Landing::getLandingJson);
@@ -163,7 +164,7 @@ public class ModGardenBackend {
 
 		post(app, 1, "discord/project/user/invite", DiscordBotTeamManagementHandler::sendInvite);
 		post(app, 1, "discord/project/user/accept", DiscordBotTeamManagementHandler::acceptInvite);
-		post(app, 1, "discord/project/user/deny", DiscordBotTeamManagementHandler::denyInvite);
+		post(app, 1, "discord/project/user/decline", DiscordBotTeamManagementHandler::declineInvite);
 		post(app, 1, "discord/project/user/remove", DiscordBotTeamManagementHandler::removeMember);
 	}
 
@@ -277,13 +278,14 @@ public class ModGardenBackend {
                         "PRIMARY KEY (code)" +
                     ")");
 			statement.addBatch("CREATE TABLE IF NOT EXISTS team_invites (" +
-					"code TEXT NOT NULL," +
-					"project_id TEXT NOT NULL," +
-					"user_id TEXT NOT NULL," +
-					"role TEXT NOT NULL CHECK (role IN ('author', 'builder'))," +
-					"FOREIGN KEY (project_id) REFERENCES projects(id)," +
-					"FOREIGN KEY (user_id) REFERENCES users(id)," +
-					"PRIMARY KEY (code)" +
+						"code TEXT NOT NULL," +
+						"project_id TEXT NOT NULL," +
+						"user_id TEXT NOT NULL," +
+						"expires INTEGER NOT NULL," +
+						"role TEXT NOT NULL CHECK (role IN ('author', 'builder'))," +
+						"FOREIGN KEY (project_id) REFERENCES projects(id)," +
+						"FOREIGN KEY (user_id) REFERENCES users(id)," +
+						"PRIMARY KEY (code)" +
 					")");
             statement.executeBatch();
         } catch (SQLException ex) {
