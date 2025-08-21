@@ -8,7 +8,7 @@ import java.sql.Statement;
 
 public class V3ToV4 extends DatabaseFix {
 	public V3ToV4() {
-		super(2);
+		super(3);
 	}
 
 	@Override

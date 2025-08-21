@@ -23,5 +23,6 @@ public class V4ToV5 extends DatabaseFix {
 				"FOREIGN KEY (user_id) REFERENCES users(id)," +
 				"PRIMARY KEY (code)" +
 				")");
+		statement.executeBatch();
 	}
 }
