@@ -116,7 +116,7 @@ public class DiscordBotTeamManagementHandler {
 				insertAuthorStatement.setString(2, userId);
 				insertAuthorStatement.execute();
 				ctx.result("Successfully joined project as " + role + ".");
-				ctx.status(200);
+				ctx.status(201);
 			} else if (Objects.equals(role, "builder")) {
 				var insertBuilderStatement = connection.prepareStatement(
 						"INSERT INTO project_builders (project_id, user_id) VALUES (?, ?)");
