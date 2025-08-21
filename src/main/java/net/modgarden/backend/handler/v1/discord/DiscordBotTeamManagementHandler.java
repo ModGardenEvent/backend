@@ -130,6 +130,13 @@ public class DiscordBotTeamManagementHandler {
 			deleteInviteStatement.execute();
 
 			if (Objects.equals(role, "author")) {
+				var deleteBuilderStatement = connection.prepareStatement(
+						"DELETE FROM project_builders WHERE project_id = ? AND user_id = ?"
+				);
+				deleteBuilderStatement.setString(1, projectId);
+				deleteBuilderStatement.setString(2, userId);
+				deleteBuilderStatement.execute();
+
 				var insertAuthorStatement = connection.prepareStatement(
 						"INSERT INTO project_authors (project_id, user_id) VALUES (?, ?)");
 				insertAuthorStatement.setString(1, projectId);
