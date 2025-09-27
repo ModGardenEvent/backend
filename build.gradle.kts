@@ -14,7 +14,7 @@ group = "net.modgarden"
 version = project.properties["version"].toString()
 
 java {
-	toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+	toolchain.languageVersion.set(JavaLanguageVersion.of(25))
 	withJavadocJar()
 }
 
