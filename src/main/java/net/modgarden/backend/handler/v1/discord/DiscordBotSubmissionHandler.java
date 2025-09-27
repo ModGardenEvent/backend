@@ -8,9 +8,8 @@ import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.data.NaturalId;
 import net.modgarden.backend.data.event.Event;
-import net.modgarden.backend.data.event.Project;
-import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.profile.User;
 import net.modgarden.backend.oauth.OAuthService;
 import net.modgarden.backend.oauth.client.OAuthClient;
@@ -133,8 +132,7 @@ public class DiscordBotSubmissionHandler {
 					}
 
 					if (projectId == null) {
-						long generatedProjectId = Project.ID_GENERATOR.next();
-						projectId = Long.toString(generatedProjectId);
+						projectId = NaturalId.generateChecked("projects", "id");
 						projectInsertStatement.setString(1, projectId);
 						projectInsertStatement.setString(2, slug);
 						projectInsertStatement.setString(3, modrinthProject.id);
@@ -147,8 +145,7 @@ public class DiscordBotSubmissionHandler {
 						projectAuthorsStatement.execute();
 					}
 
-					long generatedSubmissionId = Submission.ID_GENERATOR.next();
-					String submissionId = Long.toString(generatedSubmissionId);
+					String submissionId = NaturalId.generateChecked("submissions", "id");
 					submissionStatement.setString(1, submissionId);
 					submissionStatement.setString(2, projectId);
 					submissionStatement.setString(3, event.id());

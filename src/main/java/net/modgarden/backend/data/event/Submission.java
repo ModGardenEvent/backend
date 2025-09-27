@@ -6,7 +6,6 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.util.ExtraCodecs;
@@ -25,8 +24,7 @@ public record Submission(String id,
 						 Project project,
                          String modrinthVersionId,
 						 ZonedDateTime submitted) {
-    public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(3);
-    public static final Codec<Submission> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
+	public static final Codec<Submission> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Submission::id),
             Event.ID_CODEC.fieldOf("event").forGetter(Submission::event),
 			Project.DIRECT_CODEC.fieldOf("project").forGetter(Submission::project),

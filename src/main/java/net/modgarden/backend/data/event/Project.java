@@ -5,7 +5,6 @@ import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.profile.User;
@@ -25,8 +24,7 @@ public record Project(String id,
 					  String attributedTo,
                       List<String> authors,
 					  List<String> builders) {
-    public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(2);
-    public static final Codec<Project> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
+	public static final Codec<Project> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Project::id),
             Codec.STRING.fieldOf("slug").forGetter(Project::slug),
             Codec.STRING.fieldOf("modrinth_id").forGetter(Project::modrinthId),

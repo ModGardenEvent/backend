@@ -5,6 +5,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.data.NaturalId;
 import net.modgarden.backend.data.profile.User;
 import net.modgarden.backend.oauth.OAuthService;
 
@@ -99,9 +100,7 @@ public class RegistrationHandler {
 				return;
 			}
 
-			long id = User.ID_GENERATOR.next();
-
-            insertStatement.setString(1, Long.toString(id));
+	        insertStatement.setString(1, NaturalId.generateChecked("users", "id"));
             insertStatement.setString(2, username);
             insertStatement.setString(3, displayName);
             insertStatement.setString(4, body.id);
@@ -118,7 +117,6 @@ public class RegistrationHandler {
         ctx.result("Successfully registered Mod Garden account.");
         ctx.status(201);
     }
-
 
 	public record Body(String id, Optional<String> username, Optional<String> displayName) {
 		public static final Codec<Body> CODEC = RecordCodecBuilder.create(inst -> inst.group(
