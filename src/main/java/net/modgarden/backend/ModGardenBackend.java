@@ -9,6 +9,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 import io.github.cdimascio.dotenv.Dotenv;
 import io.javalin.Javalin;
+import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import io.javalin.json.JsonMapper;
 import net.modgarden.backend.data.BackendError;
@@ -22,8 +23,10 @@ import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.fixer.DatabaseFixer;
 import net.modgarden.backend.data.profile.MinecraftAccount;
 import net.modgarden.backend.data.profile.User;
+import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.handler.v1.discord.*;
 import net.modgarden.backend.handler.v1.RegistrationHandler;
+import net.modgarden.backend.endpoint.v2.AuthEndpoint;
 import net.modgarden.backend.util.AuthUtil;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -46,15 +49,15 @@ import java.util.Map;
 public class ModGardenBackend {
 	public static final Dotenv DOTENV = Dotenv.load();
 
-    public static final String URL = "development".equals(DOTENV.get("env")) ? "http://localhost:7070" : "https://api.modgarden.net";
+	public static final String URL = "development".equals(DOTENV.get("env")) ? "http://localhost:7070" : "https://api.modgarden.net";
 	public static final Logger LOG = LoggerFactory.getLogger(ModGardenBackend.class);
 
 	public static final int DATABASE_SCHEMA_VERSION = 5;
-    private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
+	private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
 
 	public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
-    public static final String SAFE_URL_REGEX = "[a-zA-Z0-9!@$()`.+,_\"-]+";
+	public static final String SAFE_URL_REGEX = "[a-zA-Z0-9!@$()`.+,_\"-]+";
 
 	private static ModGardenBackend backend;
 
@@ -64,34 +67,34 @@ public class ModGardenBackend {
 		this.app = app;
 	}
 
-    public static void main(String[] args) {
+	public static void main(String[] args) {
 		if ("development".equals(DOTENV.get("env")))
 			((ch.qos.logback.classic.Logger)LOG).setLevel(Level.DEBUG);
 
-        try {
+		try {
 			boolean createdFile = new File("./database.db").createNewFile();
-            if (createdFile) {
+			if (createdFile) {
 				createDatabaseContents();
 				updateSchemaVersion();
-                LOG.debug("Successfully created database file.");
-            }
+				LOG.debug("Successfully created database file.");
+			}
 			DatabaseFixer.createFixers();
 			DatabaseFixer.fixDatabase();
 			if (!createdFile) {
 				updateSchemaVersion();
 			}
-        } catch (IOException ex) {
-            LOG.error("Failed to create database file.", ex);
-        }
+		} catch (IOException ex) {
+			LOG.error("Failed to create database file.", ex);
+		}
 
 		CODEC_REGISTRY.put(Landing.class, Landing.CODEC);
-        CODEC_REGISTRY.put(BackendError.class, BackendError.CODEC);
-        CODEC_REGISTRY.put(Award.class, Award.DIRECT_CODEC);
-        CODEC_REGISTRY.put(Event.class, Event.DIRECT_CODEC);
-        CODEC_REGISTRY.put(MinecraftAccount.class, MinecraftAccount.CODEC);
-        CODEC_REGISTRY.put(Project.class, Project.DIRECT_CODEC);
-        CODEC_REGISTRY.put(Submission.class, Submission.DIRECT_CODEC);
-        CODEC_REGISTRY.put(User.class, User.DIRECT_CODEC);
+		CODEC_REGISTRY.put(BackendError.class, BackendError.CODEC);
+		CODEC_REGISTRY.put(Award.class, Award.DIRECT_CODEC);
+		CODEC_REGISTRY.put(Event.class, Event.DIRECT_CODEC);
+		CODEC_REGISTRY.put(MinecraftAccount.class, MinecraftAccount.CODEC);
+		CODEC_REGISTRY.put(Project.class, Project.DIRECT_CODEC);
+		CODEC_REGISTRY.put(Submission.class, Submission.DIRECT_CODEC);
+		CODEC_REGISTRY.put(User.class, User.DIRECT_CODEC);
 		CODEC_REGISTRY.put(AwardInstance.FullAwardData.class, AwardInstance.FullAwardData.CODEC);
 
 		CODEC_REGISTRY.put(RegistrationHandler.Body.class, RegistrationHandler.Body.CODEC);
@@ -106,7 +109,7 @@ public class ModGardenBackend {
 		CODEC_REGISTRY.put(DiscordBotTeamManagementHandler.RemoveMemberBody.class, DiscordBotTeamManagementHandler.RemoveMemberBody.CODEC);
 
 		Landing.createInstance();
-        AuthUtil.clearTokensEachFifteenMinutes();
+		AuthUtil.clearTokensEachFifteenMinutes();
 		DiscordBotTeamManagementHandler.clearInvitesEachDay();
 
 		Javalin app = Javalin.create(config -> config.jsonMapper(createDFUMapper()));
@@ -115,15 +118,15 @@ public class ModGardenBackend {
 
 		backend.v1();
 
-        app.error(400, BackendError::handleError);
-        app.error(401, BackendError::handleError);
-        app.error(404, BackendError::handleError);
-        app.error(422, BackendError::handleError);
-        app.error(500, BackendError::handleError);
+		app.error(400, BackendError::handleError);
+		app.error(401, BackendError::handleError);
+		app.error(404, BackendError::handleError);
+		app.error(422, BackendError::handleError);
+		app.error(500, BackendError::handleError);
 		app.start(7070);
 
 		LOG.info("Mod Garden Backend Started!");
-    }
+	}
 
 	public void v1() {
 		get1("award/{award}", Award::getAwardType);
@@ -176,6 +179,22 @@ public class ModGardenBackend {
 		post1("discord/project/user/remove", DiscordBotTeamManagementHandler::removeMember);
 	}
 
+	public void v2() {
+		post2(new AuthEndpoint("generate_key") {
+			@Override
+			public void handle(@NotNull Context ctx) throws Exception {
+				super.handle(ctx);
+
+				try (
+						var connection = this.getDatabaseConnection();
+						var statement = connection.prepareStatement("UPDATE credentials SET ")
+				) {
+					String apiKey = AuthEndpoint.generateAPIKey();
+				}
+			}
+		});
+	}
+
 	private void get1(String endpoint, Handler consumer) {
 		this.app.get("/v1/" + endpoint, consumer);
 	}
@@ -188,62 +207,67 @@ public class ModGardenBackend {
 		this.app.get("/v2/" + endpoint, consumer);
 	}
 
-	private void post2(String endpoint, Handler consumer) {
-		this.app.post("/v2/" + endpoint, consumer);
+	private void post2(Endpoint endpoint) {
+		this.app.post("/v2/" + endpoint.getPath(), endpoint);
 	}
 
 	private void put2(String endpoint, Handler consumer) {
 		this.app.put("/v2/" + endpoint, consumer);
 	}
 
-    public static Connection createDatabaseConnection() throws SQLException {
-        String url = "jdbc:sqlite:database.db";
-        return DriverManager.getConnection(url);
-    }
+	public static Connection createDatabaseConnection() throws SQLException {
+		String url = "jdbc:sqlite:database.db";
+		return DriverManager.getConnection(url);
+	}
 
-    private static void createDatabaseContents() {
-        try (Connection connection = createDatabaseConnection();
-             Statement statement = connection.createStatement()) {
-            statement.addBatch("CREATE TABLE IF NOT EXISTS users (" +
-                        "id TEXT UNIQUE NOT NULL," +
-                        "username TEXT UNIQUE NOT NULL," +
-                        "display_name TEXT NOT NULL," +
-						"pronouns TEXT," +
-						"avatar_url TEXT," +
-                        "discord_id TEXT UNIQUE NOT NULL," +
-                        "modrinth_id TEXT UNIQUE," +
-                        "created INTEGER NOT NULL," +
-						"permissions INTEGER NOT NULL," +
-                        "PRIMARY KEY(id)" +
-                    ")");
-            statement.addBatch("CREATE TABLE IF NOT EXISTS events (" +
-                        "id TEXT UNIQUE NOT NULL," +
-                        "slug TEXT UNIQUE NOT NULL," +
-                        "display_name TEXT NOT NULL," +
-						"discord_role_id TEXT, " +
-                        "minecraft_version TEXT NOT NULL," +
-                        "loader TEXT NOT NULL," +
-						"registration_time INTEGER NOT NULL," +
-                        "start_time INTEGER NOT NULL," +
-						"end_time INTEGER NOT NULL," +
-						"freeze_time INTEGER NOT NULL," +
-                        "PRIMARY KEY (id)" +
-                    ")");
-            statement.addBatch("CREATE TABLE IF NOT EXISTS projects (" +
-                        "id TEXT UNIQUE NOT NULL," +
-                        "slug TEXT UNIQUE NOT NULL," +
-                        "modrinth_id TEXT UNIQUE NOT NULL," +
-                        "attributed_to TEXT NOT NULL," +
-                        "FOREIGN KEY (attributed_to) REFERENCES users(id)," +
-                        "PRIMARY KEY (id)" +
-                    ")");
-            statement.addBatch("CREATE TABLE IF NOT EXISTS project_authors (" +
-                        "project_id TEXT NOT NULL," +
-                        "user_id TEXT NOT NULL," +
-                        "FOREIGN KEY (project_id) REFERENCES projects(id)," +
-                        "FOREIGN KEY (user_id) REFERENCES users(id)," +
-                        "PRIMARY KEY (project_id, user_id)" +
-                    ")");
+	private static void createDatabaseContents() {
+		try (Connection connection = createDatabaseConnection();
+			 Statement statement = connection.createStatement()) {
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS users (
+				id TEXT PRIMARY KEY,
+				username TEXT UNIQUE NOT NULL,
+				display_name TEXT NOT NULL,
+				pronouns TEXT,
+				avatar_url TEXT,
+				discord_id TEXT UNIQUE NOT NULL,
+				modrinth_id TEXT UNIQUE,
+				created INTEGER NOT NULL,
+				permissions INTEGER NOT NULL,
+				PRIMARY KEY(id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS events (
+				id TEXT PRIMARY KEY,
+				slug TEXT UNIQUE NOT NULL,
+				event_type_slug TEXT NOT NULL,
+				display_name TEXT NOT NULL,
+				discord_role_id TEXT,
+				minecraft_version TEXT NOT NULL,
+				loader TEXT NOT NULL,
+				registration_time INTEGER NOT NULL,
+				start_time INTEGER NOT NULL,
+				end_time INTEGER NOT NULL,
+				freeze_time INTEGER NOT NULL,
+				PRIMARY KEY (id)
+			)
+			""");
+			statement.addBatch("CREATE TABLE IF NOT EXISTS projects (" +
+						"id TEXT PRIMARY KEY," +
+						"slug TEXT UNIQUE NOT NULL," +
+						"modrinth_id TEXT UNIQUE NOT NULL," +
+						"attributed_to TEXT NOT NULL," +
+						"FOREIGN KEY (attributed_to) REFERENCES users(id)," +
+						"PRIMARY KEY (id)" +
+					")");
+			statement.addBatch("CREATE TABLE IF NOT EXISTS project_authors (" +
+						"project_id TEXT NOT NULL," +
+						"user_id TEXT NOT NULL," +
+						"FOREIGN KEY (project_id) REFERENCES projects(id)," +
+						"FOREIGN KEY (user_id) REFERENCES users(id)," +
+						"PRIMARY KEY (project_id, user_id)" +
+					")");
 			statement.addBatch("CREATE TABLE IF NOT EXISTS project_builders (" +
 						"project_id TEXT NOT NULL," +
 						"user_id TEXT NOT NULL," +
@@ -251,50 +275,50 @@ public class ModGardenBackend {
 						"FOREIGN KEY (user_id) REFERENCES users(id)," +
 						"PRIMARY KEY (project_id, user_id)" +
 					")");
-            statement.addBatch("CREATE TABLE IF NOT EXISTS submissions (" +
-                        "id TEXT UNIQUE NOT NULL," +
+			statement.addBatch("CREATE TABLE IF NOT EXISTS submissions (" +
+						"id TEXT PRIMARY KEY," +
 						"event TEXT NOT NULL," +
-                        "project_id TEXT NOT NULL," +
-                        "modrinth_version_id TEXT NOT NULL," +
-                        "submitted INTEGER NOT NULL," +
-                        "FOREIGN KEY (project_id) REFERENCES projects(id)," +
-                        "FOREIGN KEY (event) REFERENCES events(id)," +
-                        "PRIMARY KEY(id)" +
-                    ")");
-            statement.addBatch("CREATE TABLE IF NOT EXISTS minecraft_accounts (" +
-                        "uuid TEXT UNIQUE NOT NULL," +
-                        "user_id TEXT NOT NULL," +
-                        "FOREIGN KEY (user_id) REFERENCES users(id)," +
-                        "PRIMARY KEY (uuid)" +
-                    ")");
-            statement.addBatch("CREATE TABLE IF NOT EXISTS awards (" +
-                        "id TEXT UNIQUE NOT NULL," +
-                        "slug TEXT UNIQUE NOT NULL," +
-                        "display_name TEXT NOT NULL," +
-                        "sprite TEXT NOT NULL," +
-                        "discord_emote TEXT NOT NULL," +
-                        "tooltip TEXT," +
+						"project_id TEXT NOT NULL," +
+						"modrinth_version_id TEXT NOT NULL," +
+						"submitted INTEGER NOT NULL," +
+						"FOREIGN KEY (project_id) REFERENCES projects(id)," +
+						"FOREIGN KEY (event) REFERENCES events(id)," +
+						"PRIMARY KEY(id)" +
+					")");
+			statement.addBatch("CREATE TABLE IF NOT EXISTS minecraft_accounts (" +
+						"uuid TEXT UNIQUE NOT NULL," +
+						"user_id TEXT NOT NULL," +
+						"FOREIGN KEY (user_id) REFERENCES users(id)," +
+						"PRIMARY KEY (uuid)" +
+					")");
+			statement.addBatch("CREATE TABLE IF NOT EXISTS awards (" +
+						"id TEXT PRIMARY KEY," +
+						"slug TEXT UNIQUE NOT NULL," +
+						"display_name TEXT NOT NULL," +
+						"sprite TEXT NOT NULL," +
+						"discord_emote TEXT NOT NULL," +
+						"tooltip TEXT," +
 						"tier TEXT NOT NULL CHECK (tier in ('COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY'))," +
-                        "PRIMARY KEY (id)" +
-                    ")");
-            statement.addBatch("CREATE TABLE IF NOT EXISTS award_instances (" +
-                        "award_id TEXT NOT NULL," +
-                        "awarded_to TEXT NOT NULL," +
-                        "custom_data TEXT," +
+						"PRIMARY KEY (id)" +
+					")");
+			statement.addBatch("CREATE TABLE IF NOT EXISTS award_instances (" +
+						"award_id TEXT PRIMARY KEY," +
+						"awarded_to TEXT NOT NULL," +
+						"custom_data TEXT," +
 						"submission_id TEXT," +
 						"tier_override TEXT CHECK (tier_override in ('COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY'))," +
-                        "FOREIGN KEY (award_id) REFERENCES awards(id)," +
-                        "FOREIGN KEY (awarded_to) REFERENCES users(id)," +
+						"FOREIGN KEY (award_id) REFERENCES awards(id)," +
+						"FOREIGN KEY (awarded_to) REFERENCES users(id)," +
 						"FOREIGN KEY (submission_id) REFERENCES submissions(id)," +
-                        "PRIMARY KEY (award_id, awarded_to)" +
-                    ")");
-            statement.addBatch("CREATE TABLE IF NOT EXISTS link_codes (" +
-                        "code TEXT NOT NULL," +
-                        "account_id TEXT NOT NULL," +
-                        "service TEXT NOT NULL," +
-                        "expires INTEGER NOT NULL," +
-                        "PRIMARY KEY (code)" +
-                    ")");
+						"PRIMARY KEY (award_id, awarded_to)" +
+					")");
+			statement.addBatch("CREATE TABLE IF NOT EXISTS link_codes (" +
+						"code TEXT NOT NULL," +
+						"account_id TEXT NOT NULL," +
+						"service TEXT NOT NULL," +
+						"expires INTEGER NOT NULL," +
+						"PRIMARY KEY (code)" +
+					")");
 			statement.addBatch("CREATE TABLE IF NOT EXISTS team_invites (" +
 						"code TEXT NOT NULL," +
 						"project_id TEXT NOT NULL," +
@@ -305,68 +329,82 @@ public class ModGardenBackend {
 						"FOREIGN KEY (user_id) REFERENCES users(id)," +
 						"PRIMARY KEY (code)" +
 					")");
-            statement.executeBatch();
-        } catch (SQLException ex) {
-            LOG.error("Failed to create database tables. ", ex);
-            return;
-        }
-        LOG.debug("Created database tables.");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS api_keys (
+				uuid BLOB PRIMARY KEY,
+				salt TEXT NOT NULL,
+				hash TEXT NOT NULL,
+				expires INTEGER NOT NULL
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS credentials (
+				user_id TEXT PRIMARY KEY,
+				api_key_uuid BLOB UNIQUE
+			)
+			""");
+			statement.executeBatch();
+		} catch (SQLException ex) {
+			LOG.error("Failed to create database tables. ", ex);
+			return;
+		}
+		LOG.debug("Created database tables.");
 
 		if ("development".equals(DOTENV.get("env"))) {
 			DevelopmentModeData.insertDevelopmentModeData();
 		}
-    }
+	}
 
-    private static void updateSchemaVersion() {
-        try (Connection connection = createDatabaseConnection();
-             Statement statement = connection.createStatement()) {
-            statement.addBatch("CREATE TABLE IF NOT EXISTS schema (version INTEGER NOT NULL, PRIMARY KEY(version))");
-            statement.addBatch("DELETE FROM schema");
-            statement.executeBatch();
-            try (PreparedStatement prepared = connection.prepareStatement("INSERT INTO schema VALUES (?)")) {
-                prepared.setInt(1, DATABASE_SCHEMA_VERSION);
-                prepared.execute();
-            }
-        } catch (SQLException ex) {
-            LOG.error("Failed to update database schema version. ", ex);
-            return;
-        }
-        LOG.debug("Updated database schema version.");
-    }
+	private static void updateSchemaVersion() {
+		try (Connection connection = createDatabaseConnection();
+			 Statement statement = connection.createStatement()) {
+			statement.addBatch("CREATE TABLE IF NOT EXISTS schema (version INTEGER NOT NULL, PRIMARY KEY(version))");
+			statement.addBatch("DELETE FROM schema");
+			statement.executeBatch();
+			try (PreparedStatement prepared = connection.prepareStatement("INSERT INTO schema VALUES (?)")) {
+				prepared.setInt(1, DATABASE_SCHEMA_VERSION);
+				prepared.execute();
+			}
+		} catch (SQLException ex) {
+			LOG.error("Failed to update database schema version. ", ex);
+			return;
+		}
+		LOG.debug("Updated database schema version.");
+	}
 
-    private static JsonMapper createDFUMapper() {
-        return new JsonMapper() {
-            private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-
-			@SuppressWarnings("unchecked")
-            @Override
-            public @NotNull String toJsonString(@NotNull Object obj, @NotNull Type type) {
-                if (obj instanceof JsonElement)
-                    return GSON.toJson(obj);
-                if (!CODEC_REGISTRY.containsKey(type))
-                    throw new UnsupportedOperationException("Cannot encode object type " + type);
-                return ((Codec<Object>)CODEC_REGISTRY.get(type)).encodeStart(JsonOps.INSTANCE, obj).getOrThrow().toString();
-            }
+	private static JsonMapper createDFUMapper() {
+		return new JsonMapper() {
+			private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
 			@SuppressWarnings("unchecked")
 			@Override
-            public @NotNull <T> T fromJsonString(@NotNull String json, @NotNull Type type) {
-                if (!CODEC_REGISTRY.containsKey(type))
-                    throw new UnsupportedOperationException("Cannot decode object type " + type);
-                return (T) CODEC_REGISTRY.get(type).decode(JsonOps.INSTANCE, JsonParser.parseString(json)).getOrThrow().getFirst();
-            }
+			public @NotNull String toJsonString(@NotNull Object obj, @NotNull Type type) {
+				if (obj instanceof JsonElement)
+					return GSON.toJson(obj);
+				if (!CODEC_REGISTRY.containsKey(type))
+					throw new UnsupportedOperationException("Cannot encode object type " + type);
+				return ((Codec<Object>)CODEC_REGISTRY.get(type)).encodeStart(JsonOps.INSTANCE, obj).getOrThrow().toString();
+			}
 
 			@SuppressWarnings("unchecked")
-            @Override
-            public @NotNull <T> T fromJsonStream(@NotNull InputStream json, @NotNull Type type) {
-                if (!CODEC_REGISTRY.containsKey(type))
-                    throw new UnsupportedOperationException("Cannot decode object type " + type);
-                try (InputStreamReader reader = new InputStreamReader(json)) {
-                    return (T) CODEC_REGISTRY.get(type).decode(JsonOps.INSTANCE, JsonParser.parseReader(reader)).getOrThrow().getFirst();
-                } catch (IOException ex) {
-                    throw new UnsupportedOperationException("Failed to handle JSON input stream.", ex);
-                }
-            }
-        };
-    }
+			@Override
+			public @NotNull <T> T fromJsonString(@NotNull String json, @NotNull Type type) {
+				if (!CODEC_REGISTRY.containsKey(type))
+					throw new UnsupportedOperationException("Cannot decode object type " + type);
+				return (T) CODEC_REGISTRY.get(type).decode(JsonOps.INSTANCE, JsonParser.parseString(json)).getOrThrow().getFirst();
+			}
+
+			@SuppressWarnings("unchecked")
+			@Override
+			public @NotNull <T> T fromJsonStream(@NotNull InputStream json, @NotNull Type type) {
+				if (!CODEC_REGISTRY.containsKey(type))
+					throw new UnsupportedOperationException("Cannot decode object type " + type);
+				try (InputStreamReader reader = new InputStreamReader(json)) {
+					return (T) CODEC_REGISTRY.get(type).decode(JsonOps.INSTANCE, JsonParser.parseReader(reader)).getOrThrow().getFirst();
+				} catch (IOException ex) {
+					throw new UnsupportedOperationException("Failed to handle JSON input stream.", ex);
+				}
+			}
+		};
+	}
 }
