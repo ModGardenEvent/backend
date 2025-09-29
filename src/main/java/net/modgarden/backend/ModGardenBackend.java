@@ -54,8 +54,15 @@ public class ModGardenBackend {
 
 	public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
 
-
     public static final String SAFE_URL_REGEX = "[a-zA-Z0-9!@$()`.+,_\"-]+";
+
+	private static ModGardenBackend backend;
+
+	private final Javalin app;
+
+	private ModGardenBackend(Javalin app) {
+		this.app = app;
+	}
 
     public static void main(String[] args) {
 		if ("development".equals(DOTENV.get("env")))
@@ -104,8 +111,9 @@ public class ModGardenBackend {
 
 		Javalin app = Javalin.create(config -> config.jsonMapper(createDFUMapper()));
 		app.get("", Landing::getLandingJson);
+		backend = new ModGardenBackend(app);
 
-		v1(app);
+		backend.v1();
 
         app.error(400, BackendError::handleError);
         app.error(401, BackendError::handleError);
@@ -117,65 +125,75 @@ public class ModGardenBackend {
 		LOG.info("Mod Garden Backend Started!");
     }
 
-	public static void v1(Javalin app) {
-		get(app, 1, "award/{award}", Award::getAwardType);
+	public void v1() {
+		get1("award/{award}", Award::getAwardType);
 
-		get(app, 1, "event/{event}", Event::getEvent);
-		get(app, 1, "event/{event}/submissions", Submission::getSubmissionsByEvent);
+		get1("event/{event}", Event::getEvent);
+		get1("event/{event}/submissions", Submission::getSubmissionsByEvent);
 
-		get(app, 1, "events", Event::getEvents);
-		get(app, 1, "events/current/registration", Event::getCurrentRegistrationEvent);
-		get(app, 1, "events/current/development", Event::getCurrentDevelopmentEvent);
-		get(app, 1, "events/current/prefreeze", Event::getCurrentPreFreezeEvent);
-		get(app, 1, "events/active", Event::getActiveEvents);
+		get1("events", Event::getEvents);
+		get1("events/current/registration", Event::getCurrentRegistrationEvent);
+		get1("events/current/development", Event::getCurrentDevelopmentEvent);
+		get1("events/current/prefreeze", Event::getCurrentPreFreezeEvent);
+		get1("events/active", Event::getActiveEvents);
 
-		get(app, 1, "mcaccount/{mcaccount}", MinecraftAccount::getAccount);
+		get1("mcaccount/{mcaccount}", MinecraftAccount::getAccount);
 
-		get(app, 1, "project/{project}", Project::getProject);
+		get1("project/{project}", Project::getProject);
 
-		get(app, 1, "submission/{submission}", Submission::getSubmission);
+		get1("submission/{submission}", Submission::getSubmission);
 
-		get(app, 1, "user/{user}", User::getUser);
-		get(app, 1, "user/{user}/projects", Project::getProjectsByUser);
-		get(app, 1, "user/{user}/submissions", Submission::getSubmissionsByUser);
-		get(app, 1, "user/{user}/submissions/{event}", Submission::getSubmissionsByUserAndEvent);
-		get(app, 1, "user/{user}/awards", Award::getAwardsByUser);
+		get1("user/{user}", User::getUser);
+		get1("user/{user}/projects", Project::getProjectsByUser);
+		get1("user/{user}/submissions", Submission::getSubmissionsByUser);
+		get1("user/{user}/submissions/{event}", Submission::getSubmissionsByUserAndEvent);
+		get1("user/{user}/awards", Award::getAwardsByUser);
 
-		post(app, 1, "discord/register", RegistrationHandler::discordBotRegister);
+		post1("discord/register", RegistrationHandler::discordBotRegister);
 
-		get(app, 1, "discord/oauth/modrinth", DiscordBotOAuthHandler::authModrinthAccount);
-		get(app, 1, "discord/oauth/minecraft", DiscordBotOAuthHandler::authMinecraftAccount);
-		get(app, 1, "discord/oauth/minecraft/challenge", DiscordBotOAuthHandler::getMicrosoftCodeChallenge);
+		get1("discord/oauth/modrinth", DiscordBotOAuthHandler::authModrinthAccount);
+		get1("discord/oauth/minecraft", DiscordBotOAuthHandler::authMinecraftAccount);
+		get1("discord/oauth/minecraft/challenge", DiscordBotOAuthHandler::getMicrosoftCodeChallenge);
 
-		post(app, 1, "discord/submission/create/modrinth", DiscordBotSubmissionHandler::submitModrinth);
-		post(app, 1, "discord/submission/modify/version/modrinth", DiscordBotSubmissionHandler::setVersionModrinth);
-		post(app, 1, "discord/submission/delete", DiscordBotSubmissionHandler::unsubmit);
+		post1("discord/submission/create/modrinth", DiscordBotSubmissionHandler::submitModrinth);
+		post1("discord/submission/modify/version/modrinth", DiscordBotSubmissionHandler::setVersionModrinth);
+		post1("discord/submission/delete", DiscordBotSubmissionHandler::unsubmit);
 
-		post(app, 1, "discord/link", DiscordBotLinkHandler::link);
-		post(app, 1, "discord/unlink", DiscordBotUnlinkHandler::unlink);
+		post1("discord/link", DiscordBotLinkHandler::link);
+		post1("discord/unlink", DiscordBotUnlinkHandler::unlink);
 
-		post(app, 1, "discord/modify/username", DiscordBotProfileHandler::modifyUsername);
-		post(app, 1, "discord/modify/displayname", DiscordBotProfileHandler::modifyDisplayName);
-		post(app, 1, "discord/modify/pronouns", DiscordBotProfileHandler::modifyPronouns);
-		post(app, 1, "discord/modify/avatar", DiscordBotProfileHandler::modifyAvatarUrl);
+		post1("discord/modify/username", DiscordBotProfileHandler::modifyUsername);
+		post1("discord/modify/displayname", DiscordBotProfileHandler::modifyDisplayName);
+		post1("discord/modify/pronouns", DiscordBotProfileHandler::modifyPronouns);
+		post1("discord/modify/avatar", DiscordBotProfileHandler::modifyAvatarUrl);
 
-		post(app, 1, "discord/remove/pronouns", DiscordBotProfileHandler::removePronouns);
-		post(app, 1, "discord/remove/avatar", DiscordBotProfileHandler::removeAvatarUrl);
+		post1("discord/remove/pronouns", DiscordBotProfileHandler::removePronouns);
+		post1("discord/remove/avatar", DiscordBotProfileHandler::removeAvatarUrl);
 
-		post(app, 1, "discord/project/user/invite", DiscordBotTeamManagementHandler::sendInvite);
-		post(app, 1, "discord/project/user/accept", DiscordBotTeamManagementHandler::acceptInvite);
-		post(app, 1, "discord/project/user/decline", DiscordBotTeamManagementHandler::declineInvite);
-		post(app, 1, "discord/project/user/remove", DiscordBotTeamManagementHandler::removeMember);
+		post1("discord/project/user/invite", DiscordBotTeamManagementHandler::sendInvite);
+		post1("discord/project/user/accept", DiscordBotTeamManagementHandler::acceptInvite);
+		post1("discord/project/user/decline", DiscordBotTeamManagementHandler::declineInvite);
+		post1("discord/project/user/remove", DiscordBotTeamManagementHandler::removeMember);
 	}
 
-	@SuppressWarnings("SameParameterValue")
-	private static void get(Javalin app, int version, String endpoint, Handler consumer) {
-		app.get("/v" + version + "/" + endpoint, consumer);
+	private void get1(String endpoint, Handler consumer) {
+		this.app.get("/v1/" + endpoint, consumer);
 	}
 
-	@SuppressWarnings("SameParameterValue")
-	private static void post(Javalin app, int version, String endpoint, Handler consumer) {
-		app.post("/v" + version + "/" + endpoint, consumer);
+	private void post1(String endpoint, Handler consumer) {
+		this.app.post("/v1/" + endpoint, consumer);
+	}
+
+	private void get2(String endpoint, Handler consumer) {
+		this.app.get("/v2/" + endpoint, consumer);
+	}
+
+	private void post2(String endpoint, Handler consumer) {
+		this.app.post("/v2/" + endpoint, consumer);
+	}
+
+	private void put2(String endpoint, Handler consumer) {
+		this.app.put("/v2/" + endpoint, consumer);
 	}
 
     public static Connection createDatabaseConnection() throws SQLException {
