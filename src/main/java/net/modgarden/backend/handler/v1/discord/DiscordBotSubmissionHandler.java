@@ -191,7 +191,7 @@ public class DiscordBotSubmissionHandler {
 			}
 
 			User user = User.query(body.discordId, "discord");
-			if (user == null || user.modrinthId().isEmpty()) {
+			if (user == null) {
 				ctx.status(422);
 				ctx.result("Could not find a Mod Garden or Modrinth account linked to the specified Discord user.");
 				return;
