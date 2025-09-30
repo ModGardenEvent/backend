@@ -7,17 +7,21 @@ import net.modgarden.backend.data.fixer.fix.*;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.Collections;
 import java.util.List;
 
 public class DatabaseFixer {
 	private static final List<DatabaseFix> FIXES = new ObjectArrayList<>();
 
 	public static void createFixers() {
-		FIXES.add(new V1ToV2());
-		FIXES.add(new V2ToV3());
-		FIXES.add(new V3ToV4());
-		FIXES.add(new V4ToV5());
-		FIXES.add(new V5ToV6());
+		Collections.addAll(
+				FIXES,
+				new V1ToV2(),
+				new V2ToV3(),
+				new V3ToV4(),
+				new V4ToV5(),
+				new V5ToV6()
+		);
 	}
 
 	public static void fixDatabase() {
