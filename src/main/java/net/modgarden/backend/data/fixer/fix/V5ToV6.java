@@ -15,16 +15,22 @@ public class V5ToV6 extends DatabaseFix {
 		var statement = connection.createStatement();
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS api_keys (
-			uuid BLOB PRIMARY KEY,
-			salt TEXT NOT NULL,
-			hash TEXT NOT NULL,
-			expires INTEGER NOT NULL
+			user_id TEXT NOT NULL,
+			salt BLOB NOT NULL,
+			hash BLOB UNIQUE NOT NULL,
+			expires INTEGER NOT NULL,
+			FOREIGN KEY (user_id) REFERENCES users(id),
+			PRIMARY KEY (user_id)
 		)
 		""");
 		statement.addBatch("""
-		CREATE TABLE IF NOT EXISTS credentials (
-			user_id TEXT PRIMARY KEY,
-			api_key_uuid BLOB UNIQUE
+		CREATE TABLE IF NOT EXISTS passwords (
+			user_id TEXT NOT NULL,
+			salt BLOB NOT NULL,
+			hash BLOB NOT NULL,
+			last_updated INTEGER NOT NULL,
+			FOREIGN KEY (user_id) REFERENCES users(id),
+			PRIMARY KEY (user_id)
 		)
 		""");
 		statement.executeBatch();
