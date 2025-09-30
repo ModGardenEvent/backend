@@ -9,7 +9,6 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 import io.github.cdimascio.dotenv.Dotenv;
 import io.javalin.Javalin;
-import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import io.javalin.json.JsonMapper;
 import net.modgarden.backend.data.BackendError;
@@ -24,9 +23,9 @@ import net.modgarden.backend.data.fixer.DatabaseFixer;
 import net.modgarden.backend.data.profile.MinecraftAccount;
 import net.modgarden.backend.data.profile.User;
 import net.modgarden.backend.endpoint.Endpoint;
+import net.modgarden.backend.endpoint.v2.auth.GenerateKeyEndpoint;
 import net.modgarden.backend.handler.v1.discord.*;
 import net.modgarden.backend.handler.v1.RegistrationHandler;
-import net.modgarden.backend.endpoint.v2.AuthEndpoint;
 import net.modgarden.backend.util.AuthUtil;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -45,6 +44,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 public class ModGardenBackend {
 	public static final Dotenv DOTENV = Dotenv.load();
@@ -52,7 +52,7 @@ public class ModGardenBackend {
 	public static final String URL = "development".equals(DOTENV.get("env")) ? "http://localhost:7070" : "https://api.modgarden.net";
 	public static final Logger LOG = LoggerFactory.getLogger(ModGardenBackend.class);
 
-	public static final int DATABASE_SCHEMA_VERSION = 5;
+	public static final int DATABASE_SCHEMA_VERSION = 6;
 	private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
 
 	public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
@@ -180,19 +180,7 @@ public class ModGardenBackend {
 	}
 
 	public void v2() {
-		post2(new AuthEndpoint("generate_key") {
-			@Override
-			public void handle(@NotNull Context ctx) throws Exception {
-				super.handle(ctx);
-
-				try (
-						var connection = this.getDatabaseConnection();
-						var statement = connection.prepareStatement("UPDATE credentials SET ")
-				) {
-					String apiKey = AuthEndpoint.generateAPIKey();
-				}
-			}
-		});
+		post2(GenerateKeyEndpoint::new);
 	}
 
 	private void get1(String endpoint, Handler consumer) {
@@ -203,16 +191,19 @@ public class ModGardenBackend {
 		this.app.post("/v1/" + endpoint, consumer);
 	}
 
-	private void get2(String endpoint, Handler consumer) {
-		this.app.get("/v2/" + endpoint, consumer);
+	private void get2(Supplier<Endpoint> endpointSupplier) {
+		Endpoint endpoint = endpointSupplier.get();
+		this.app.get("/v2/" + endpoint.getPath(), endpoint);
 	}
 
-	private void post2(Endpoint endpoint) {
+	private void post2(Supplier<Endpoint> endpointSupplier) {
+		Endpoint endpoint = endpointSupplier.get();
 		this.app.post("/v2/" + endpoint.getPath(), endpoint);
 	}
 
-	private void put2(String endpoint, Handler consumer) {
-		this.app.put("/v2/" + endpoint, consumer);
+	private void put2(Supplier<Endpoint> endpointSupplier) {
+		Endpoint endpoint = endpointSupplier.get();
+		this.app.put("/v2/" + endpoint.getPath(), endpoint);
 	}
 
 	public static Connection createDatabaseConnection() throws SQLException {
@@ -225,7 +216,7 @@ public class ModGardenBackend {
 			 Statement statement = connection.createStatement()) {
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS users (
-				id TEXT PRIMARY KEY,
+				id TEXT UNIQUE NOT NULL,
 				username TEXT UNIQUE NOT NULL,
 				display_name TEXT NOT NULL,
 				pronouns TEXT,
@@ -239,7 +230,7 @@ public class ModGardenBackend {
 			""");
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS events (
-				id TEXT PRIMARY KEY,
+				id TEXT UNIQUE NOT NULL,
 				slug TEXT UNIQUE NOT NULL,
 				event_type_slug TEXT NOT NULL,
 				display_name TEXT NOT NULL,
@@ -253,82 +244,100 @@ public class ModGardenBackend {
 				PRIMARY KEY (id)
 			)
 			""");
-			statement.addBatch("CREATE TABLE IF NOT EXISTS projects (" +
-						"id TEXT PRIMARY KEY," +
-						"slug TEXT UNIQUE NOT NULL," +
-						"modrinth_id TEXT UNIQUE NOT NULL," +
-						"attributed_to TEXT NOT NULL," +
-						"FOREIGN KEY (attributed_to) REFERENCES users(id)," +
-						"PRIMARY KEY (id)" +
-					")");
-			statement.addBatch("CREATE TABLE IF NOT EXISTS project_authors (" +
-						"project_id TEXT NOT NULL," +
-						"user_id TEXT NOT NULL," +
-						"FOREIGN KEY (project_id) REFERENCES projects(id)," +
-						"FOREIGN KEY (user_id) REFERENCES users(id)," +
-						"PRIMARY KEY (project_id, user_id)" +
-					")");
-			statement.addBatch("CREATE TABLE IF NOT EXISTS project_builders (" +
-						"project_id TEXT NOT NULL," +
-						"user_id TEXT NOT NULL," +
-						"FOREIGN KEY (project_id) REFERENCES projects(id)," +
-						"FOREIGN KEY (user_id) REFERENCES users(id)," +
-						"PRIMARY KEY (project_id, user_id)" +
-					")");
-			statement.addBatch("CREATE TABLE IF NOT EXISTS submissions (" +
-						"id TEXT PRIMARY KEY," +
-						"event TEXT NOT NULL," +
-						"project_id TEXT NOT NULL," +
-						"modrinth_version_id TEXT NOT NULL," +
-						"submitted INTEGER NOT NULL," +
-						"FOREIGN KEY (project_id) REFERENCES projects(id)," +
-						"FOREIGN KEY (event) REFERENCES events(id)," +
-						"PRIMARY KEY(id)" +
-					")");
-			statement.addBatch("CREATE TABLE IF NOT EXISTS minecraft_accounts (" +
-						"uuid TEXT UNIQUE NOT NULL," +
-						"user_id TEXT NOT NULL," +
-						"FOREIGN KEY (user_id) REFERENCES users(id)," +
-						"PRIMARY KEY (uuid)" +
-					")");
-			statement.addBatch("CREATE TABLE IF NOT EXISTS awards (" +
-						"id TEXT PRIMARY KEY," +
-						"slug TEXT UNIQUE NOT NULL," +
-						"display_name TEXT NOT NULL," +
-						"sprite TEXT NOT NULL," +
-						"discord_emote TEXT NOT NULL," +
-						"tooltip TEXT," +
-						"tier TEXT NOT NULL CHECK (tier in ('COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY'))," +
-						"PRIMARY KEY (id)" +
-					")");
-			statement.addBatch("CREATE TABLE IF NOT EXISTS award_instances (" +
-						"award_id TEXT PRIMARY KEY," +
-						"awarded_to TEXT NOT NULL," +
-						"custom_data TEXT," +
-						"submission_id TEXT," +
-						"tier_override TEXT CHECK (tier_override in ('COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY'))," +
-						"FOREIGN KEY (award_id) REFERENCES awards(id)," +
-						"FOREIGN KEY (awarded_to) REFERENCES users(id)," +
-						"FOREIGN KEY (submission_id) REFERENCES submissions(id)," +
-						"PRIMARY KEY (award_id, awarded_to)" +
-					")");
-			statement.addBatch("CREATE TABLE IF NOT EXISTS link_codes (" +
-						"code TEXT NOT NULL," +
-						"account_id TEXT NOT NULL," +
-						"service TEXT NOT NULL," +
-						"expires INTEGER NOT NULL," +
-						"PRIMARY KEY (code)" +
-					")");
-			statement.addBatch("CREATE TABLE IF NOT EXISTS team_invites (" +
-						"code TEXT NOT NULL," +
-						"project_id TEXT NOT NULL," +
-						"user_id TEXT NOT NULL," +
-						"expires INTEGER NOT NULL," +
-						"role TEXT NOT NULL CHECK (role IN ('author', 'builder'))," +
-						"FOREIGN KEY (project_id) REFERENCES projects(id)," +
-						"FOREIGN KEY (user_id) REFERENCES users(id)," +
-						"PRIMARY KEY (code)" +
-					")");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS projects (
+				id TEXT UNIQUE NOT NULL,
+				slug TEXT UNIQUE NOT NULL,
+				modrinth_id TEXT UNIQUE NOT NULL,
+				attributed_to TEXT NOT NULL,
+				FOREIGN KEY (attributed_to) REFERENCES users(id),
+				PRIMARY KEY (id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS project_authors (
+				project_id TEXT NOT NULL,
+				user_id TEXT NOT NULL,
+				FOREIGN KEY (project_id) REFERENCES projects(id),
+				FOREIGN KEY (user_id) REFERENCES users(id),
+				PRIMARY KEY (project_id, user_id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS project_builders (
+				project_id TEXT NOT NULL,
+				user_id TEXT NOT NULL,
+				FOREIGN KEY (project_id) REFERENCES projects(id),
+				FOREIGN KEY (user_id) REFERENCES users(id),
+				PRIMARY KEY (project_id, user_id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS submissions (
+				id TEXT UNIQUE NOT NULL,
+				event TEXT NOT NULL,
+				project_id TEXT NOT NULL,
+				modrinth_version_id TEXT NOT NULL,
+				submitted INTEGER NOT NULL,
+				FOREIGN KEY (project_id) REFERENCES projects(id),
+				FOREIGN KEY (event) REFERENCES events(id),
+				PRIMARY KEY(id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS minecraft_accounts (
+				uuid TEXT UNIQUE NOT NULL,
+				user_id TEXT NOT NULL,
+				FOREIGN KEY (user_id) REFERENCES users(id),
+				PRIMARY KEY (uuid)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS awards (
+				id TEXT UNIQUE NOT NULL,
+				slug TEXT UNIQUE NOT NULL,
+				display_name TEXT NOT NULL,
+				sprite TEXT NOT NULL,
+				discord_emote TEXT NOT NULL,
+				tooltip TEXT,
+				tier TEXT NOT NULL CHECK (tier in ('COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY')),\
+					PRIMARY KEY (id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS award_instances (
+				award_id TEXT UNIQUE NOT NULL,
+				awarded_to TEXT NOT NULL,
+				custom_data TEXT,
+				submission_id TEXT,
+				tier_override TEXT CHECK (tier_override in ('COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY')),
+				FOREIGN KEY (award_id) REFERENCES awards(id),
+				FOREIGN KEY (awarded_to) REFERENCES users(id),
+				FOREIGN KEY (submission_id) REFERENCES submissions(id),
+				PRIMARY KEY (award_id, awarded_to)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS link_codes (
+				code TEXT NOT NULL,
+				account_id TEXT NOT NULL,
+				service TEXT NOT NULL,
+				expires INTEGER NOT NULL,
+				PRIMARY KEY (code)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS team_invites (
+				code TEXT NOT NULL,
+				project_id TEXT NOT NULL,
+				user_id TEXT NOT NULL,
+				expires INTEGER NOT NULL,
+				role TEXT NOT NULL CHECK (role IN ('author', 'builder')),
+				FOREIGN KEY (project_id) REFERENCES projects(id),
+				FOREIGN KEY (user_id) REFERENCES users(id),
+				PRIMARY KEY (code)
+			)
+			""");
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS api_keys (
 				uuid BLOB PRIMARY KEY,
