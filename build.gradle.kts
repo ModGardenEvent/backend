@@ -34,6 +34,8 @@ dependencies {
 	implementation(libs.jwt.gson)
     implementation(libs.base62)
 	implementation(libs.jetbrains.annotations)
+
+	implementation(libs.argon2.jvm)
 }
 
 tasks {

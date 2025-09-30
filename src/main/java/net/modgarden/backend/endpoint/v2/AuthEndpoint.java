@@ -10,7 +10,5 @@ public abstract class AuthEndpoint extends AuthorizedEndpoint {
 	}
 
 	@Override
-	public void handle(@NotNull Context ctx) throws Exception {
-		super.handle(ctx);
-	}
+	public abstract void handle(@NotNull Context ctx, String userId) throws Exception;
 }
