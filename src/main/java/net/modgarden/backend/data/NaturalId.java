@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 public final class NaturalId {
 	private static final Pattern PATTERN = Pattern.compile("[a-z]{5}");
 	private static final Pattern PATTERN_LEGACY = Pattern.compile("[0-9]+");
+	private static final Pattern DISALLOWED_PATTERN = Pattern.compile("((z{3}.*)|(.*bot)|(.*acc))");
 	private static final String alphabet = "abcdefghijklmnopqrstuvwxyz";
 
 	private NaturalId() {}
@@ -41,7 +42,7 @@ public final class NaturalId {
 				exists.setString(1, table);
 				exists.setString(2, key);
 				exists.setString(3, naturalId);
-				if (exists.execute()) {
+				if (!exists.execute()) {
 					id = naturalId;
 				}
 			}
