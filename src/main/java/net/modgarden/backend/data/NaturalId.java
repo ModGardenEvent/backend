@@ -11,10 +11,19 @@ import java.util.regex.Pattern;
 public final class NaturalId {
 	private static final Pattern PATTERN = Pattern.compile("[a-z]{5}");
 	private static final Pattern PATTERN_LEGACY = Pattern.compile("[0-9]+");
-	private static final Pattern DISALLOWED_PATTERN = Pattern.compile("((z{3}.*)|(.*bot)|(.*acc))");
+	// warning: do not fucking change this until you verify with regex101.com
+	// also pls create an account and then make a new regex101 and add it to the list below
+	// https://regex101.com/r/e1Ygne/1
+	// see also: regexlicensing.org
+	private static final Pattern RESERVED_PATTERN =
+			Pattern.compile("^((z{3}.*)|(.+bot)|(.+acc)|(abcde))$");
 	private static final String alphabet = "abcdefghijklmnopqrstuvwxyz";
 
 	private NaturalId() {}
+
+	public static boolean isReserved(String id) {
+		return RESERVED_PATTERN.matcher(id).hasMatch();
+	}
 
 	public static boolean isValid(String id) {
 		return PATTERN.matcher(id).hasMatch();
@@ -24,7 +33,7 @@ public final class NaturalId {
 		return isValid(id) || PATTERN_LEGACY.matcher(id).hasMatch();
 	}
 
-	public static String of(RandomGenerator random) {
+	private static String generateUnchecked(RandomGenerator random) {
 		StringBuilder builder = new StringBuilder();
 		for (int i = 0; i < 5; i++) {
 			builder.append(alphabet.charAt(random.nextInt(alphabet.length())));
@@ -33,16 +42,16 @@ public final class NaturalId {
 	}
 
 	@NotNull
-	public static String generateChecked(String table, String key) throws SQLException {
+	public static String generate(String table, String key) throws SQLException {
 		String id = null;
 		try (Connection connection1 = ModGardenBackend.createDatabaseConnection()) {
 			while (id == null) {
-				String naturalId = of(RandomGenerator.getDefault());
+				String naturalId = generateUnchecked(RandomGenerator.getDefault());
 				var exists = connection1.prepareStatement("SELECT true FROM ? WHERE ? = ?");
 				exists.setString(1, table);
 				exists.setString(2, key);
 				exists.setString(3, naturalId);
-				if (!exists.execute()) {
+				if (!exists.execute() && !isReserved(naturalId)) {
 					id = naturalId;
 				}
 			}
