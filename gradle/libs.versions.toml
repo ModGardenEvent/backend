@@ -25,4 +25,4 @@ base62 = { group = "io.seruco.encoding", name = "base62", version.ref = "base62"
 jetbrains_annotations = { group = "org.jetbrains", name = "annotations", version.ref = "jetbrains_annotations" }
 
 [plugins]
-idea_ext = { id = "org.jetbrains.gradle.plugin.idea-ext", version.ref = "idea_ext" }
+#idea_ext = { id = "org.jetbrains.gradle.plugin.idea-ext", version.ref = "idea_ext" }
