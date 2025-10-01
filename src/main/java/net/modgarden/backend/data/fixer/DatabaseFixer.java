@@ -8,7 +8,6 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
@@ -35,12 +34,12 @@ public class DatabaseFixer {
 	}
 
 	public static void fixDatabase() {
-		List<Consumer<Connection>> postFixers = new ArrayList<>();
+		int version = -1;
 		try (Connection connection = ModGardenBackend.createDatabaseConnection();
 			 PreparedStatement schemaVersion = connection.prepareStatement("SELECT version FROM schema")) {
 			ResultSet query = schemaVersion.executeQuery();
 
-			int version = query.getInt(1);
+			version = query.getInt(1);
 			int lastVersion = getSchemaVersion();
 			if (lastVersion == -1 || version > lastVersion) {
 				throw new IllegalStateException("Schema version is invalid! Got " + lastVersion + ", " + version + " in the database");
@@ -48,21 +47,24 @@ public class DatabaseFixer {
 			if (version == lastVersion)
 				return;
 
-			for (DatabaseFix fix : FIXES) {
-				var postFixer = fix.fixInternal(connection, version);
-				if (postFixer != null) {
-					postFixers.add(postFixer);
-				}
-			}
 		} catch (Exception ex) {
 			ModGardenBackend.LOG.error("Failed to fix data: ", ex);
 		}
 
-		for (var postFixer : postFixers) {
+		for (DatabaseFix fix : FIXES) {
+			Consumer<Connection> dropper = null;
 			try (Connection connection = ModGardenBackend.createDatabaseConnection()) {
-				postFixer.accept(connection);
-			} catch (SQLException e) {
-				throw new RuntimeException(e);
+				dropper = fix.fixInternal(connection, version);
+			} catch (SQLException ex) {
+				ModGardenBackend.LOG.error("Failed to fix data: ", ex);
+			}
+
+			try (Connection connection = ModGardenBackend.createDatabaseConnection()) {
+				if (dropper != null) {
+					dropper.accept(connection);
+				}
+			} catch (SQLException ex) {
+				ModGardenBackend.LOG.error("Failed to fix data: ", ex);
 			}
 		}
 	}
