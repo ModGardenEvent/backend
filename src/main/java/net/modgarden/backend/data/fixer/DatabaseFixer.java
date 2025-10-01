@@ -7,8 +7,11 @@ import net.modgarden.backend.data.fixer.fix.*;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class DatabaseFixer {
 	private static final List<DatabaseFix> FIXES = new ObjectArrayList<>();
@@ -25,6 +28,7 @@ public class DatabaseFixer {
 	}
 
 	public static void fixDatabase() {
+		List<Consumer<Connection>> postFixers = new ArrayList<>();
 		try (Connection connection = ModGardenBackend.createDatabaseConnection();
 			 PreparedStatement schemaVersion = connection.prepareStatement("SELECT version FROM schema")) {
 			ResultSet query = schemaVersion.executeQuery();
@@ -34,10 +38,21 @@ public class DatabaseFixer {
 				return;
 
 			for (DatabaseFix fix : FIXES) {
-				fix.fixInternal(connection, version);
+				var postFixer = fix.fixInternal(connection, version);
+				if (postFixer != null) {
+					postFixers.add(postFixer);
+				}
 			}
 		} catch (Exception ex) {
 			ModGardenBackend.LOG.error("Failed to fix data: ", ex);
+		}
+
+		for (var postFixer : postFixers) {
+			try (Connection connection = ModGardenBackend.createDatabaseConnection()) {
+				postFixer.accept(connection);
+			} catch (SQLException e) {
+				throw new RuntimeException(e);
+			}
 		}
 	}
 }

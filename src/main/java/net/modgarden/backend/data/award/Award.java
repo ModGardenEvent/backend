@@ -83,8 +83,7 @@ public record Award(String id,
 			return;
 		}
 		var queryString = selectAllByUser(user);
-		try {
-			Connection connection = ModGardenBackend.createDatabaseConnection();
+		try (Connection connection = ModGardenBackend.createDatabaseConnection()) {
 			PreparedStatement prepared = connection.prepareStatement(queryString);
 			ResultSet result = prepared.executeQuery();
 			var awards = new JsonArray();

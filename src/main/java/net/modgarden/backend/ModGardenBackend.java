@@ -221,8 +221,6 @@ public class ModGardenBackend {
 				display_name TEXT NOT NULL,
 				pronouns TEXT,
 				avatar_url TEXT,
-				discord_id TEXT UNIQUE NOT NULL,
-				modrinth_id TEXT UNIQUE,
 				created INTEGER NOT NULL,
 				permissions INTEGER NOT NULL,
 				PRIMARY KEY(id)
@@ -248,40 +246,41 @@ public class ModGardenBackend {
 			CREATE TABLE IF NOT EXISTS projects (
 				id TEXT UNIQUE NOT NULL,
 				slug TEXT UNIQUE NOT NULL,
-				modrinth_id TEXT UNIQUE NOT NULL,
-				attributed_to TEXT NOT NULL,
-				FOREIGN KEY (attributed_to) REFERENCES users(id),
 				PRIMARY KEY (id)
 			)
 			""");
 			statement.addBatch("""
-			CREATE TABLE IF NOT EXISTS project_authors (
+			CREATE TABLE IF NOT EXISTS project_roles (
 				project_id TEXT NOT NULL,
 				user_id TEXT NOT NULL,
+				permissions INTEGER NOT NULL,
+				role_name TEXT NOT NULL,
 				FOREIGN KEY (project_id) REFERENCES projects(id),
-				FOREIGN KEY (user_id) REFERENCES users(id),
-				PRIMARY KEY (project_id, user_id)
+				FOREIGN KEY (user_id) REFERENCES users(id)
 			)
 			""");
+			// This ensures that users cannot be listed twice on the same project
 			statement.addBatch("""
-			CREATE TABLE IF NOT EXISTS project_builders (
-				project_id TEXT NOT NULL,
-				user_id TEXT NOT NULL,
-				FOREIGN KEY (project_id) REFERENCES projects(id),
-				FOREIGN KEY (user_id) REFERENCES users(id),
-				PRIMARY KEY (project_id, user_id)
-			)
+			CREATE UNIQUE INDEX idx_project_roles_two_ids ON project_roles(project_id, user_id)
 			""");
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS submissions (
 				id TEXT UNIQUE NOT NULL,
 				event TEXT NOT NULL,
 				project_id TEXT NOT NULL,
-				modrinth_version_id TEXT NOT NULL,
 				submitted INTEGER NOT NULL,
 				FOREIGN KEY (project_id) REFERENCES projects(id),
 				FOREIGN KEY (event) REFERENCES events(id),
 				PRIMARY KEY(id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS submission_type_modrinth (
+				submission_id TEXT NOT NULL,
+				modrinth_id TEXT NOT NULL,
+				version_id TEXT NOT NULL,
+				FOREIGN KEY (submission_id) REFERENCES submissions(id),
+				PRIMARY KEY (submission_id)
 			)
 			""");
 			statement.addBatch("""
@@ -300,8 +299,8 @@ public class ModGardenBackend {
 				sprite TEXT NOT NULL,
 				discord_emote TEXT NOT NULL,
 				tooltip TEXT,
-				tier TEXT NOT NULL CHECK (tier in ('COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY')),\
-					PRIMARY KEY (id)
+				tier TEXT NOT NULL CHECK (tier in ('COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY')),
+				PRIMARY KEY (id)
 			)
 			""");
 			statement.addBatch("""
@@ -340,12 +339,24 @@ public class ModGardenBackend {
 			""");
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS api_keys (
+				uuid BLOB NOT NULL,
 				user_id TEXT NOT NULL,
 				salt BLOB NOT NULL,
-				hash BLOB UNIQUE NOT NULL,
+				hash BLOB NOT NULL,
 				expires INTEGER NOT NULL,
 				FOREIGN KEY (user_id) REFERENCES users(id),
-				PRIMARY KEY (user_id)
+				PRIMARY KEY (uuid)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS api_key_scopes (
+				uuid BLOB NOT NULL,
+				scope TEXT CHECK (scope in ('PROJECT', 'USER')),
+				project_id TEXT,
+				permissions INTEGER NOT NULL,
+				FOREIGN KEY (project_id) REFERENCES projects(id),
+				FOREIGN KEY (uuid) REFERENCES api_keys(uuid),
+				PRIMARY KEY (uuid)
 			)
 			""");
 			statement.addBatch("""
@@ -354,6 +365,22 @@ public class ModGardenBackend {
 				salt BLOB NOT NULL,
 				hash BLOB NOT NULL,
 				last_updated INTEGER NOT NULL,
+				FOREIGN KEY (user_id) REFERENCES users(id),
+				PRIMARY KEY (user_id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS integration_modrinth (
+				user_id TEXT NOT NULL,
+				modrinth_id TEXT NOT NULL,
+				FOREIGN KEY (user_id) REFERENCES users(id),
+				PRIMARY KEY (user_id)
+			)
+			""");
+				statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS integration_discord (
+				user_id TEXT NOT NULL,
+				discord_id TEXT NOT NULL,
 				FOREIGN KEY (user_id) REFERENCES users(id),
 				PRIMARY KEY (user_id)
 			)
