@@ -252,8 +252,8 @@ public class ModGardenBackend {
 			CREATE TABLE IF NOT EXISTS project_roles (
 				project_id TEXT NOT NULL,
 				user_id TEXT NOT NULL,
-				permissions INTEGER NOT NULL,
-				role_name TEXT NOT NULL,
+				permissions INTEGER NOT NULL DEFAULT 0,
+				role_name TEXT NOT NULL DEFAULT 'Member',
 				FOREIGN KEY (project_id) REFERENCES projects(id),
 				FOREIGN KEY (user_id) REFERENCES users(id)
 			)
