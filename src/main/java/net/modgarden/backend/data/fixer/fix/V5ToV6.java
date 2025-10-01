@@ -77,8 +77,8 @@ public class V5ToV6 extends DatabaseFix {
 		CREATE TABLE IF NOT EXISTS project_roles (
 			project_id TEXT NOT NULL,
 			user_id TEXT NOT NULL,
-			permissions INTEGER NOT NULL,
-			role_name TEXT NOT NULL,
+			permissions INTEGER NOT NULL DEFAULT 0,
+			role_name TEXT NOT NULL DEFAULT 'Member',
 			FOREIGN KEY (project_id) REFERENCES projects(id),
 			FOREIGN KEY (user_id) REFERENCES users(id)
 		)
@@ -135,32 +135,38 @@ public class V5ToV6 extends DatabaseFix {
 		WHERE modrinth_id NOT NULL
 		""");
 
-		statement.addBatch("""
-		CREATE TEMP TABLE IF NOT EXISTS project_roles (
+		statement.execute("""
+		CREATE TABLE IF NOT EXISTS project_roles_temp (
 			project_id TEXT NOT NULL,
 			user_id TEXT NOT NULL,
-			permissions INTEGER,
-			role_name TEXT,
+			permissions INTEGER NOT NULL DEFAULT 1,
+			role_name TEXT NOT NULL DEFAULT 'Member',
 			FOREIGN KEY (project_id) REFERENCES projects(id),
 			FOREIGN KEY (user_id) REFERENCES users(id)
 		)
 		""");
 
 		statement.execute("""
-		INSERT INTO temp.project_roles (project_id, user_id)
+		INSERT OR REPLACE INTO project_roles_temp (project_id, user_id)
 		SELECT project_id, user_id FROM project_authors
 		""");
 
-		return connection2 -> {
+		statement.execute("""
+		INSERT INTO project_roles (project_id, user_id, permissions, role_name)
+		SELECT project_id, user_id, permissions, role_name FROM project_roles_temp
+		""");
+
+		return dropConnection -> {
 			try {
-				var statement2 = connection2.createStatement();
-				statement2.execute("DROP TABLE users_old");
-				statement2.execute("DROP TABLE submissions_old");
-				statement2.execute("DROP TABLE submissions_mr");
-				statement2.execute("ALTER TABLE submissions DROP COLUMN modrinth_version_id");
-				statement2.execute("DROP TABLE project_builders");
-				statement2.execute("DROP TABLE project_authors");
-				statement2.execute("DROP TABLE temp.project_roles");
+				var dropStatement = dropConnection.createStatement();
+				dropStatement.execute("DROP TABLE users_old");
+				dropStatement.execute("DROP TABLE submissions_old");
+				dropStatement.execute("DROP TABLE submissions_mr");
+				dropStatement.execute("ALTER TABLE submissions DROP COLUMN modrinth_version_id");
+				dropStatement.execute("DROP TABLE projects_old");
+				dropStatement.execute("DROP TABLE project_builders");
+				dropStatement.execute("DROP TABLE project_authors");
+				dropStatement.execute("DROP TABLE project_roles_temp");
 			} catch (SQLException e) {
 				throw new RuntimeException(e);
 			}
