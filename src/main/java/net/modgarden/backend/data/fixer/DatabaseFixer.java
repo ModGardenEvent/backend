@@ -27,6 +27,13 @@ public class DatabaseFixer {
 		);
 	}
 
+	public static int getSchemaVersion() {
+		if (FIXES.isEmpty()) {
+			return -1;
+		}
+		return FIXES.getLast().getVersionToFixFrom() + 1;
+	}
+
 	public static void fixDatabase() {
 		List<Consumer<Connection>> postFixers = new ArrayList<>();
 		try (Connection connection = ModGardenBackend.createDatabaseConnection();
@@ -34,7 +41,11 @@ public class DatabaseFixer {
 			ResultSet query = schemaVersion.executeQuery();
 
 			int version = query.getInt(1);
-			if (version >= ModGardenBackend.DATABASE_SCHEMA_VERSION)
+			int lastVersion = getSchemaVersion();
+			if (lastVersion == -1 || version > lastVersion) {
+				throw new IllegalStateException("Schema version is invalid! Got " + lastVersion + ", " + version + " in the database");
+			}
+			if (version == lastVersion)
 				return;
 
 			for (DatabaseFix fix : FIXES) {

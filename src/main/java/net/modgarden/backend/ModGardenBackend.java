@@ -52,7 +52,6 @@ public class ModGardenBackend {
 	public static final String URL = "development".equals(DOTENV.get("env")) ? "http://localhost:7070" : "https://api.modgarden.net";
 	public static final Logger LOG = LoggerFactory.getLogger(ModGardenBackend.class);
 
-	public static final int DATABASE_SCHEMA_VERSION = 6;
 	private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
 
 	public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
@@ -73,12 +72,12 @@ public class ModGardenBackend {
 
 		try {
 			boolean createdFile = new File("./database.db").createNewFile();
+			DatabaseFixer.createFixers();
 			if (createdFile) {
 				createDatabaseContents();
 				updateSchemaVersion();
 				LOG.debug("Successfully created database file.");
 			}
-			DatabaseFixer.createFixers();
 			DatabaseFixer.fixDatabase();
 			if (!createdFile) {
 				updateSchemaVersion();
@@ -404,7 +403,7 @@ public class ModGardenBackend {
 			statement.addBatch("DELETE FROM schema");
 			statement.executeBatch();
 			try (PreparedStatement prepared = connection.prepareStatement("INSERT INTO schema VALUES (?)")) {
-				prepared.setInt(1, DATABASE_SCHEMA_VERSION);
+				prepared.setInt(1, DatabaseFixer.getSchemaVersion());
 				prepared.execute();
 			}
 		} catch (SQLException ex) {

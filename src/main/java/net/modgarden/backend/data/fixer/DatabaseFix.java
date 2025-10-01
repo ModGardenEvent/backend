@@ -24,4 +24,8 @@ public abstract class DatabaseFix {
 			return null;
 		return fix(connection);
 	}
+
+	public int getVersionToFixFrom() {
+		return this.versionToFixFrom;
+	}
 }
