@@ -132,7 +132,7 @@ public class DiscordBotSubmissionHandler {
 					}
 
 					if (projectId == null) {
-						projectId = NaturalId.generate("projects", "id");
+						projectId = NaturalId.generate("projects", "id", 5);
 						projectInsertStatement.setString(1, projectId);
 						projectInsertStatement.setString(2, slug);
 						projectInsertStatement.setString(3, modrinthProject.id);
@@ -145,7 +145,9 @@ public class DiscordBotSubmissionHandler {
 						projectAuthorsStatement.execute();
 					}
 
-					String submissionId = NaturalId.generate("submissions", "id");
+					String submissionId = NaturalId.generate("submissions", "id",
+							5
+					);
 					submissionStatement.setString(1, submissionId);
 					submissionStatement.setString(2, projectId);
 					submissionStatement.setString(3, event.id());

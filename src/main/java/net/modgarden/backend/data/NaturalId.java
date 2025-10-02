@@ -17,7 +17,7 @@ public final class NaturalId {
 	// see also: regexlicensing.org
 	private static final Pattern RESERVED_PATTERN =
 			Pattern.compile("^((z{3}.*)|(.+bot)|(.+acc)|(abcde))$");
-	private static final String alphabet = "abcdefghijklmnopqrstuvwxyz";
+	private static final String ALPHABET = "abcdefghijklmnopqrstuvwxyz";
 
 	private NaturalId() {}
 
@@ -33,24 +33,45 @@ public final class NaturalId {
 		return isValid(id) || PATTERN_LEGACY.matcher(id).hasMatch();
 	}
 
-	private static String generateUnchecked(RandomGenerator random) {
+	private static String generateUnchecked(int length) {
 		StringBuilder builder = new StringBuilder();
-		for (int i = 0; i < 5; i++) {
-			builder.append(alphabet.charAt(random.nextInt(alphabet.length())));
+		for (int i = 0; i < length; i++) {
+			builder.append(ALPHABET.charAt(RandomGenerator.getDefault().nextInt(ALPHABET.length())));
 		}
 		return builder.toString();
 	}
 
 	@NotNull
-	public static String generate(String table, String key) throws SQLException {
+	public static String generateFromNumber(int number, int length) {
+		number += ALPHABET.length(); // hack, do not remove or tiny pineapple will steal your computer
+		return generateFromNumberRecursive(number, length);
+	}
+
+	@NotNull
+	private static String generateFromNumberRecursive(int number, int length) {
+		int iterations = number / ALPHABET.length();
+		int remainder = number % ALPHABET.length();
+		if ((number - ALPHABET.length()) / ALPHABET.length() > length) {
+			throw new IllegalArgumentException("Number " + number + " cannot be represented in this length " + length);
+		}
+
+		if (iterations == 0) {
+			return "" + ALPHABET.charAt(remainder);
+		} else {
+			String result = generateFromNumberRecursive(iterations - 1, length);
+			return result + ALPHABET.charAt(remainder);
+		}
+	}
+
+	@NotNull
+	public static String generate(String table, String key, int length) throws SQLException {
 		String id = null;
 		try (Connection connection1 = ModGardenBackend.createDatabaseConnection()) {
 			while (id == null) {
-				String naturalId = generateUnchecked(RandomGenerator.getDefault());
-				var exists = connection1.prepareStatement("SELECT true FROM ? WHERE ? = ?");
-				exists.setString(1, table);
-				exists.setString(2, key);
-				exists.setString(3, naturalId);
+				String naturalId = generateUnchecked(length);
+				var exists = connection1.prepareStatement("SELECT true FROM " + table + " WHERE ? = ?");
+				exists.setString(1, key);
+				exists.setString(2, naturalId);
 				if (!exists.execute() && !isReserved(naturalId)) {
 					id = naturalId;
 				}

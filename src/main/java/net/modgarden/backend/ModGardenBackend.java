@@ -14,6 +14,7 @@ import io.javalin.json.JsonMapper;
 import net.modgarden.backend.data.BackendError;
 import net.modgarden.backend.data.DevelopmentModeData;
 import net.modgarden.backend.data.Landing;
+import net.modgarden.backend.data.NaturalId;
 import net.modgarden.backend.data.award.Award;
 import net.modgarden.backend.data.award.AwardInstance;
 import net.modgarden.backend.data.event.Event;
@@ -30,6 +31,7 @@ import net.modgarden.backend.util.AuthUtil;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.sqlite.Function;
 
 import java.io.File;
 import java.io.IOException;
@@ -254,8 +256,8 @@ public class ModGardenBackend {
 				user_id TEXT NOT NULL,
 				permissions INTEGER NOT NULL DEFAULT 0,
 				role_name TEXT NOT NULL DEFAULT 'Member',
-				FOREIGN KEY (project_id) REFERENCES projects(id),
-				FOREIGN KEY (user_id) REFERENCES users(id)
+				FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
 			)
 			""");
 			// This ensures that users cannot be listed twice on the same project
@@ -268,8 +270,8 @@ public class ModGardenBackend {
 				event TEXT NOT NULL,
 				project_id TEXT NOT NULL,
 				submitted INTEGER NOT NULL,
-				FOREIGN KEY (project_id) REFERENCES projects(id),
-				FOREIGN KEY (event) REFERENCES events(id),
+				FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				FOREIGN KEY (event) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY(id)
 			)
 			""");
@@ -278,7 +280,7 @@ public class ModGardenBackend {
 				submission_id TEXT NOT NULL,
 				modrinth_id TEXT NOT NULL,
 				version_id TEXT NOT NULL,
-				FOREIGN KEY (submission_id) REFERENCES submissions(id),
+				FOREIGN KEY (submission_id) REFERENCES submissions(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (submission_id)
 			)
 			""");
@@ -286,7 +288,7 @@ public class ModGardenBackend {
 			CREATE TABLE IF NOT EXISTS minecraft_accounts (
 				uuid TEXT UNIQUE NOT NULL,
 				user_id TEXT NOT NULL,
-				FOREIGN KEY (user_id) REFERENCES users(id),
+				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (uuid)
 			)
 			""");
@@ -309,9 +311,9 @@ public class ModGardenBackend {
 				custom_data TEXT,
 				submission_id TEXT,
 				tier_override TEXT CHECK (tier_override in ('COMMON', 'UNCOMMON', 'RARE', 'LEGENDARY')),
-				FOREIGN KEY (award_id) REFERENCES awards(id),
-				FOREIGN KEY (awarded_to) REFERENCES users(id),
-				FOREIGN KEY (submission_id) REFERENCES submissions(id),
+				FOREIGN KEY (award_id) REFERENCES awards(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				FOREIGN KEY (awarded_to) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				FOREIGN KEY (submission_id) REFERENCES submissions(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (award_id, awarded_to)
 			)
 			""");
@@ -331,8 +333,8 @@ public class ModGardenBackend {
 				user_id TEXT NOT NULL,
 				expires INTEGER NOT NULL,
 				role TEXT NOT NULL CHECK (role IN ('author', 'builder')),
-				FOREIGN KEY (project_id) REFERENCES projects(id),
-				FOREIGN KEY (user_id) REFERENCES users(id),
+				FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (code)
 			)
 			""");
@@ -353,8 +355,8 @@ public class ModGardenBackend {
 				scope TEXT CHECK (scope in ('PROJECT', 'USER')),
 				project_id TEXT,
 				permissions INTEGER NOT NULL,
-				FOREIGN KEY (project_id) REFERENCES projects(id),
-				FOREIGN KEY (uuid) REFERENCES api_keys(uuid),
+				FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				FOREIGN KEY (uuid) REFERENCES api_keys(uuid) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (uuid)
 			)
 			""");
@@ -364,7 +366,7 @@ public class ModGardenBackend {
 				salt BLOB NOT NULL,
 				hash BLOB NOT NULL,
 				last_updated INTEGER NOT NULL,
-				FOREIGN KEY (user_id) REFERENCES users(id),
+				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (user_id)
 			)
 			""");
@@ -372,18 +374,39 @@ public class ModGardenBackend {
 			CREATE TABLE IF NOT EXISTS integration_modrinth (
 				user_id TEXT NOT NULL,
 				modrinth_id TEXT NOT NULL,
-				FOREIGN KEY (user_id) REFERENCES users(id),
+				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (user_id)
 			)
 			""");
-				statement.addBatch("""
+			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS integration_discord (
 				user_id TEXT NOT NULL,
 				discord_id TEXT NOT NULL,
-				FOREIGN KEY (user_id) REFERENCES users(id),
+				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (user_id)
 			)
 			""");
+			Function.create(
+					connection, "generate_natural_id", new Function() {
+						@Override
+						protected void xFunc() throws SQLException {
+							String table = this.value_text(0);
+							String key = this .value_text(1);
+							int length = this.value_int(2);
+							this.result(NaturalId.generate(table, key, length));
+						}
+					}
+			);
+			Function.create(
+					connection, "generate_natural_id_from_number", new Function() {
+						@Override
+						protected void xFunc() throws SQLException {
+							int number = this.value_int(0);
+							int length = this.value_int(1);
+							this.result(NaturalId.generateFromNumber(number, length));
+						}
+					}
+			);
 			statement.executeBatch();
 		} catch (SQLException ex) {
 			LOG.error("Failed to create database tables. ", ex);

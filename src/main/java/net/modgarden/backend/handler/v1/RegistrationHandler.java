@@ -100,7 +100,7 @@ public class RegistrationHandler {
 				return;
 			}
 
-	        insertStatement.setString(1, NaturalId.generate("users", "id"));
+	        insertStatement.setString(1, NaturalId.generate("users", "id", 5));
             insertStatement.setString(2, username);
             insertStatement.setString(3, displayName);
             insertStatement.setString(4, body.id);
