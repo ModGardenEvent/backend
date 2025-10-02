@@ -254,7 +254,6 @@ public class V5ToV6 extends DatabaseFix {
 					}
 				}
 		);
-
 		Function.create(
 				connection, "generate_natural_id_from_number", new Function() {
 					@Override
@@ -272,6 +271,20 @@ public class V5ToV6 extends DatabaseFix {
 		)
 		UPDATE users
 		SET id = concat('zzz', generate_natural_id_from_number(ROWID - 1, 2))
+		""");
+
+		statement.addBatch("""
+		UPDATE users
+		SET id = 'mgacc', permissions = 1, pronouns = 'they/it'
+		WHERE username == 'mod_garden'
+		""");
+
+		statement.addBatch("""
+		INSERT INTO users VALUES ('grbot', 'gardenbot', 'GardenBot', 'it/its', NULL, unixepoch('subsec') * 1000, 1)
+		""");
+
+		statement.addBatch("""
+		INSERT INTO users VALUES ('abcde', 'tiny_pineapple', 'Tiny Pineapple', 'it/its', NULL, unixepoch('subsec') * 1000, 0)
 		""");
 
 		statement.executeBatch();
