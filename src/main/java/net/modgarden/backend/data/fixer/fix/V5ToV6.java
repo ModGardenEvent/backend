@@ -18,11 +18,11 @@ public class V5ToV6 extends DatabaseFix {
 	public @Nullable Consumer<Connection> fix(Connection connection) throws SQLException {
 		var statement = connection.createStatement();
 
-		statement.execute("PRAGMA foreign_keys = ON");
+		statement.addBatch("PRAGMA foreign_keys = ON");
 
 
-		statement.execute("ALTER TABLE users RENAME TO users_old");
-		statement.execute("""
+		statement.addBatch("ALTER TABLE users RENAME TO users_old");
+		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS users (
 			id TEXT UNIQUE NOT NULL,
 			username TEXT UNIQUE NOT NULL,
@@ -34,31 +34,31 @@ public class V5ToV6 extends DatabaseFix {
 			PRIMARY KEY(id)
 		)
 		""");
-		statement.execute("""
+		statement.addBatch("""
 		INSERT INTO users (id, username, display_name, pronouns, avatar_url, created, permissions)
 		SELECT id, username, display_name, pronouns, avatar_url, created, permissions from users_old
 		""");
 
 
-		statement.execute("CREATE TABLE submissions_mr AS SELECT * FROM submissions");
-		statement.execute("ALTER TABLE submissions_mr ADD COLUMN modrinth_id TEXT");
+		statement.addBatch("CREATE TABLE submissions_mr AS SELECT * FROM submissions");
+		statement.addBatch("ALTER TABLE submissions_mr ADD COLUMN modrinth_id TEXT");
 
-		statement.execute("""
+		statement.addBatch("""
 		UPDATE submissions_mr
 		SET modrinth_id = (
 			SELECT modrinth_id FROM projects WHERE submissions_mr.project_id = projects.id
 		)
 		""");
 
-		statement.execute("ALTER TABLE projects RENAME TO projects_old");
-		statement.execute("""
+		statement.addBatch("ALTER TABLE projects RENAME TO projects_old");
+		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS projects (
 			id TEXT UNIQUE NOT NULL,
 			slug TEXT UNIQUE NOT NULL,
 			PRIMARY KEY (id)
 		)
 		""");
-		statement.execute("""
+		statement.addBatch("""
 		INSERT INTO projects (id, slug)
 		SELECT id, slug FROM projects_old
 		""");
@@ -137,11 +137,9 @@ public class V5ToV6 extends DatabaseFix {
 		CREATE UNIQUE INDEX idx_project_roles_two_ids ON project_roles(project_id, user_id)
 		""");
 
-		statement.executeBatch();
 
-
-		statement.execute("ALTER TABLE submissions RENAME TO submissions_old");
-		statement.execute("""
+		statement.addBatch("ALTER TABLE submissions RENAME TO submissions_old");
+		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS submissions (
 			id TEXT UNIQUE NOT NULL,
 			event TEXT NOT NULL,
@@ -152,28 +150,28 @@ public class V5ToV6 extends DatabaseFix {
 			PRIMARY KEY(id)
 		)
 		""");
-		statement.execute("""
+		statement.addBatch("""
 		INSERT INTO submissions (id, event, project_id, submitted)
 		SELECT id, event, project_id, submitted from submissions_old
 		""");
 
-		statement.execute("""
+		statement.addBatch("""
 		INSERT INTO submission_type_modrinth (submission_id, modrinth_id, version_id)
 		SELECT id, modrinth_id, modrinth_version_id FROM submissions_mr
 		WHERE modrinth_id NOT NULL
 		""");
-		statement.execute("""
+		statement.addBatch("""
 		INSERT INTO integration_modrinth (user_id, modrinth_id)
 		SELECT id, modrinth_id FROM users_old
 		WHERE modrinth_id NOT NULL
 		""");
 
-		statement.execute("""
+		statement.addBatch("""
 		INSERT INTO integration_discord (user_id, discord_id)
 		SELECT id, discord_id FROM users_old
 		""");
 
-		statement.execute("""
+		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS project_roles_temp (
 			project_id TEXT NOT NULL,
 			user_id TEXT NOT NULL,
@@ -184,18 +182,18 @@ public class V5ToV6 extends DatabaseFix {
 		)
 		""");
 
-		statement.execute("""
+		statement.addBatch("""
 		INSERT OR REPLACE INTO project_roles_temp (project_id, user_id)
 		SELECT project_id, user_id FROM project_authors
 		""");
 
-		statement.execute("""
+		statement.addBatch("""
 		INSERT INTO project_roles (project_id, user_id, permissions, role_name)
 		SELECT project_id, user_id, permissions, role_name FROM project_roles_temp
 		""");
 
-		statement.execute("ALTER TABLE minecraft_accounts RENAME TO minecraft_accounts_old");
-		statement.execute("""
+		statement.addBatch("ALTER TABLE minecraft_accounts RENAME TO minecraft_accounts_old");
+		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS minecraft_accounts (
 			uuid TEXT UNIQUE NOT NULL,
 			user_id TEXT UNIQUE NOT NULL,
@@ -203,13 +201,13 @@ public class V5ToV6 extends DatabaseFix {
 			PRIMARY KEY (uuid)
 		)
 		""");
-		statement.execute("""
+		statement.addBatch("""
 		INSERT INTO minecraft_accounts (uuid, user_id)
 		SELECT uuid, user_id FROM minecraft_accounts_old
 		""");
 
-		statement.execute("ALTER TABLE award_instances RENAME TO award_instances_old");
-		statement.execute("""
+		statement.addBatch("ALTER TABLE award_instances RENAME TO award_instances_old");
+		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS award_instances (
 			award_id TEXT UNIQUE NOT NULL,
 			awarded_to TEXT NOT NULL,
@@ -222,13 +220,13 @@ public class V5ToV6 extends DatabaseFix {
 			PRIMARY KEY (award_id, awarded_to)
 		)
 		""");
-		statement.execute("""
+		statement.addBatch("""
 		INSERT INTO award_instances (award_id, awarded_to, custom_data, submission_id, tier_override)
 		SELECT award_id, awarded_to, custom_data, submission_id, tier_override FROM award_instances_old
 		""");
 
-		statement.execute("ALTER TABLE team_invites RENAME TO team_invites_old");
-		statement.execute("""
+		statement.addBatch("ALTER TABLE team_invites RENAME TO team_invites_old");
+		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS team_invites (
 			code TEXT NOT NULL,
 			project_id TEXT NOT NULL,
@@ -240,7 +238,7 @@ public class V5ToV6 extends DatabaseFix {
 			PRIMARY KEY (code)
 		)
 		""");
-		statement.execute("""
+		statement.addBatch("""
 		INSERT INTO team_invites (code, project_id, user_id, expires, role)
 		SELECT code, project_id, user_id, expires, role FROM team_invites
 		""");
@@ -268,7 +266,7 @@ public class V5ToV6 extends DatabaseFix {
 				}
 		);
 
-		statement.execute("""
+		statement.addBatch("""
 		WITH cnt(i) AS (
 			SELECT 1 UNION SELECT i+1 FROM cnt
 		)
@@ -276,20 +274,23 @@ public class V5ToV6 extends DatabaseFix {
 		SET id = concat('zzz', generate_natural_id_from_number(ROWID - 1, 2))
 		""");
 
+		statement.executeBatch();
+
 		return dropConnection -> {
 			try {
 				var dropStatement = dropConnection.createStatement();
-				dropStatement.execute("PRAGMA foreign_keys = ON");
-				dropStatement.execute("DROP TABLE submissions_old");
-				dropStatement.execute("DROP TABLE submissions_mr");
-				dropStatement.execute("DROP TABLE project_builders");
-				dropStatement.execute("DROP TABLE project_authors");
-				dropStatement.execute("DROP TABLE project_roles_temp");
-				dropStatement.execute("DROP TABLE minecraft_accounts_old");
-				dropStatement.execute("DROP TABLE award_instances_old");
-				dropStatement.execute("DROP TABLE team_invites_old");
-				dropStatement.execute("DROP TABLE projects_old");
-				dropStatement.execute("DROP TABLE users_old");
+				dropStatement.addBatch("PRAGMA foreign_keys = ON");
+				dropStatement.addBatch("DROP TABLE submissions_old");
+				dropStatement.addBatch("DROP TABLE submissions_mr");
+				dropStatement.addBatch("DROP TABLE project_builders");
+				dropStatement.addBatch("DROP TABLE project_authors");
+				dropStatement.addBatch("DROP TABLE project_roles_temp");
+				dropStatement.addBatch("DROP TABLE minecraft_accounts_old");
+				dropStatement.addBatch("DROP TABLE award_instances_old");
+				dropStatement.addBatch("DROP TABLE team_invites_old");
+				dropStatement.addBatch("DROP TABLE projects_old");
+				dropStatement.addBatch("DROP TABLE users_old");
+				dropStatement.executeBatch();
 			} catch (SQLException e) {
 				throw new RuntimeException(e);
 			}
