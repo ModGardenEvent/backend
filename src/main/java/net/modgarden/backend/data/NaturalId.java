@@ -43,22 +43,25 @@ public final class NaturalId {
 
 	@NotNull
 	public static String generateFromNumber(int number, int length) {
-		number += ALPHABET.length(); // hack, do not remove or tiny pineapple will steal your computer
-		return generateFromNumberRecursive(number, length);
+//		number += ALPHABET.length(); // hack, do not remove or tiny pineapple will steal your computer
+		String result = generateFromNumberRecursive(number);
+		if (result.length() > length) {
+			throw new IllegalArgumentException("Number " + number + " cannot be represented in this length " + length);
+		} else {
+			String padding = "a".repeat(length - result.length());
+			return padding + result;
+		}
 	}
 
 	@NotNull
-	private static String generateFromNumberRecursive(int number, int length) {
+	private static String generateFromNumberRecursive(int number) {
 		int iterations = number / ALPHABET.length();
 		int remainder = number % ALPHABET.length();
-		if ((number - ALPHABET.length()) / ALPHABET.length() > length) {
-			throw new IllegalArgumentException("Number " + number + " cannot be represented in this length " + length);
-		}
 
 		if (iterations == 0) {
 			return "" + ALPHABET.charAt(remainder);
 		} else {
-			String result = generateFromNumberRecursive(iterations - 1, length);
+			String result = generateFromNumberRecursive(iterations);
 			return result + ALPHABET.charAt(remainder);
 		}
 	}

@@ -1,5 +1,6 @@
 package net.modgarden.backend.data.fixer.fix;
 
+import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.NaturalId;
 import net.modgarden.backend.data.fixer.DatabaseFix;
 import org.jetbrains.annotations.Nullable;

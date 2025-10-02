@@ -72,6 +72,9 @@ public class ModGardenBackend {
 		if ("development".equals(DOTENV.get("env")))
 			((ch.qos.logback.classic.Logger)LOG).setLevel(Level.DEBUG);
 
+		ModGardenBackend.LOG.debug("1 {}, 4 {}, 26 {}, 29 {}, 52 {}, 53 {}, 79 {}", NaturalId.generateFromNumber(1, 2), NaturalId.generateFromNumber(4, 2), NaturalId.generateFromNumber(26, 2), NaturalId.generateFromNumber(29, 2), NaturalId.generateFromNumber(52, 2), NaturalId.generateFromNumber(53, 2), NaturalId.generateFromNumber(79, 2));
+		ModGardenBackend.LOG.debug("1 {}, 4 {}, 26 {}, 29 {}, 52 {}, 53 {}, 79 {}, 675 {}, 676 {}, 677 {}", NaturalId.generateFromNumber(1, 3), NaturalId.generateFromNumber(4, 3), NaturalId.generateFromNumber(26, 3), NaturalId.generateFromNumber(29, 3), NaturalId.generateFromNumber(52, 3), NaturalId.generateFromNumber(53, 3), NaturalId.generateFromNumber(79, 3), NaturalId.generateFromNumber(675, 3), NaturalId.generateFromNumber(676, 3), NaturalId.generateFromNumber(677, 3));
+
 		try {
 			boolean createdFile = new File("./database.db").createNewFile();
 			DatabaseFixer.createFixers();
