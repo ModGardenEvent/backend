@@ -12,7 +12,11 @@ public enum Permission {
 	 * Signifies that this user has every permission.
 	 * Do not give this out unless it is absolutely necessary for an individual team member to receive this.
 	 */
-	ADMINISTRATOR(1, "administrator");
+	ADMINISTRATOR(0x1, "administrator"),
+	EDIT_PROFILES(0x2, "edit_profiles"),
+	MODERATE_USERS(0x4, "moderate_users"),
+	EDIT_PROJECTS(0x8, "edit_projects"),
+	MODERATE_PROJECTS(0x10, "moderate_projects"),;
 
 	public static final Codec<Permission> CODEC = Codec.STRING.flatXmap(string -> {
 		try {
