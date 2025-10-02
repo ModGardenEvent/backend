@@ -7,10 +7,10 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.Permission;
+import net.modgarden.backend.data.PermissionKind;
 import net.modgarden.backend.data.award.AwardInstance;
 import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Project;
@@ -43,7 +43,6 @@ public record User(String id,
                    List<UUID> minecraftAccounts,
                    List<AwardInstance.UserValues> awards,
 				   List<Permission> permissions) {
-    public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(0);
 
 	public static final String USERNAME_REGEX = "^(?=.{3,32}$)[a-z_0-9]+?$";
 
@@ -60,7 +59,7 @@ public record User(String id,
             Event.ID_CODEC.listOf().fieldOf("events").forGetter(User::events),
             ExtraCodecs.UUID_CODEC.listOf().fieldOf("minecraft_accounts").forGetter(User::minecraftAccounts),
             AwardInstance.UserValues.CODEC.listOf().fieldOf("awards").forGetter(User::awards),
-			Permission.LIST_CODEC.fieldOf("permissions").forGetter(User::permissions)
+			Permission.GLOBAL_LIST_CODEC.fieldOf("permissions").forGetter(User::permissions)
     ).apply(inst, User::new));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(User::validate);
 	public static final Codec<User> CODEC = ID_CODEC.xmap(User::queryFromId, user -> user.id);
@@ -185,7 +184,7 @@ public record User(String id,
 					events,
 					minecraftAccounts,
 					awards,
-					Permission.fromLong(result.getLong("permissions"))
+					Permission.fromLong(result.getLong("permissions"), PermissionKind.GLOBAL)
 			);
         } catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);
