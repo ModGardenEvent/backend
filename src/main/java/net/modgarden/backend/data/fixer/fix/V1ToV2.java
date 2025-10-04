@@ -1,10 +1,12 @@
 package net.modgarden.backend.data.fixer.fix;
 
 import net.modgarden.backend.data.fixer.DatabaseFix;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.function.Consumer;
 
 public class V1ToV2 extends DatabaseFix {
 	public V1ToV2() {
@@ -12,7 +14,7 @@ public class V1ToV2 extends DatabaseFix {
 	}
 
 	@Override
-	public void fix(Connection connection) throws SQLException {
+	public @Nullable Consumer<Connection> fix(Connection connection) throws SQLException {
 		Statement addDiscordRoleStatement = connection.createStatement();
 		addDiscordRoleStatement.execute("ALTER TABLE events ADD COLUMN discord_role_id TEXT NOT NULL");
 
@@ -21,5 +23,6 @@ public class V1ToV2 extends DatabaseFix {
 
 		Statement dropLoaderVersionStatement = connection.createStatement();
 		dropLoaderVersionStatement.execute("ALTER TABLE events DROP COLUMN loader_version");
+		return null;
 	}
 }

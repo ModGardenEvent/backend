@@ -1,9 +1,11 @@
 package net.modgarden.backend.data.fixer.fix;
 
 import net.modgarden.backend.data.fixer.DatabaseFix;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.function.Consumer;
 
 public class V4ToV5 extends DatabaseFix {
 	public V4ToV5() {
@@ -11,7 +13,7 @@ public class V4ToV5 extends DatabaseFix {
 	}
 
 	@Override
-	public void fix(Connection connection) throws SQLException {
+	public @Nullable Consumer<Connection> fix(Connection connection) throws SQLException {
 		var statement = connection.createStatement();
 		statement.addBatch("CREATE TABLE IF NOT EXISTS team_invites (" +
 				"code TEXT NOT NULL," +
@@ -24,5 +26,6 @@ public class V4ToV5 extends DatabaseFix {
 				"PRIMARY KEY (code)" +
 				")");
 		statement.executeBatch();
+		return null;
 	}
 }

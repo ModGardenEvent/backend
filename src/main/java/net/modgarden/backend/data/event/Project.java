@@ -5,7 +5,6 @@ import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.profile.User;
@@ -21,16 +20,11 @@ import java.util.List;
 // TODO: Potentially allow GitHub only projects. Not necessarily now, but more notes on this will be placed in internal team chats. - Calico
 public record Project(String id,
                       String slug,
-                      String modrinthId,
-					  String attributedTo,
                       List<String> authors,
 					  List<String> builders) {
-    public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(2);
-    public static final Codec<Project> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
+	public static final Codec<Project> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Project::id),
             Codec.STRING.fieldOf("slug").forGetter(Project::slug),
-            Codec.STRING.fieldOf("modrinth_id").forGetter(Project::modrinthId),
-            User.ID_CODEC.fieldOf("attributed_to").forGetter(Project::attributedTo),
             User.ID_CODEC.listOf().fieldOf("authors").forGetter(Project::authors),
 			User.ID_CODEC.listOf().fieldOf("builders").forGetter(Project::builders)
     ).apply(inst, Project::new)));
@@ -76,8 +70,6 @@ public record Project(String id,
 			return new Project(
 					result.getString("id"),
 					result.getString("slug"),
-					result.getString("modrinth_id"),
-					result.getString("attributed_to"),
 					authors,
 					builders
 			);
@@ -103,8 +95,6 @@ public record Project(String id,
 			return new Project(
 					result.getString("id"),
 					result.getString("slug"),
-					result.getString("modrinth_id"),
-					result.getString("attributed_to"),
 					authors,
 					builders
 			);
@@ -140,8 +130,6 @@ public record Project(String id,
 				}
 				projectObject.addProperty("id", result.getString("id"));
 				projectObject.addProperty("slug", result.getString("slug"));
-				projectObject.addProperty("modrinth_id", result.getString("modrinth_id"));
-				projectObject.addProperty("attributed_to", result.getString("attributed_to"));
 				projectObject.add("authors", authors);
 				projectObject.add("builders", builders);
 				projectList.add(projectObject);
@@ -157,8 +145,6 @@ public record Project(String id,
 				SELECT
 					p.id,
 					p.slug,
-					p.modrinth_id,
-					p.attributed_to,
 				 	COALESCE(Group_concat(DISTINCT a.user_id), '') AS authors,
 					COALESCE(Group_concat(DISTINCT b.user_id), '') AS builders
 				FROM projects p
@@ -170,9 +156,7 @@ public record Project(String id,
 					p.id = ?
 				GROUP BY
 					p.id,
-					p.slug,
-					p.modrinth_id,
-					p.attributed_to
+					p.slug
 				""";
 	}
 
@@ -181,8 +165,6 @@ public record Project(String id,
 				SELECT
 					p.id,
 					p.slug,
-					p.modrinth_id,
-					p.attributed_to,
 				 	COALESCE(Group_concat(DISTINCT a.user_id), '') AS authors,
 					COALESCE(Group_concat(DISTINCT b.user_id), '') AS builders
 				FROM projects p
@@ -194,9 +176,7 @@ public record Project(String id,
 					p.slug = ?
 				GROUP BY
 					p.id,
-					p.slug,
-					p.modrinth_id,
-					p.attributed_to
+					p.slug
 				""";
 	}
 
@@ -204,8 +184,6 @@ public record Project(String id,
 		return """
 				SELECT p.id,
 				 	p.slug,
-				 	p.modrinth_id,
-				 	p.attributed_to,
 				 	COALESCE(Group_concat(DISTINCT a.user_id), '') AS authors,
 					COALESCE(Group_concat(DISTINCT b.user_id), '') AS builders
 				FROM projects p
@@ -222,9 +200,7 @@ public record Project(String id,
 						WHERE uu.id = ?
 							OR uu.username = ?)
 				GROUP BY p.id,
-					p.slug,
-					p.modrinth_id,
-					p.attributed_to
+					p.slug
 				""";
 	}
 
@@ -232,8 +208,6 @@ public record Project(String id,
 		return """
 			SELECT p.id,
 				p.slug,
-				p.modrinth_id,
-				p.attributed_to,
 				COALESCE(Group_concat(DISTINCT a.user_id), '') AS authors,
 				COALESCE(Group_concat(DISTINCT b.user_id), '') AS builders
 			FROM projects p
@@ -249,9 +223,7 @@ public record Project(String id,
 					ON e.id = s.event
 			WHERE e.id = ? or e.slug = ?
 			GROUP BY p.id,
-				p.slug,
-				p.modrinth_id,
-				p.attributed_to
+				p.slug
 			""";
 	}
 

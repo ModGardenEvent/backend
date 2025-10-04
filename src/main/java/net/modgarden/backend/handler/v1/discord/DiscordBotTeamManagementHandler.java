@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.endpoint.AuthorizedEndpoint;
 import net.modgarden.backend.util.AuthUtil;
 
 import java.sql.Connection;
@@ -97,7 +98,7 @@ public class DiscordBotTeamManagementHandler {
 				ctx.status(201);
 				return;
 			}
-			var code = AuthUtil.generateRandomToken();
+			var code = AuthorizedEndpoint.generateRandomToken();
 			var insertTeamInviteStatement = connection.prepareStatement(
 					"INSERT INTO team_invites (code, project_id, user_id, expires, role) VALUES (?, ?, ?, ?, ?)");
 			insertTeamInviteStatement.setString(1, code);

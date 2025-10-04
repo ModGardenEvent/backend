@@ -1,9 +1,9 @@
 package net.modgarden.backend.util;
 
 import io.javalin.http.Context;
-import io.seruco.encoding.base62.Base62;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.LinkCode;
+import net.modgarden.backend.endpoint.AuthorizedEndpoint;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -19,6 +19,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class AuthUtil {
+	private static final String RANDOM_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_/+=;!@#$%^&*()";
+	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     public static String createBody(Map<String, String> params) {
         return params.entrySet()
                 .stream()
@@ -38,12 +41,15 @@ public class AuthUtil {
                 return token;
             while (token == null) {
                 checkCodeStatement.clearParameters();
-                String potential = generateRandomToken();
+                String potential = AuthorizedEndpoint.generateRandomToken();
                 checkCodeStatement.setString(1, potential);
                 ResultSet result = checkCodeStatement.executeQuery();
                 if (!result.getBoolean(1))
                     token = potential;
             }
+			// this almost gave me a heart attack, but no
+	        // it's not a token. this is actually a link code.
+	        // happy april fools
             insertStatement.setString(1, token);
             insertStatement.setString(2, accountId);
             insertStatement.setString(3, service.serializedName());
@@ -58,14 +64,7 @@ public class AuthUtil {
         return null;
     }
 
-    public static String generateRandomToken() {
-        byte[] bytes = new byte[10];
-        new SecureRandom().nextBytes(bytes);
-        var token = new String(Base62.createInstance().encode(bytes), StandardCharsets.UTF_8);
-        return token.substring(0, 6);
-    }
-
-    public static long getTokenExpirationTime() {
+	public static long getTokenExpirationTime() {
         return (long) (Math.floor((double) (System.currentTimeMillis() + 900000) / 900000) * 900000); // 15 minutes later
     }
 

@@ -1,20 +1,17 @@
-import org.jetbrains.gradle.ext.Application
-import org.jetbrains.gradle.ext.runConfigurations
-import org.jetbrains.gradle.ext.settings
-
 plugins {
     application
     java
     idea
     `java-library-distribution`
-    alias(libs.plugins.idea.ext) apply true
+	// doesn't work :(
+//    alias(libs.plugins.idea.ext) apply true
 }
 
 group = "net.modgarden"
 version = project.properties["version"].toString()
 
 java {
-	toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+	toolchain.languageVersion.set(JavaLanguageVersion.of(25))
 	withJavadocJar()
 }
 
@@ -37,6 +34,8 @@ dependencies {
 	implementation(libs.jwt.gson)
     implementation(libs.base62)
 	implementation(libs.jetbrains.annotations)
+
+	implementation(libs.argon2.jvm)
 }
 
 tasks {
@@ -81,18 +80,19 @@ application {
     mainClass = "net.modgarden.backend.ModGardenBackend"
 }
 
-idea {
-    project {
-        settings.runConfigurations {
-            create("Run", Application::class.java) {
-                workingDirectory = "${rootProject.projectDir}/run"
-                mainClass = "net.modgarden.backend.ModGardenBackend"
-                moduleName = project.idea.module.name + ".main"
-                includeProvidedDependencies = true
-				envs = mapOf(
-					"env" to "development"
-				)
-            }
-        }
-    }
-}
+// fixme wake me up when september ends (when idea_ext is fixed)
+//idea {
+//    project {
+//        settings.runConfigurations {
+//            create("Run", Application::class.java) {
+//                workingDirectory = "${rootProject.projectDir}/run"
+//                mainClass = "net.modgarden.backend.ModGardenBackend"
+//                moduleName = project.idea.module.name + ".main"
+//                includeProvidedDependencies = true
+//				envs = mapOf(
+//					"env" to "development"
+//				)
+//            }
+//        }
+//    }
+//}
