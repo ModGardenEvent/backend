@@ -1,6 +1,5 @@
 package net.modgarden.backend.data.fixer.fix;
 
-import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.NaturalId;
 import net.modgarden.backend.data.fixer.DatabaseFix;
 import org.jetbrains.annotations.Nullable;
@@ -340,7 +339,8 @@ public class V5ToV6 extends DatabaseFix {
 			project_id TEXT NOT NULL,
 			user_id TEXT NOT NULL,
 			expires INTEGER NOT NULL,
-			role TEXT NOT NULL CHECK (role IN ('author', 'builder')),
+			role TEXT NOT NULL DEFAULT 'Member',
+			permissions INTEGER NOT NULL DEFAULT 0,
 			FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			PRIMARY KEY (code)
@@ -348,7 +348,7 @@ public class V5ToV6 extends DatabaseFix {
 		""");
 		statement.addBatch("""
 		INSERT INTO team_invites (code, project_id, user_id, expires, role)
-		SELECT code, project_id, user_id, expires, role FROM team_invites
+		SELECT code, project_id, user_id, expires, role FROM team_invites_old
 		""");
 
 		statement.addBatch("""

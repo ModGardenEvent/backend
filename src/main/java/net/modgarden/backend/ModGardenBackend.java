@@ -392,7 +392,8 @@ public class ModGardenBackend {
 				project_id TEXT NOT NULL,
 				user_id TEXT NOT NULL,
 				expires INTEGER NOT NULL,
-				role TEXT NOT NULL CHECK (role IN ('author', 'builder')),
+				role TEXT NOT NULL DEFAULT 'Member',
+				permissions INTEGER NOT NULL DEFAULT 0,
 				FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (code)
