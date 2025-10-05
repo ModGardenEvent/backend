@@ -8,6 +8,7 @@ import org.sqlite.Function;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.function.Consumer;
 
 public class V5ToV6 extends DatabaseFix {
@@ -18,6 +19,47 @@ public class V5ToV6 extends DatabaseFix {
 	@Override
 	public @Nullable Consumer<Connection> fix(Connection connection) throws SQLException {
 		var statement = connection.createStatement();
+
+		Function.create(
+				connection, "generate_natural_id", new Function() {
+					@Override
+					protected void xFunc() throws SQLException {
+						String table = this.value_text(0);
+						String key = this .value_text(1);
+						int length = this.value_int(2);
+						this.result(NaturalId.generate(table, key, length));
+					}
+				}
+		);
+		Function.create(
+				connection, "generate_natural_id_from_number", new Function() {
+					@Override
+					protected void xFunc() throws SQLException {
+						int number = this.value_int(0);
+						int length = this.value_int(1);
+						this.result(NaturalId.generateFromNumber(number, length));
+					}
+				}
+		);
+		Function.create(
+				connection, "unix_millis", new Function() {
+					@Override
+					protected void xFunc() throws SQLException {
+						this.result(Instant.now().toEpochMilli());
+					}
+				}
+		);
+
+		// temp functions for the datafixer
+		Function.create(
+				connection, "clean_slug_mg", new Function() {
+					@Override
+					protected void xFunc() throws SQLException {
+						String slug = this.value_text(0);
+						this.result(slug.replace("mod-garden-", ""));
+					}
+				}
+		);
 
 		statement.addBatch("PRAGMA foreign_keys = ON");
 
@@ -51,6 +93,31 @@ public class V5ToV6 extends DatabaseFix {
 		)
 		""");
 
+		statement.addBatch("""
+		WITH cnt(i) AS (
+			SELECT 1 UNION SELECT i+1 FROM cnt
+		)
+		UPDATE submissions_mr
+		SET id = concat('zzzz', generate_natural_id_from_number(ROWID - 1, 1))
+		""");
+
+		statement.addBatch("""
+		CREATE TABLE IF NOT EXISTS submission_type_modrinth (
+			submission_id TEXT NOT NULL,
+			modrinth_id TEXT NOT NULL,
+			version_id TEXT NOT NULL,
+			FOREIGN KEY (submission_id) REFERENCES submissions(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			PRIMARY KEY (submission_id)
+		)
+		""");
+		statement.addBatch("PRAGMA foreign_keys = OFF");
+		statement.addBatch("""
+		INSERT INTO submission_type_modrinth (submission_id, modrinth_id, version_id)
+		SELECT id, modrinth_id, modrinth_version_id FROM submissions_mr
+		WHERE modrinth_id NOT NULL
+		""");
+		statement.addBatch("PRAGMA foreign_keys = ON");
+
 		statement.addBatch("ALTER TABLE projects RENAME TO projects_old");
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS projects (
@@ -63,7 +130,6 @@ public class V5ToV6 extends DatabaseFix {
 		INSERT INTO projects (id, slug)
 		SELECT id, slug FROM projects_old
 		""");
-
 
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS api_keys (
@@ -98,7 +164,7 @@ public class V5ToV6 extends DatabaseFix {
 		)
 		""");
 		statement.addBatch("""
-		CREATE TABLE IF NOT EXISTS integration_modrinth (
+		CREATE TABLE IF NOT EXISTS user_integration_modrinth (
 			user_id TEXT NOT NULL,
 			modrinth_id TEXT NOT NULL,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -106,20 +172,11 @@ public class V5ToV6 extends DatabaseFix {
 		)
 		""");
 		statement.addBatch("""
-		CREATE TABLE IF NOT EXISTS integration_discord (
+		CREATE TABLE IF NOT EXISTS user_integration_discord (
 			user_id TEXT NOT NULL,
 			discord_id TEXT NOT NULL,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			PRIMARY KEY (user_id)
-		)
-		""");
-		statement.addBatch("""
-		CREATE TABLE IF NOT EXISTS submission_type_modrinth (
-			submission_id TEXT NOT NULL,
-			modrinth_id TEXT NOT NULL,
-			version_id TEXT NOT NULL,
-			FOREIGN KEY (submission_id) REFERENCES submissions(id) ON UPDATE CASCADE ON DELETE CASCADE,
-			PRIMARY KEY (submission_id)
 		)
 		""");
 
@@ -139,6 +196,52 @@ public class V5ToV6 extends DatabaseFix {
 		""");
 
 
+		statement.addBatch("""
+		ALTER TABLE events ADD event_type_slug TEXT NOT NULL DEFAULT 'mod-garden'
+		""");
+		statement.addBatch("""
+		ALTER TABLE events RENAME COLUMN registration_time TO registration_open_time
+		""");
+		statement.addBatch("""
+		ALTER TABLE events ADD registration_close_time INTEGER NOT NULL DEFAULT 1748131200000
+		""");
+		statement.addBatch("""
+		ALTER TABLE events RENAME TO events_old
+		""");
+		statement.addBatch("""
+		CREATE TABLE IF NOT EXISTS events (
+			id TEXT UNIQUE NOT NULL,
+			slug TEXT UNIQUE NOT NULL,
+			event_type_slug TEXT NOT NULL,
+			display_name TEXT NOT NULL,
+			minecraft_version TEXT NOT NULL,
+			loader TEXT NOT NULL,
+			registration_open_time INTEGER NOT NULL,
+			registration_close_time INTEGER NOT NULL,
+			start_time INTEGER NOT NULL,
+			end_time INTEGER NOT NULL,
+			freeze_time INTEGER NOT NULL,
+			PRIMARY KEY (id)
+		)
+		""");
+		statement.addBatch("""
+		INSERT INTO events (id, slug, event_type_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time)
+		SELECT id, slug, event_type_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time from events_old
+		""");
+		statement.addBatch("""
+		CREATE TABLE IF NOT EXISTS event_integration_discord (
+			id TEXT UNIQUE NOT NULL,
+			role_id TEXT NOT NULL,
+			FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			PRIMARY KEY (id)
+		)
+		""");
+		statement.addBatch("""
+		INSERT INTO event_integration_discord (id, role_id)
+		SELECT id, discord_role_id FROM events_old
+		""");
+
+
 		statement.addBatch("ALTER TABLE submissions RENAME TO submissions_old");
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS submissions (
@@ -155,22 +258,26 @@ public class V5ToV6 extends DatabaseFix {
 		INSERT INTO submissions (id, event, project_id, submitted)
 		SELECT id, event, project_id, submitted from submissions_old
 		""");
+		statement.addBatch("""
+		WITH cnt(i) AS (
+			SELECT 1 UNION SELECT i+1 FROM cnt
+		)
+		UPDATE submissions
+		SET id = concat('zzzz', generate_natural_id_from_number(ROWID - 1, 1))
+		""");
+
 
 		statement.addBatch("""
-		INSERT INTO submission_type_modrinth (submission_id, modrinth_id, version_id)
-		SELECT id, modrinth_id, modrinth_version_id FROM submissions_mr
-		WHERE modrinth_id NOT NULL
-		""");
-		statement.addBatch("""
-		INSERT INTO integration_modrinth (user_id, modrinth_id)
+		INSERT INTO user_integration_modrinth (user_id, modrinth_id)
 		SELECT id, modrinth_id FROM users_old
 		WHERE modrinth_id NOT NULL
 		""");
 
 		statement.addBatch("""
-		INSERT INTO integration_discord (user_id, discord_id)
+		INSERT INTO user_integration_discord (user_id, discord_id)
 		SELECT id, discord_id FROM users_old
 		""");
+
 
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS project_roles_temp (
@@ -195,7 +302,7 @@ public class V5ToV6 extends DatabaseFix {
 
 		statement.addBatch("ALTER TABLE minecraft_accounts RENAME TO minecraft_accounts_old");
 		statement.addBatch("""
-		CREATE TABLE IF NOT EXISTS minecraft_accounts (
+		CREATE TABLE IF NOT EXISTS user_integration_minecraft (
 			uuid TEXT UNIQUE NOT NULL,
 			user_id TEXT UNIQUE NOT NULL,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -203,7 +310,7 @@ public class V5ToV6 extends DatabaseFix {
 		)
 		""");
 		statement.addBatch("""
-		INSERT INTO minecraft_accounts (uuid, user_id)
+		INSERT INTO user_integration_minecraft (uuid, user_id)
 		SELECT uuid, user_id FROM minecraft_accounts_old
 		""");
 
@@ -244,28 +351,6 @@ public class V5ToV6 extends DatabaseFix {
 		SELECT code, project_id, user_id, expires, role FROM team_invites
 		""");
 
-		Function.create(
-				connection, "generate_natural_id", new Function() {
-					@Override
-					protected void xFunc() throws SQLException {
-						String table = this.value_text(0);
-						String key = this .value_text(1);
-						int length = this.value_int(2);
-						this.result(NaturalId.generate(table, key, length));
-					}
-				}
-		);
-		Function.create(
-				connection, "generate_natural_id_from_number", new Function() {
-					@Override
-					protected void xFunc() throws SQLException {
-						int number = this.value_int(0);
-						int length = this.value_int(1);
-						this.result(NaturalId.generateFromNumber(number, length));
-					}
-				}
-		);
-
 		statement.addBatch("""
 		WITH cnt(i) AS (
 			SELECT 1 UNION SELECT i+1 FROM cnt
@@ -281,12 +366,36 @@ public class V5ToV6 extends DatabaseFix {
 		""");
 
 		statement.addBatch("""
-		INSERT INTO users VALUES ('grbot', 'gardenbot', 'GardenBot', 'it/its', NULL, unixepoch('subsec') * 1000, 1)
+		INSERT INTO users VALUES ('grbot', 'gardenbot', 'GardenBot', 'it/its', NULL, unix_millis(), 1)
 		""");
 
 		statement.addBatch("""
-		INSERT INTO users VALUES ('abcde', 'tiny_pineapple', 'Tiny Pineapple', 'it/its', NULL, unixepoch('subsec') * 1000, 0)
+		INSERT INTO users VALUES ('abcde', 'tiny_pineapple', 'Tiny Pineapple', 'it/its', NULL, unix_millis(), 0)
 		""");
+
+		statement.addBatch("""
+		WITH cnt(i) AS (
+			SELECT 1 UNION SELECT i+1 FROM cnt
+		)
+		UPDATE projects
+		SET id = concat('zzzz', generate_natural_id_from_number(ROWID - 1, 1))
+		""");
+
+		statement.addBatch("""
+		WITH cnt(i) AS (
+			SELECT 1 UNION SELECT i+1 FROM cnt
+		)
+		UPDATE events
+		SET id = concat('zzzz', generate_natural_id_from_number(ROWID - 1, 1))
+		""");
+		statement.addBatch("""
+		WITH cnt(i) AS (
+			SELECT 1 UNION SELECT i+1 FROM cnt
+		)
+		UPDATE events
+		SET slug = clean_slug_mg(slug)
+		""");
+
 
 		statement.executeBatch();
 
@@ -304,6 +413,7 @@ public class V5ToV6 extends DatabaseFix {
 				dropStatement.addBatch("DROP TABLE team_invites_old");
 				dropStatement.addBatch("DROP TABLE projects_old");
 				dropStatement.addBatch("DROP TABLE users_old");
+				dropStatement.addBatch("DROP TABLE events_old");
 				dropStatement.executeBatch();
 			} catch (SQLException e) {
 				throw new RuntimeException(e);

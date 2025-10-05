@@ -44,6 +44,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -231,18 +232,82 @@ public class ModGardenBackend {
 			)
 			""");
 			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS api_keys (
+				uuid BLOB NOT NULL,
+				user_id TEXT NOT NULL,
+				salt BLOB NOT NULL,
+				hash BLOB NOT NULL,
+				expires INTEGER NOT NULL,
+				FOREIGN KEY (user_id) REFERENCES users(id),
+				PRIMARY KEY (uuid)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS api_key_scopes (
+				uuid BLOB NOT NULL,
+				scope TEXT CHECK (scope in ('PROJECT', 'USER')),
+				project_id TEXT,
+				permissions INTEGER NOT NULL,
+				FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				FOREIGN KEY (uuid) REFERENCES api_keys(uuid) ON UPDATE CASCADE ON DELETE CASCADE,
+				PRIMARY KEY (uuid)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS passwords (
+				user_id TEXT NOT NULL,
+				salt BLOB NOT NULL,
+				hash BLOB NOT NULL,
+				last_updated INTEGER NOT NULL,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				PRIMARY KEY (user_id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS user_integration_modrinth (
+				user_id TEXT NOT NULL,
+				modrinth_id TEXT NOT NULL,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				PRIMARY KEY (user_id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS user_integration_discord (
+				user_id TEXT NOT NULL,
+				discord_id TEXT NOT NULL,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				PRIMARY KEY (user_id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS user_integration_minecraft (
+				uuid TEXT UNIQUE NOT NULL,
+				user_id TEXT NOT NULL,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				PRIMARY KEY (uuid)
+			)
+			""");
+			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS events (
 				id TEXT UNIQUE NOT NULL,
 				slug TEXT UNIQUE NOT NULL,
 				event_type_slug TEXT NOT NULL,
 				display_name TEXT NOT NULL,
-				discord_role_id TEXT,
 				minecraft_version TEXT NOT NULL,
 				loader TEXT NOT NULL,
-				registration_time INTEGER NOT NULL,
+				registration_open_time INTEGER NOT NULL,
+				registration_close_time INTEGER NOT NULL,
 				start_time INTEGER NOT NULL,
 				end_time INTEGER NOT NULL,
 				freeze_time INTEGER NOT NULL,
+				PRIMARY KEY (id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS event_integration_discord (
+				id TEXT UNIQUE NOT NULL,
+				role_id TEXT NOT NULL,
+				FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (id)
 			)
 			""");
@@ -285,14 +350,6 @@ public class ModGardenBackend {
 				version_id TEXT NOT NULL,
 				FOREIGN KEY (submission_id) REFERENCES submissions(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (submission_id)
-			)
-			""");
-			statement.addBatch("""
-			CREATE TABLE IF NOT EXISTS minecraft_accounts (
-				uuid TEXT UNIQUE NOT NULL,
-				user_id TEXT NOT NULL,
-				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
-				PRIMARY KEY (uuid)
 			)
 			""");
 			statement.addBatch("""
@@ -341,54 +398,6 @@ public class ModGardenBackend {
 				PRIMARY KEY (code)
 			)
 			""");
-			statement.addBatch("""
-			CREATE TABLE IF NOT EXISTS api_keys (
-				uuid BLOB NOT NULL,
-				user_id TEXT NOT NULL,
-				salt BLOB NOT NULL,
-				hash BLOB NOT NULL,
-				expires INTEGER NOT NULL,
-				FOREIGN KEY (user_id) REFERENCES users(id),
-				PRIMARY KEY (uuid)
-			)
-			""");
-			statement.addBatch("""
-			CREATE TABLE IF NOT EXISTS api_key_scopes (
-				uuid BLOB NOT NULL,
-				scope TEXT CHECK (scope in ('PROJECT', 'USER')),
-				project_id TEXT,
-				permissions INTEGER NOT NULL,
-				FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
-				FOREIGN KEY (uuid) REFERENCES api_keys(uuid) ON UPDATE CASCADE ON DELETE CASCADE,
-				PRIMARY KEY (uuid)
-			)
-			""");
-			statement.addBatch("""
-			CREATE TABLE IF NOT EXISTS passwords (
-				user_id TEXT NOT NULL,
-				salt BLOB NOT NULL,
-				hash BLOB NOT NULL,
-				last_updated INTEGER NOT NULL,
-				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
-				PRIMARY KEY (user_id)
-			)
-			""");
-			statement.addBatch("""
-			CREATE TABLE IF NOT EXISTS integration_modrinth (
-				user_id TEXT NOT NULL,
-				modrinth_id TEXT NOT NULL,
-				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
-				PRIMARY KEY (user_id)
-			)
-			""");
-			statement.addBatch("""
-			CREATE TABLE IF NOT EXISTS integration_discord (
-				user_id TEXT NOT NULL,
-				discord_id TEXT NOT NULL,
-				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
-				PRIMARY KEY (user_id)
-			)
-			""");
 			Function.create(
 					connection, "generate_natural_id", new Function() {
 						@Override
@@ -407,6 +416,14 @@ public class ModGardenBackend {
 							int number = this.value_int(0);
 							int length = this.value_int(1);
 							this.result(NaturalId.generateFromNumber(number, length));
+						}
+					}
+			);
+			Function.create(
+					connection, "unix_millis", new Function() {
+						@Override
+						protected void xFunc() throws SQLException {
+							this.result(Instant.now().toEpochMilli());
 						}
 					}
 			);
