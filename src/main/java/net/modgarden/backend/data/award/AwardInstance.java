@@ -3,7 +3,7 @@ package net.modgarden.backend.data.award;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.modgarden.backend.data.event.Submission;
-import net.modgarden.backend.data.profile.User;
+import net.modgarden.backend.data.user.User;
 
 public record AwardInstance(String awardId,
                             String awardedTo,

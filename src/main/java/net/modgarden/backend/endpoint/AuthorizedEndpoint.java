@@ -18,8 +18,8 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 			Argon2Factory.createAdvanced(Argon2Factory.Argon2Types.ARGON2id);
 	private static final Argon2Version ARGON_2_VERSION = Argon2Version.V13;
 
-	public AuthorizedEndpoint(String path) {
-		super(path);
+	public AuthorizedEndpoint(int version, String path) {
+		super(version, path);
 	}
 
 	public static String generateRandomToken() {

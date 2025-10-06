@@ -7,7 +7,8 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.data.profile.User;
+import net.modgarden.backend.data.user.User;
+import net.modgarden.backend.endpoint.Endpoint;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -33,7 +34,7 @@ public record Project(String id,
 
     public static void getProject(Context ctx) {
         String path = ctx.pathParam("project");
-        if (!path.matches(ModGardenBackend.SAFE_URL_REGEX)) {
+        if (!path.matches(Endpoint.SAFE_URL_REGEX)) {
             ctx.result("Illegal characters in path '" + path + "'.");
             ctx.status(422);
             return;
@@ -106,7 +107,7 @@ public record Project(String id,
 
 	public static void getProjectsByUser(Context ctx) {
 		String user = ctx.pathParam("user");
-		if (!user.matches(ModGardenBackend.SAFE_URL_REGEX)) {
+		if (!user.matches(Endpoint.SAFE_URL_REGEX)) {
 			ctx.result("Illegal characters in path '" + user + "'.");
 			ctx.status(422);
 			return;

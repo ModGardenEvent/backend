@@ -8,6 +8,7 @@ import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.util.ExtraCodecs;
 import org.jetbrains.annotations.Nullable;
 
@@ -51,7 +52,7 @@ public record Event(String id,
 
     public static void getEvent(Context ctx) {
         String path = ctx.pathParam("event");
-        if (!path.matches(ModGardenBackend.SAFE_URL_REGEX)) {
+        if (!path.matches(Endpoint.SAFE_URL_REGEX)) {
             ctx.result("Illegal characters in path '" + path + "'.");
             ctx.status(422);
             return;

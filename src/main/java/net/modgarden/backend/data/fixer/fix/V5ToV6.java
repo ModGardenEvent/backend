@@ -68,17 +68,43 @@ public class V5ToV6 extends DatabaseFix {
 		CREATE TABLE IF NOT EXISTS users (
 			id TEXT UNIQUE NOT NULL,
 			username TEXT UNIQUE NOT NULL,
-			display_name TEXT NOT NULL,
-			pronouns TEXT,
-			avatar_url TEXT,
 			created INTEGER NOT NULL,
 			permissions INTEGER NOT NULL,
 			PRIMARY KEY(id)
 		)
 		""");
 		statement.addBatch("""
-		INSERT INTO users (id, username, display_name, pronouns, avatar_url, created, permissions)
-		SELECT id, username, display_name, pronouns, avatar_url, created, permissions from users_old
+		INSERT INTO users (id, username, created, permissions)
+		SELECT id, username, created, permissions from users_old
+		""");
+
+
+		statement.addBatch("""
+		CREATE TABLE IF NOT EXISTS user_bios (
+			user_id TEXT UNIQUE NOT NULL,
+			display_name TEXT NOT NULL,
+			pronouns TEXT,
+			description TEXT,
+			avatar_url TEXT,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			PRIMARY KEY (user_id)
+		)
+		""");
+		statement.addBatch("""
+		CREATE TABLE IF NOT EXISTS user_bio_fields (
+			user_id TEXT NOT NULL,
+			field_name TEXT NOT NULL,
+			field_value TEXT NOT NULL,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
+		)
+		""");
+		statement.addBatch("""
+		CREATE UNIQUE INDEX idx_user_id_field_name ON user_bio_fields(field_name, field_value)
+		""");
+
+		statement.addBatch("""
+		INSERT INTO user_bios (user_id, display_name, pronouns, avatar_url)
+		SELECT id, display_name, pronouns, avatar_url FROM users_old
 		""");
 
 
@@ -144,7 +170,7 @@ public class V5ToV6 extends DatabaseFix {
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS api_key_scopes (
 			uuid BLOB NOT NULL,
-			scope TEXT CHECK (scope in ('project', 'user')),
+			scope TEXT NOT NULL CHECK (scope in ('project', 'user')),
 			project_id TEXT,
 			permissions INTEGER NOT NULL,
 			FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
@@ -361,16 +387,31 @@ public class V5ToV6 extends DatabaseFix {
 
 		statement.addBatch("""
 		UPDATE users
-		SET id = 'mgacc', permissions = 1, pronouns = 'they/it'
+		SET id = 'mgacc', permissions = 1
 		WHERE username == 'mod_garden'
 		""");
-
 		statement.addBatch("""
-		INSERT INTO users VALUES ('grbot', 'gardenbot', 'GardenBot', 'it/its', NULL, unix_millis(), 1)
+		UPDATE user_bios
+		SET pronouns = 'they/it'
+		WHERE user_id = 'mgacc'
 		""");
 
 		statement.addBatch("""
-		INSERT INTO users VALUES ('abcde', 'tiny_pineapple', 'Tiny Pineapple', 'it/its', NULL, unix_millis(), 0)
+		INSERT INTO users VALUES ('grbot', 'gardenbot', unix_millis(), 1)
+		""");
+		statement.addBatch("""
+		UPDATE user_bios
+		SET display_name = 'GardenBot', pronouns = 'it/its'
+		WHERE user_id = 'grbot'
+		""");
+
+		statement.addBatch("""
+		INSERT INTO users VALUES ('abcde', 'tiny_pineapple', unix_millis(), 0)
+		""");
+		statement.addBatch("""
+		UPDATE user_bios
+		SET display_name = 'Tiny Pineapple', pronouns = 'it/its'
+		WHERE user_id = 'abcde'
 		""");
 
 		statement.addBatch("""

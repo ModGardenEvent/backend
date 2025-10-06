@@ -8,6 +8,7 @@ import com.mojang.serialization.JsonOps;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.util.ExtraCodecs;
 
 import java.sql.Connection;
@@ -36,7 +37,7 @@ public record Submission(String id,
 
     public static void getSubmission(Context ctx) {
         String path = ctx.pathParam("submission");
-        if (!path.matches(ModGardenBackend.SAFE_URL_REGEX)) {
+        if (!path.matches(Endpoint.SAFE_URL_REGEX)) {
             ctx.result("Illegal characters in path '" + path + "'.");
             ctx.status(422);
             return;
@@ -55,7 +56,7 @@ public record Submission(String id,
 
 	public static void getSubmissionsByUser(Context ctx) {
 		String user = ctx.pathParam("user");
-		if (!user.matches(ModGardenBackend.SAFE_URL_REGEX)) {
+		if (!user.matches(Endpoint.SAFE_URL_REGEX)) {
 			ctx.result("Illegal characters in path '" + user + "'.");
 			ctx.status(422);
 			return;
@@ -90,7 +91,7 @@ public record Submission(String id,
 
 	public static void getSubmissionsByEvent(Context ctx) {
 		String event = ctx.pathParam("event");
-		if (!event.matches(ModGardenBackend.SAFE_URL_REGEX)) {
+		if (!event.matches(Endpoint.SAFE_URL_REGEX)) {
 			ctx.result("Illegal characters in path '" + event + "'.");
 			ctx.status(422);
 			return;
@@ -126,12 +127,12 @@ public record Submission(String id,
 	public static void getSubmissionsByUserAndEvent(Context ctx) {
 		String user = ctx.pathParam("user");
 		String event = ctx.pathParam("event");
-		if (!user.matches(ModGardenBackend.SAFE_URL_REGEX)) {
+		if (!user.matches(Endpoint.SAFE_URL_REGEX)) {
 			ctx.result("Illegal characters in path '" + user + "'.");
 			ctx.status(422);
 			return;
 		}
-		if (!event.matches(ModGardenBackend.SAFE_URL_REGEX)) {
+		if (!event.matches(Endpoint.SAFE_URL_REGEX)) {
 			ctx.result("Illegal characters in path '" + event + "'.");
 			ctx.status(422);
 			return;

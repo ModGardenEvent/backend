@@ -9,7 +9,6 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 import io.github.cdimascio.dotenv.Dotenv;
 import io.javalin.Javalin;
-import io.javalin.http.Handler;
 import io.javalin.json.JsonMapper;
 import net.modgarden.backend.data.BackendError;
 import net.modgarden.backend.data.DevelopmentModeData;
@@ -21,12 +20,9 @@ import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.fixer.DatabaseFixer;
-import net.modgarden.backend.data.profile.MinecraftAccount;
-import net.modgarden.backend.data.profile.User;
+import net.modgarden.backend.data.user.User;
 import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.endpoint.v2.auth.GenerateKeyEndpoint;
-import net.modgarden.backend.handler.v1.discord.*;
-import net.modgarden.backend.handler.v1.RegistrationHandler;
 import net.modgarden.backend.util.AuthUtil;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -58,8 +54,6 @@ public class ModGardenBackend {
 	private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
 
 	public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
-
-	public static final String SAFE_URL_REGEX = "[a-zA-Z0-9!@$()`.+,_\"-]+";
 
 	private static ModGardenBackend backend;
 
@@ -96,32 +90,21 @@ public class ModGardenBackend {
 		CODEC_REGISTRY.put(BackendError.class, BackendError.CODEC);
 		CODEC_REGISTRY.put(Award.class, Award.DIRECT_CODEC);
 		CODEC_REGISTRY.put(Event.class, Event.DIRECT_CODEC);
-		CODEC_REGISTRY.put(MinecraftAccount.class, MinecraftAccount.CODEC);
 		CODEC_REGISTRY.put(Project.class, Project.DIRECT_CODEC);
 		CODEC_REGISTRY.put(Submission.class, Submission.DIRECT_CODEC);
 		CODEC_REGISTRY.put(User.class, User.DIRECT_CODEC);
 		CODEC_REGISTRY.put(AwardInstance.FullAwardData.class, AwardInstance.FullAwardData.CODEC);
-
-		CODEC_REGISTRY.put(RegistrationHandler.Body.class, RegistrationHandler.Body.CODEC);
-		CODEC_REGISTRY.put(DiscordBotLinkHandler.Body.class, DiscordBotLinkHandler.Body.CODEC);
-		CODEC_REGISTRY.put(DiscordBotProfileHandler.PostBody.class, DiscordBotProfileHandler.PostBody.CODEC);
-		CODEC_REGISTRY.put(DiscordBotProfileHandler.DeleteBody.class, DiscordBotProfileHandler.DeleteBody.CODEC);
-		CODEC_REGISTRY.put(DiscordBotUnlinkHandler.Body.class, DiscordBotUnlinkHandler.Body.CODEC);
-
-		CODEC_REGISTRY.put(DiscordBotTeamManagementHandler.InviteBody.class, DiscordBotTeamManagementHandler.InviteBody.CODEC);
-		CODEC_REGISTRY.put(DiscordBotTeamManagementHandler.AcceptInviteBody.class, DiscordBotTeamManagementHandler.AcceptInviteBody.CODEC);
-		CODEC_REGISTRY.put(DiscordBotTeamManagementHandler.DeclineInviteBody.class, DiscordBotTeamManagementHandler.DeclineInviteBody.CODEC);
-		CODEC_REGISTRY.put(DiscordBotTeamManagementHandler.RemoveMemberBody.class, DiscordBotTeamManagementHandler.RemoveMemberBody.CODEC);
+		CODEC_REGISTRY.put(GenerateKeyEndpoint.Request.class, GenerateKeyEndpoint.Request.CODEC);
+		CODEC_REGISTRY.put(GenerateKeyEndpoint.Response.class, GenerateKeyEndpoint.Response.CODEC);
 
 		Landing.createInstance();
 		AuthUtil.clearTokensEachFifteenMinutes();
-		DiscordBotTeamManagementHandler.clearInvitesEachDay();
 
 		Javalin app = Javalin.create(config -> config.jsonMapper(createDFUMapper()));
 		app.get("", Landing::getLandingJson);
 		backend = new ModGardenBackend(app);
 
-		backend.v1();
+		backend.v2();
 
 		app.error(400, BackendError::handleError);
 		app.error(401, BackendError::handleError);
@@ -133,82 +116,23 @@ public class ModGardenBackend {
 		LOG.info("Mod Garden Backend Started!");
 	}
 
-	public void v1() {
-		get1("award/{award}", Award::getAwardType);
-
-		get1("event/{event}", Event::getEvent);
-		get1("event/{event}/submissions", Submission::getSubmissionsByEvent);
-
-		get1("events", Event::getEvents);
-		get1("events/current/registration", Event::getCurrentRegistrationEvent);
-		get1("events/current/development", Event::getCurrentDevelopmentEvent);
-		get1("events/current/prefreeze", Event::getCurrentPreFreezeEvent);
-		get1("events/active", Event::getActiveEvents);
-
-		get1("mcaccount/{mcaccount}", MinecraftAccount::getAccount);
-
-		get1("project/{project}", Project::getProject);
-
-		get1("submission/{submission}", Submission::getSubmission);
-
-		get1("user/{user}", User::getUser);
-		get1("user/{user}/projects", Project::getProjectsByUser);
-		get1("user/{user}/submissions", Submission::getSubmissionsByUser);
-		get1("user/{user}/submissions/{event}", Submission::getSubmissionsByUserAndEvent);
-		get1("user/{user}/awards", Award::getAwardsByUser);
-
-		post1("discord/register", RegistrationHandler::discordBotRegister);
-
-		get1("discord/oauth/modrinth", DiscordBotOAuthHandler::authModrinthAccount);
-		get1("discord/oauth/minecraft", DiscordBotOAuthHandler::authMinecraftAccount);
-		get1("discord/oauth/minecraft/challenge", DiscordBotOAuthHandler::getMicrosoftCodeChallenge);
-
-		post1("discord/submission/create/modrinth", DiscordBotSubmissionHandler::submitModrinth);
-		post1("discord/submission/modify/version/modrinth", DiscordBotSubmissionHandler::setVersionModrinth);
-		post1("discord/submission/delete", DiscordBotSubmissionHandler::unsubmit);
-
-		post1("discord/link", DiscordBotLinkHandler::link);
-		post1("discord/unlink", DiscordBotUnlinkHandler::unlink);
-
-		post1("discord/modify/username", DiscordBotProfileHandler::modifyUsername);
-		post1("discord/modify/displayname", DiscordBotProfileHandler::modifyDisplayName);
-		post1("discord/modify/pronouns", DiscordBotProfileHandler::modifyPronouns);
-		post1("discord/modify/avatar", DiscordBotProfileHandler::modifyAvatarUrl);
-
-		post1("discord/remove/pronouns", DiscordBotProfileHandler::removePronouns);
-		post1("discord/remove/avatar", DiscordBotProfileHandler::removeAvatarUrl);
-
-		post1("discord/project/user/invite", DiscordBotTeamManagementHandler::sendInvite);
-		post1("discord/project/user/accept", DiscordBotTeamManagementHandler::acceptInvite);
-		post1("discord/project/user/decline", DiscordBotTeamManagementHandler::declineInvite);
-		post1("discord/project/user/remove", DiscordBotTeamManagementHandler::removeMember);
-	}
-
 	public void v2() {
-		post2(GenerateKeyEndpoint::new);
+		post(GenerateKeyEndpoint::new);
 	}
 
-	private void get1(String endpoint, Handler consumer) {
-		this.app.get("/v1/" + endpoint, consumer);
-	}
-
-	private void post1(String endpoint, Handler consumer) {
-		this.app.post("/v1/" + endpoint, consumer);
-	}
-
-	private void get2(Supplier<Endpoint> endpointSupplier) {
+	private void get(Supplier<Endpoint> endpointSupplier) {
 		Endpoint endpoint = endpointSupplier.get();
-		this.app.get("/v2/" + endpoint.getPath(), endpoint);
+		this.app.get(endpoint.getPath(), endpoint);
 	}
 
-	private void post2(Supplier<Endpoint> endpointSupplier) {
+	private void post(Supplier<Endpoint> endpointSupplier) {
 		Endpoint endpoint = endpointSupplier.get();
-		this.app.post("/v2/" + endpoint.getPath(), endpoint);
+		this.app.post(endpoint.getPath(), endpoint);
 	}
 
-	private void put2(Supplier<Endpoint> endpointSupplier) {
+	private void put(Supplier<Endpoint> endpointSupplier) {
 		Endpoint endpoint = endpointSupplier.get();
-		this.app.put("/v2/" + endpoint.getPath(), endpoint);
+		this.app.put(endpoint.getPath(), endpoint);
 	}
 
 	public static Connection createDatabaseConnection() throws SQLException {
@@ -223,13 +147,32 @@ public class ModGardenBackend {
 			CREATE TABLE IF NOT EXISTS users (
 				id TEXT UNIQUE NOT NULL,
 				username TEXT UNIQUE NOT NULL,
-				display_name TEXT NOT NULL,
-				pronouns TEXT,
-				avatar_url TEXT,
 				created INTEGER NOT NULL,
 				permissions INTEGER NOT NULL,
 				PRIMARY KEY(id)
 			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS user_bios (
+				user_id TEXT UNIQUE NOT NULL,
+				display_name TEXT NOT NULL,
+				pronouns TEXT,
+				description TEXT,
+				avatar_url TEXT,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				PRIMARY KEY (user_id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS user_bio_fields (
+				user_id TEXT NOT NULL,
+				field_name TEXT NOT NULL,
+				field_value TEXT NOT NULL,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
+			)
+			""");
+			statement.addBatch("""
+			CREATE UNIQUE INDEX idx_user_id_field_name ON user_bio_fields(field_name, field_value)
 			""");
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS api_keys (
@@ -245,7 +188,7 @@ public class ModGardenBackend {
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS api_key_scopes (
 				uuid BLOB NOT NULL,
-				scope TEXT CHECK (scope in ('PROJECT', 'USER')),
+				scope TEXT NOT NULL CHECK (scope in ('PROJECT', 'USER')),
 				project_id TEXT,
 				permissions INTEGER NOT NULL,
 				FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,

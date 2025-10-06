@@ -5,6 +5,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 
 import java.util.Locale;
+import java.util.Objects;
 
 public record BackendError(String error, String description) {
     public static final Codec<BackendError> CODEC = RecordCodecBuilder.create(inst -> inst.group(
@@ -18,6 +19,10 @@ public record BackendError(String error, String description) {
     }
 
     public static void handleError(Context ctx) {
-        ctx.json(new BackendError(ctx.status().getMessage(), ctx.result()));
+	    String result = ctx.result();
+	    ctx.json(new BackendError(
+			    ctx.status().getMessage(),
+			    Objects.requireNonNullElse(result, "Result is null")
+	    ));
     }
 }

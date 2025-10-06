@@ -10,16 +10,27 @@ import static net.modgarden.backend.data.PermissionKind.*;
 
 // TODO: Add more user permissions for stuff.
 public enum Permission {
-	/**
-	 * Signifies that this user has every permission.
-	 * Do not give this out unless it is absolutely necessary for an individual team member to receive this.
-	 */
+	/// Signifies that this user has every permission.
+	/// Do not give this out unless it is absolutely necessary for an individual team member to receive this.
 	ADMINISTRATOR(0x1, "administrator", ALL),
-	EDIT_PROFILES(0x2, "edit_profiles", GLOBAL),
-	MODERATE_USERS(0x4, "moderate_users", GLOBAL),
-	EDIT_PROJECTS(0x8, "edit_projects", GLOBAL),
-	MODERATE_PROJECTS(0x10, "moderate_projects", GLOBAL),
-	UPLOAD_TO_CDN(0x20, "upload_to_cdn", GLOBAL),;
+	/// Edit your own profile.
+	EDIT_PROFILE(0x2, "edit_profile", USER),
+	/// Edit others' profiles and punish users.
+	MODERATE_USERS(0x4, "moderate_users", USER),
+	/// Edit this project.
+	EDIT_PROJECT(0x8, "edit_project", PROJECT),
+	/// Edit others' projects and hide them.
+	MODERATE_PROJECTS(0x10, "moderate_projects", USER),
+	/// Upload files to the CDN.
+	UPLOAD_TO_CDN(0x20, "upload_to_cdn", USER),;
+
+	/// The default permissions that all users have.
+	///
+	/// At some point, we're going to switch to user roles,
+	/// but for now, users have inherent, default permissions.
+	public static final Permissions DEFAULT_USER_PERMISSIONS = new Permissions(
+			EDIT_PROFILE
+	);
 
 	public static final Codec<Permission> CODEC = Codec.STRING.flatXmap(string -> {
 		try {
@@ -28,8 +39,12 @@ public enum Permission {
 			return DataResult.error(() -> "Could not find permission '" + string + "'");
 		}
 	}, permission -> DataResult.success(permission.name));
-	public static final Codec<List<Permission>> GLOBAL_LIST_CODEC = Codec.withAlternative(CODEC.listOf(), Codec.LONG.xmap(l -> fromLong(l, GLOBAL), Permission::toLong));
-	public static final Codec<List<Permission>> PROJECT_LIST_CODEC = Codec.withAlternative(CODEC.listOf(), Codec.LONG.xmap(l -> fromLong(l, PROJECT), Permission::toLong));
+	public static final Codec<List<Permission>> GLOBAL_LIST_CODEC = Codec.withAlternative(CODEC.listOf(), Codec.STRING.xmap(string -> fromLongString(string,
+			USER
+	), Permission::toLongString));
+	public static final Codec<List<Permission>> PROJECT_LIST_CODEC = Codec.withAlternative(CODEC.listOf(), Codec.STRING.xmap(string -> fromLongString(string, PROJECT), Permission::toLongString));
+	public static final Codec<Permissions> PERMISSIONS_CODEC = Codec.LONG.xmap(Permissions::new, Permissions::getBits);
+	public static final Codec<Permissions> STRING_PERMISSIONS_CODEC = Codec.STRING.xmap(Permissions::new, Permissions::toString);
 
 	private final long bit;
 	private final String name;
@@ -51,12 +66,20 @@ public enum Permission {
 		return permissions;
 	}
 
+	public static List<Permission> fromLongString(String value, PermissionKind kind) {
+		return fromLong(Long.parseLong(value), kind);
+	}
+
 	public static long toLong(List<Permission> permissions) {
 		long value = 0;
 		for (Permission permission : permissions) {
 			value = grantPermission(value, permission);
 		}
 		return value;
+	}
+
+	public static String toLongString(List<Permission> permissions) {
+		return Long.toString(toLong(permissions));
 	}
 
 	public static long grantPermission(long previousValue, Permission permission) {
