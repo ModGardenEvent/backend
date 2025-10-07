@@ -6,6 +6,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.Integration;
 import net.modgarden.backend.data.Permission;
+import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.data.award.AwardInstance;
 import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Project;
@@ -18,7 +19,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.*;
 
 import static java.util.Map.entry;
@@ -27,11 +28,11 @@ import static net.modgarden.backend.data.Integration.fromCodec;
 public record User(
 		String id,
 		String username,
-		ZonedDateTime created,
+		Instant created,
 		List<String> projects,
 		List<String> events,
 		List<AwardInstance.UserValues> awards,
-		List<Permission> permissions,
+		Permissions permissions,
 		Map<String, Integration> integrations
 ) {
 	public static final String USERNAME_REGEX = "^(?=.{3,32}$)[a-z_0-9]+?$";
@@ -44,11 +45,11 @@ public record User(
     public static final Codec<User> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
             Codec.STRING.fieldOf("username").forGetter(User::username),
-		    ExtraCodecs.ISO_DATE_TIME.fieldOf("created").forGetter(User::created),
+		    ExtraCodecs.INSTANT_CODEC.fieldOf("created").forGetter(User::created),
             Project.ID_CODEC.listOf().fieldOf("projects").forGetter(User::projects),
             Event.ID_CODEC.listOf().fieldOf("events").forGetter(User::events),
             AwardInstance.UserValues.CODEC.listOf().fieldOf("awards").forGetter(User::awards),
-			Permission.GLOBAL_LIST_CODEC.fieldOf("permissions").forGetter(User::permissions),
+			Permission.STRING_PERMISSIONS_CODEC.fieldOf("permissions").forGetter(User::permissions),
 		    Codec.dispatchedMap(Codec.STRING, INTEGRATION_CODECS::get).fieldOf("integrations").forGetter(User::integrations)
     ).apply(inst, User::new));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(User::validate);

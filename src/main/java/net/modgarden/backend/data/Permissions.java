@@ -1,43 +1,57 @@
 package net.modgarden.backend.data;
 
+import org.jetbrains.annotations.NotNull;
+
 import java.util.List;
 
 /// A bitfield of permissions that uses the [Permission] system.
-public final class Permissions {
-	private long bits;
-
-	public Permissions(long bits) {
-		this.bits = bits;
-	}
-
+///
+/// Note that once value classes come out, this class will become a value class.
+public record Permissions(long bits) {
 	public Permissions(Permission... permissions) {
-		this.bits = Permission.toLong(List.of(permissions));
+		this(Permission.toLong(List.of(permissions)));
 	}
 
 	public Permissions(String bitsString) {
-		this.bits = Long.parseLong(bitsString);
+		this(Long.parseLong(bitsString));
 	}
 
-	public void grantPermission(Permission permission) {
-		this.bits = Permission.grantPermission(this.bits, permission);
+	public Permissions grantPermissions(Permissions permissions) {
+		return new Permissions(this.bits | permissions.bits);
 	}
 
-	public void revokePermission(Permission permission) {
-		this.bits = Permission.revokePermission(this.bits, permission);
+	public Permissions grantPermissions(Permission... permissions) {
+		return this.grantPermissions(new Permissions(permissions));
 	}
 
-	public boolean hasPermission(Permission permission) {
-		return Permission.hasPermission(this.bits, permission);
+	public Permissions revokePermissions(Permissions permissions) {
+		return new Permissions(this.bits ^ permissions.bits);
 	}
 
-	public void and(long bits) {
-		this.bits &= bits;
+	public Permissions revokePermissions(Permission... permissions) {
+		return this.revokePermissions(new Permissions(permissions));
 	}
 
-	public long getBits() {
-		return this.bits;
+	public boolean hasPermissions(Permissions permissions) {
+		boolean hasPermissions = (permissions.bits & this.bits) == permissions.bits;
+		boolean hasAdministrator = hasAdministrator(this.bits);
+		return hasAdministrator || hasPermissions;
 	}
 
+	public boolean hasPermissions(Permission... permissions) {
+		return this.hasPermissions(new Permissions(permissions));
+	}
+
+	/// Only allows permissions in [#bits] and ignores all other permissions.
+	public Permissions restrict(long bits) {
+		return new Permissions(this.bits & bits);
+	}
+
+	private static boolean hasAdministrator(long bits) {
+		return (bits & Permission.ADMINISTRATOR.getBit()) != 0;
+	}
+
+	@NotNull
 	public String toString() {
 		return Long.toString(this.bits);
 	}

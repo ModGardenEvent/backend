@@ -4,6 +4,8 @@ import net.modgarden.backend.ModGardenBackend;
 import org.jetbrains.annotations.NotNull;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.random.RandomGenerator;
 import java.util.regex.Pattern;
@@ -18,6 +20,7 @@ public final class NaturalId {
 	private static final Pattern RESERVED_PATTERN =
 			Pattern.compile("^((z{3}.*)|(.+bot)|(.+acc)|(abcde))$");
 	private static final String ALPHABET = "abcdefghijklmnopqrstuvwxyz";
+	private static final String MISSINGNO = "noacc";
 
 	private NaturalId() {}
 
@@ -67,19 +70,33 @@ public final class NaturalId {
 	}
 
 	@NotNull
-	public static String generate(String table, String key, int length) throws SQLException {
+	public static String generate(String table, String key, String key2, int length) throws SQLException {
 		String id = null;
 		try (Connection connection1 = ModGardenBackend.createDatabaseConnection()) {
 			while (id == null) {
 				String naturalId = generateUnchecked(length);
-				var exists = connection1.prepareStatement("SELECT true FROM " + table + " WHERE ? = ?");
+				PreparedStatement exists;
+				if (key2 != null) {
+					exists = connection1.prepareStatement("SELECT true FROM " + table + " WHERE ? = ? OR ? = ?");
+				} else {
+					exists = connection1.prepareStatement("SELECT true FROM " + table + " WHERE ? = ?");
+				}
 				exists.setString(1, key);
 				exists.setString(2, naturalId);
-				if (!exists.execute() && !isReserved(naturalId)) {
+				if (key2 != null) {
+					exists.setString(3, key2);
+					exists.setString(4, naturalId);
+				}
+				ResultSet resultSet = exists.executeQuery();
+				if (resultSet.isBeforeFirst() && !isReserved(naturalId)) {
 					id = naturalId;
 				}
 			}
 		}
 		return id;
+	}
+
+	public static String getMissingno() {
+		return MISSINGNO;
 	}
 }

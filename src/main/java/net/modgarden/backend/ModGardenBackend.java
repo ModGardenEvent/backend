@@ -22,7 +22,9 @@ import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.fixer.DatabaseFixer;
 import net.modgarden.backend.data.user.User;
 import net.modgarden.backend.endpoint.Endpoint;
+import net.modgarden.backend.endpoint.v2.auth.DeleteKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.GenerateKeyEndpoint;
+import net.modgarden.backend.endpoint.v2.auth.ListKeysEndpoint;
 import net.modgarden.backend.util.AuthUtil;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -43,6 +45,7 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.function.Supplier;
 
 public class ModGardenBackend {
@@ -96,6 +99,7 @@ public class ModGardenBackend {
 		CODEC_REGISTRY.put(AwardInstance.FullAwardData.class, AwardInstance.FullAwardData.CODEC);
 		CODEC_REGISTRY.put(GenerateKeyEndpoint.Request.class, GenerateKeyEndpoint.Request.CODEC);
 		CODEC_REGISTRY.put(GenerateKeyEndpoint.Response.class, GenerateKeyEndpoint.Response.CODEC);
+		CODEC_REGISTRY.put(ListKeysEndpoint.Response.class, ListKeysEndpoint.Response.CODEC);
 
 		Landing.createInstance();
 		AuthUtil.clearTokensEachFifteenMinutes();
@@ -108,6 +112,7 @@ public class ModGardenBackend {
 
 		app.error(400, BackendError::handleError);
 		app.error(401, BackendError::handleError);
+		app.error(403, BackendError::handleError);
 		app.error(404, BackendError::handleError);
 		app.error(422, BackendError::handleError);
 		app.error(500, BackendError::handleError);
@@ -118,6 +123,8 @@ public class ModGardenBackend {
 
 	public void v2() {
 		post(GenerateKeyEndpoint::new);
+		delete(DeleteKeyEndpoint::new);
+		get(ListKeysEndpoint::new);
 	}
 
 	private void get(Supplier<Endpoint> endpointSupplier) {
@@ -135,9 +142,16 @@ public class ModGardenBackend {
 		this.app.put(endpoint.getPath(), endpoint);
 	}
 
+	private void delete(Supplier<Endpoint> endpointSupplier) {
+		Endpoint endpoint = endpointSupplier.get();
+		this.app.delete(endpoint.getPath(), endpoint);
+	}
+
 	public static Connection createDatabaseConnection() throws SQLException {
 		String url = "jdbc:sqlite:database.db";
-		return DriverManager.getConnection(url);
+		Properties props = new Properties();
+		props.setProperty("foreign_keys", "true");
+		return DriverManager.getConnection(url, props);
 	}
 
 	private static void createDatabaseContents() {
@@ -178,10 +192,10 @@ public class ModGardenBackend {
 			CREATE TABLE IF NOT EXISTS api_keys (
 				uuid BLOB NOT NULL,
 				user_id TEXT NOT NULL,
-				salt BLOB NOT NULL,
-				hash BLOB NOT NULL,
+				hash TEXT NOT NULL,
 				expires INTEGER NOT NULL,
-				FOREIGN KEY (user_id) REFERENCES users(id),
+				name TEXT NOT NULL,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (uuid)
 			)
 			""");
@@ -199,8 +213,7 @@ public class ModGardenBackend {
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS passwords (
 				user_id TEXT NOT NULL,
-				salt BLOB NOT NULL,
-				hash BLOB NOT NULL,
+				hash TEXT NOT NULL,
 				last_updated INTEGER NOT NULL,
 				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (user_id)
@@ -347,9 +360,10 @@ public class ModGardenBackend {
 						@Override
 						protected void xFunc() throws SQLException {
 							String table = this.value_text(0);
-							String key = this .value_text(1);
-							int length = this.value_int(2);
-							this.result(NaturalId.generate(table, key, length));
+							String key = this.value_text(1);
+							String key2 = this.value_text(2);
+							int length = this.value_int(3);
+							this.result(NaturalId.generate(table, key, key2, length));
 						}
 					}
 			);

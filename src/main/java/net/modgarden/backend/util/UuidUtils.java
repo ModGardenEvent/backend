@@ -14,6 +14,13 @@ public final class UuidUtils {
 		return byteBuffer.array();
 	}
 
+	public static UUID fromBytes(byte[] uuid) {
+		ByteBuffer byteBuffer = ByteBuffer.wrap(uuid);
+		long mostSignificantBits = byteBuffer.getLong();
+		long leastSignificantBits = byteBuffer.getLong();
+		return new UUID(mostSignificantBits, leastSignificantBits);
+	}
+
 	public static byte[] randomBytes() {
 		return toBytes(UUID.randomUUID());
 	}

@@ -25,8 +25,9 @@ public class V5ToV6 extends DatabaseFix {
 					protected void xFunc() throws SQLException {
 						String table = this.value_text(0);
 						String key = this .value_text(1);
-						int length = this.value_int(2);
-						this.result(NaturalId.generate(table, key, length));
+						String key2 = this.value_text(2);
+						int length = this.value_int(3);
+						this.result(NaturalId.generate(table, key, key2, length));
 					}
 				}
 		);
@@ -160,9 +161,9 @@ public class V5ToV6 extends DatabaseFix {
 		CREATE TABLE IF NOT EXISTS api_keys (
 			uuid BLOB NOT NULL,
 			user_id TEXT NOT NULL,
-			salt BLOB NOT NULL,
-			hash BLOB UNIQUE NOT NULL,
+			hash TEXT NOT NULL,
 			expires INTEGER NOT NULL,
+			name TEXT NOT NULL,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			PRIMARY KEY (uuid)
 		)
@@ -181,8 +182,7 @@ public class V5ToV6 extends DatabaseFix {
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS passwords (
 			user_id TEXT NOT NULL,
-			salt BLOB NOT NULL,
-			hash BLOB NOT NULL,
+			hash TEXT NOT NULL,
 			last_updated INTEGER NOT NULL,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			PRIMARY KEY (user_id)

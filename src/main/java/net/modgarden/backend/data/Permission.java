@@ -6,7 +6,7 @@ import com.mojang.serialization.DataResult;
 import java.util.ArrayList;
 import java.util.List;
 
-import static net.modgarden.backend.data.PermissionKind.*;
+import static net.modgarden.backend.data.PermissionScope.*;
 
 // TODO: Add more user permissions for stuff.
 public enum Permission {
@@ -22,7 +22,9 @@ public enum Permission {
 	/// Edit others' projects and hide them.
 	MODERATE_PROJECTS(0x10, "moderate_projects", USER),
 	/// Upload files to the CDN.
-	UPLOAD_TO_CDN(0x20, "upload_to_cdn", USER),;
+	UPLOAD_TO_CDN(0x20, "upload_to_cdn", USER),
+	/// Generate and delete API apiKeys on behalf of this user or project.
+	MODIFY_API_KEY(0x40, "modify_api_key", ALL),;
 
 	/// The default permissions that all users have.
 	///
@@ -43,20 +45,20 @@ public enum Permission {
 			USER
 	), Permission::toLongString));
 	public static final Codec<List<Permission>> PROJECT_LIST_CODEC = Codec.withAlternative(CODEC.listOf(), Codec.STRING.xmap(string -> fromLongString(string, PROJECT), Permission::toLongString));
-	public static final Codec<Permissions> PERMISSIONS_CODEC = Codec.LONG.xmap(Permissions::new, Permissions::getBits);
+	public static final Codec<Permissions> PERMISSIONS_CODEC = Codec.LONG.xmap(Permissions::new, Permissions::bits);
 	public static final Codec<Permissions> STRING_PERMISSIONS_CODEC = Codec.STRING.xmap(Permissions::new, Permissions::toString);
 
 	private final long bit;
 	private final String name;
-	private final PermissionKind kind;
+	private final PermissionScope kind;
 
-	Permission(int bit, String name, PermissionKind kind) {
+	Permission(int bit, String name, PermissionScope kind) {
 		this.bit = bit;
 		this.name = name;
 		this.kind = kind;
 	}
 
-	public static List<Permission> fromLong(long value, PermissionKind kind) {
+	public static List<Permission> fromLong(long value, PermissionScope kind) {
 		List<Permission> permissions = new ArrayList<>();
 		for (Permission permission : Permission.values(kind)) {
 			if (hasPermissionRaw(value, permission)) {
@@ -66,7 +68,7 @@ public enum Permission {
 		return permissions;
 	}
 
-	public static List<Permission> fromLongString(String value, PermissionKind kind) {
+	public static List<Permission> fromLongString(String value, PermissionScope kind) {
 		return fromLong(Long.parseLong(value), kind);
 	}
 
@@ -102,7 +104,7 @@ public enum Permission {
 		return (userPermissions & permission.bit) != 0;
 	}
 
-	private static List<Permission> values(PermissionKind kind) {
+	private static List<Permission> values(PermissionScope kind) {
 		List<Permission> permissions = new ArrayList<>();
 		for (Permission permission : Permission.values()) {
 			if (permission.kind == ALL || permission.kind == kind) {
@@ -110,6 +112,10 @@ public enum Permission {
 			}
 		}
 		return permissions;
+	}
+
+	public long getBit() {
+		return this.bit;
 	}
 
 	public String getName() {
