@@ -35,22 +35,31 @@ public final class ListKeysEndpoint extends AuthEndpoint {
 			String userId,
 			Permissions userPermissions
 	) throws Exception {
+		String projectId = ctx.queryParam("project_id");
+		String query;
+		if (projectId == null) {
+			query = "SELECT scope, project_id, permissions FROM api_key_scopes WHERE uuid = ?";
+		} else {
+			query = "SELECT scope, project_id, permissions FROM api_key_scopes WHERE uuid = ? AND project_id = ?";
+		}
+
 		List<ApiKey> apiKeys = new ArrayList<>();
 		try (
 				var connection = this.getDatabaseConnection();
 				var apiKeyStatement = connection.prepareStatement("SELECT uuid, expires, name FROM api_keys WHERE user_id = ?");
-				var apiKeyScopeStatement = connection.prepareStatement("SELECT scope, project_id, permissions FROM api_key_scopes WHERE uuid = ?")
+				var apiKeyScopeStatement = connection.prepareStatement(query)
 		) {
 			apiKeyStatement.setString(1, userId);
 			ResultSet resultSet = apiKeyStatement.executeQuery();
 			while (resultSet.next()) {
 				UUID uuid = UuidUtils.fromBytes(resultSet.getBytes("uuid"));
 				apiKeyScopeStatement.setBytes(1, resultSet.getBytes("uuid"));
+				if (projectId != null) {
+					apiKeyScopeStatement.setString(2, projectId);
+				}
 				ResultSet scopeResult = apiKeyScopeStatement.executeQuery();
 				if (!scopeResult.isBeforeFirst()) {
-					ctx.result("API key " + uuid + " has no scope.");
-					ctx.status(500);
-					return;
+					continue;
 				}
 
 				apiKeys.add(new ApiKey(
