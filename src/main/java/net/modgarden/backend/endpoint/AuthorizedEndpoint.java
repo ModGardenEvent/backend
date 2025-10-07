@@ -169,7 +169,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 						return ValidationResult.no();
 					}
 
-					// forbid expired apiKeys
+					// forbid expired keys
 					if (Instant.now().isAfter(Instant.ofEpochMilli(apiKeyResult.getLong("expires")))) {
 						ctx.result("Unauthorized.");
 						ctx.status(401);

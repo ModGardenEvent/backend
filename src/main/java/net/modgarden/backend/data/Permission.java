@@ -23,7 +23,7 @@ public enum Permission {
 	MODERATE_PROJECTS(0x10, "moderate_projects", USER),
 	/// Upload files to the CDN.
 	UPLOAD_TO_CDN(0x20, "upload_to_cdn", USER),
-	/// Generate and delete API apiKeys on behalf of this user or project.
+	/// Generate and delete API keys on behalf of this user or project.
 	MODIFY_API_KEY(0x40, "modify_api_key", ALL),;
 
 	/// The default permissions that all users have.
