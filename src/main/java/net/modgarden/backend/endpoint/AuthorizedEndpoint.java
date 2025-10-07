@@ -155,8 +155,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 				apiKeyStatement.setString(1, userId);
 				ResultSet apiKeyResult = apiKeyStatement.executeQuery();
 				if (!apiKeyResult.isBeforeFirst()) {
-					ctx.result("Forbidden.");
-					ctx.status(403);
+					this.setStatusUnauthorized(ctx);
 					return ValidationResult.no();
 				}
 
@@ -165,15 +164,13 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 					apiKeyScopeStatement.setBytes(1, uuid);
 					ResultSet apiKeyScopeResult = apiKeyScopeStatement.executeQuery();
 					if (!apiKeyScopeResult.isBeforeFirst()) {
-						ctx.result("Forbidden.");
-						ctx.status(403);
+						this.setStatusUnauthorized(ctx);
 						return ValidationResult.no();
 					}
 
 					// forbid expired keys
 					if (Instant.now().isAfter(Instant.ofEpochMilli(apiKeyResult.getLong("expires")))) {
-						ctx.result("Unauthorized.");
-						ctx.status(401);
+						this.setStatusUnauthorized(ctx);
 
 						// remove expired key
 						try (
@@ -232,12 +229,21 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 			}
 		}
 		if (!authorized && !ctx.status().isError()) {
-			ctx.result("Unauthorized.");
-			ctx.status(401);
+			this.setStatusUnauthorized(ctx);
 			return ValidationResult.no();
 		}
 
 		return new ValidationResult(authorized, userId, userPermissions);
+	}
+
+	protected void setStatusUnauthorized(Context ctx) {
+		ctx.result("Unauthorized.");
+		ctx.status(401);
+	}
+
+	protected void setStatusForbidden(Context ctx) {
+		ctx.result("Forbidden.");
+		ctx.status(403);
 	}
 
 	protected boolean requirePermissions(Context ctx, Permissions userPermissions, Permissions permissions) {
