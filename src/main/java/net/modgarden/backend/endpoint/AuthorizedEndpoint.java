@@ -92,6 +92,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 	/// can and likely will cause serious security vulnerabilities.
 	///
 	/// Do not fuck with auth roulette.
+	/// Test your code before pushing to prod, please.
 	///
 	/// **You have been warned.**
 	///
