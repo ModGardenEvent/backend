@@ -72,7 +72,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 		return ARGON.verify(hash, secret.toCharArray());
 	}
 
-	protected abstract void handle(@NotNull Context ctx, String userId, Permissions userPermissions) throws Exception;
+	protected abstract void handle(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception;
 
 	@Override
 	public final void handle(@NotNull Context ctx) throws Exception {
@@ -82,7 +82,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 		}
 
 		super.handle(ctx);
-		this.handle(ctx, validationResult.userId(), validationResult.userPermissions());
+		this.handle(ctx, validationResult.userId(), validationResult.scopePermissions());
 	}
 
 	/// # Caution
@@ -113,11 +113,11 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 
 		boolean authorized = ("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(
 				authorization);
-		Permissions userPermissions = new Permissions();
+		Permissions scopePermissions = new Permissions();
 		// we know this is GardenBot. let it bypass everything
 		if (authorized) {
-			userPermissions = new Permissions(Permission.ADMINISTRATOR);
-			return new ValidationResult(true, "grbot", userPermissions);
+			scopePermissions = new Permissions(Permission.ADMINISTRATOR);
+			return new ValidationResult(true, "grbot", scopePermissions);
 		}
 
 		JsonObject body;
@@ -204,30 +204,30 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 
 					// give this endpoint the permissions as specified by the API key
 					if (authorized) {
-						userPermissions.grantPermissions(new Permissions(apiKeyScopeResult.getLong("permissions")));
+						scopePermissions.grantPermissions(new Permissions(apiKeyScopeResult.getLong("permissions")));
 						// Disallow permissions the user doesn't already have
 						switch (scope) {
 							case USER -> {
-								Permissions permissions = this.getDatabaseAccess()
+								Permissions userPermissions = this.getDatabaseAccess()
 										.getUserPermissions(userId)
 										.unwrap(ctx);
-								if (permissions == null) {
+								if (userPermissions == null) {
 									this.setStatusUnauthorized(ctx);
 									return ValidationResult.no();
 								}
-								userPermissions = permissions;
-								userPermissions = userPermissions.restrict(permissions.bits());
+								scopePermissions = userPermissions;
+								scopePermissions = scopePermissions.restrict(userPermissions.bits());
 							}
 							case PROJECT -> {
-								Permissions permissions = this.getDatabaseAccess()
+								Permissions projectPermissions = this.getDatabaseAccess()
 										.getProjectPermissions(userId, projectId)
 										.unwrap(ctx);
-								if (permissions == null) {
+								if (projectPermissions == null) {
 									this.setStatusUnauthorized(ctx);
 									return ValidationResult.no();
 								}
-								userPermissions = permissions;
-								userPermissions = userPermissions.restrict(permissions.bits());
+								scopePermissions = projectPermissions;
+								scopePermissions = scopePermissions.restrict(projectPermissions.bits());
 							}
 						}
 					}
@@ -239,7 +239,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 			return ValidationResult.no();
 		}
 
-		return new ValidationResult(authorized, userId, userPermissions);
+		return new ValidationResult(authorized, userId, scopePermissions);
 	}
 
 	protected void setStatusUnauthorized(Context ctx) {
@@ -252,8 +252,8 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 		ctx.status(403);
 	}
 
-	protected boolean requirePermissions(Context ctx, Permissions userPermissions, Permissions permissions) {
-		if (!userPermissions.hasPermissions(permissions)) {
+	protected boolean requirePermissions(Context ctx, Permissions scopePermissions, Permissions permissions) {
+		if (!scopePermissions.hasPermissions(permissions)) {
 			ctx.status(403);
 			ctx.result("User lacks permission; required " + permissions);
 			return false;
@@ -262,11 +262,11 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 		return true;
 	}
 
-	protected boolean requirePermissions(Context ctx, Permissions userPermissions, Permission... permissions) {
-		return requirePermissions(ctx, userPermissions, new Permissions(permissions));
+	protected boolean requirePermissions(Context ctx, Permissions scopePermissions, Permission... permissions) {
+		return requirePermissions(ctx, scopePermissions, new Permissions(permissions));
 	}
 
-	private record ValidationResult(boolean authorized, String userId, Permissions userPermissions) {
+	private record ValidationResult(boolean authorized, String userId, Permissions scopePermissions) {
 		public static ValidationResult no() {
 			return new ValidationResult(false, NaturalId.getMissingno(), new Permissions());
 		}

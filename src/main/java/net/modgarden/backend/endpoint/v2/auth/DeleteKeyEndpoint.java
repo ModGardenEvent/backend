@@ -26,9 +26,9 @@ public final class DeleteKeyEndpoint extends AuthEndpoint {
 	public void handle(
 			@NotNull Context ctx,
 			String userId,
-			Permissions userPermissions
+			Permissions scopePermissions
 	) throws Exception {
-		if (!this.requirePermissions(ctx, userPermissions, Permission.MODIFY_API_KEY)) return;
+		if (!this.requirePermissions(ctx, scopePermissions, Permission.MODIFY_API_KEY)) return;
 
 		UUID uuid = UUID.fromString(ctx.pathParam("uuid"));
 

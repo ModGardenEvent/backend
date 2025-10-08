@@ -33,7 +33,7 @@ public final class ListKeysEndpoint extends AuthEndpoint {
 	public void handle(
 			@NotNull Context ctx,
 			String userId,
-			Permissions userPermissions
+			Permissions scopePermissions
 	) throws Exception {
 		String projectId = ctx.queryParam("project_id");
 		String query;

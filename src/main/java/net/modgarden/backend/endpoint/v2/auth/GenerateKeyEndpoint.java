@@ -32,8 +32,8 @@ public final class GenerateKeyEndpoint extends AuthEndpoint {
 	}
 
 	@Override
-	public void handle(@NotNull Context ctx, String userId, Permissions userPermissions) throws Exception {
-		if (!this.requirePermissions(ctx, userPermissions, Permission.MODIFY_API_KEY)) return;
+	public void handle(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
+		if (!this.requirePermissions(ctx, scopePermissions, Permission.MODIFY_API_KEY)) return;
 
 		Request<?> request = this.decodeBody(ctx, Request.CODEC)
 				.unwrap(ctx);
@@ -50,7 +50,7 @@ public final class GenerateKeyEndpoint extends AuthEndpoint {
 		String hash =
 				AuthEndpoint.hashSecret(apiKey);
 
-		Permissions permissions = request.permissions();
+		Permissions requestedPermissions = request.permissions();
 		String projectId = null;
 		if (request.projectId().isPresent()) {
 			projectId = request.projectId().get();
@@ -80,12 +80,13 @@ public final class GenerateKeyEndpoint extends AuthEndpoint {
 					permissionStatement.setString(1, userId);
 					permissionStatement.setString(2, projectId);
 					ResultSet resultSet = permissionStatement.executeQuery();
-					permissions = permissions.restrict(resultSet.getLong("permissions"));
-					if (!this.requirePermissions(ctx, new Permissions(resultSet.getLong("permissions")), Permission.MODIFY_API_KEY)) return;
+					Permissions projectPermissions = new Permissions(resultSet.getLong("permissions"));
+					requestedPermissions = requestedPermissions.restrict(projectPermissions.bits());
+					if (!this.requirePermissions(ctx, projectPermissions, Permission.MODIFY_API_KEY)) return;
 				}
 			}
-			case "user" -> permissions = permissions.restrict(
-					Permission.DEFAULT_USER_PERMISSIONS.bits() | userPermissions.bits());
+			case "user" -> requestedPermissions = requestedPermissions.restrict(
+					Permission.DEFAULT_USER_PERMISSIONS.bits() | scopePermissions.bits());
 		}
 
 		try (
@@ -112,7 +113,7 @@ public final class GenerateKeyEndpoint extends AuthEndpoint {
 				// actually what the hell lmao. what is this second integer?
 				apiKeyScopeStatement.setNull(3, 0);
 			}
-			apiKeyScopeStatement.setLong(4, permissions.bits());
+			apiKeyScopeStatement.setLong(4, requestedPermissions.bits());
 			apiKeyScopeStatement.execute();
 		}
 
