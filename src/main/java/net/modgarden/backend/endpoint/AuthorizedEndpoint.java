@@ -204,7 +204,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 
 					// give this endpoint the permissions as specified by the API key
 					if (authorized) {
-						scopePermissions.grantPermissions(new Permissions(apiKeyScopeResult.getLong("permissions")));
+						Permissions apiKeyPermissions = new Permissions(apiKeyScopeResult.getLong("permissions"));
 						// Disallow permissions the user doesn't already have
 						switch (scope) {
 							case USER -> {
@@ -216,7 +216,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 									return ValidationResult.no();
 								}
 								scopePermissions = userPermissions;
-								scopePermissions = scopePermissions.restrict(userPermissions.bits());
+								scopePermissions = scopePermissions.restrict(apiKeyPermissions.bits());
 							}
 							case PROJECT -> {
 								Permissions projectPermissions = this.getDatabaseAccess()
@@ -227,7 +227,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 									return ValidationResult.no();
 								}
 								scopePermissions = projectPermissions;
-								scopePermissions = scopePermissions.restrict(projectPermissions.bits());
+								scopePermissions = scopePermissions.restrict(apiKeyPermissions.bits());
 							}
 						}
 					}
