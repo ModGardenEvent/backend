@@ -37,7 +37,7 @@ public final class DatabaseAccess {
 			userStatement.setString(2, projectId);
 			ResultSet resultSet = userStatement.executeQuery();
 			if (!resultSet.isBeforeFirst()) {
-				return new HypertextResult<>(404, "User does not have the specified project role.");
+				return new HypertextResult<>(404, "User does not have a role in the specified project.");
 			}
 
 			return new HypertextResult<>(new Permissions(resultSet.getLong("permissions")));
