@@ -211,7 +211,10 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 								Permissions permissions = this.getDatabaseAccess()
 										.getUserPermissions(userId)
 										.unwrap(ctx);
-								if (permissions == null) return ValidationResult.no();
+								if (permissions == null) {
+									this.setStatusUnauthorized(ctx);
+									return ValidationResult.no();
+								}
 								userPermissions = permissions;
 								userPermissions = userPermissions.restrict(permissions.bits());
 							}
@@ -219,7 +222,10 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 								Permissions permissions = this.getDatabaseAccess()
 										.getProjectPermissions(userId, projectId)
 										.unwrap(ctx);
-								if (permissions == null) return ValidationResult.no();
+								if (permissions == null) {
+									this.setStatusUnauthorized(ctx);
+									return ValidationResult.no();
+								}
 								userPermissions = permissions;
 								userPermissions = userPermissions.restrict(permissions.bits());
 							}
