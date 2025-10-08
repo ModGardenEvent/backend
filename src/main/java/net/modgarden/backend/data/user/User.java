@@ -20,7 +20,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 import static java.util.Map.entry;
 import static net.modgarden.backend.data.Integration.fromCodec;

@@ -17,7 +17,9 @@ import org.jetbrains.annotations.NotNull;
 import java.sql.ResultSet;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 import static java.util.Map.entry;
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;

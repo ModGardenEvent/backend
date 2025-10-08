@@ -9,10 +9,7 @@ import com.mojang.serialization.JsonOps;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import net.modgarden.backend.HypertextResult;
-import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.database.DatabaseAccess;
-import net.modgarden.backend.endpoint.v2.auth.GenerateKeyEndpoint;
 import org.jetbrains.annotations.NotNull;
 
 import java.sql.Connection;
