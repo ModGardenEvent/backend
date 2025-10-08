@@ -16,7 +16,7 @@ public final class DatabaseAccess {
 	public HypertextResult<Permissions> getUserPermissions(String userId) throws SQLException {
 		try (
 				var connection = getDatabaseConnection();
-				var userStatement = connection.prepareStatement("SELECT permissions FROM users WHERE id = ?");
+				var userStatement = connection.prepareStatement("SELECT permissions FROM users WHERE id = ?")
 		) {
 			userStatement.setString(1, userId);
 			ResultSet resultSet = userStatement.executeQuery();
@@ -31,7 +31,7 @@ public final class DatabaseAccess {
 	public HypertextResult<Permissions> getProjectPermissions(String userId, String projectId) throws SQLException {
 		try (
 				var connection = getDatabaseConnection();
-				var userStatement = connection.prepareStatement("SELECT permissions FROM project_roles WHERE user_id = ? AND project_id = ?");
+				var userStatement = connection.prepareStatement("SELECT permissions FROM project_roles WHERE user_id = ? AND project_id = ?")
 		) {
 			userStatement.setString(1, userId);
 			userStatement.setString(2, projectId);

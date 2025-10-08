@@ -36,7 +36,6 @@ public record User(
 		Permissions permissions,
 		Map<String, Integration> integrations
 ) {
-	public static final String USERNAME_REGEX = "^(?=.{3,32}$)[a-z_0-9]+?$";
 	private static final Map<String, Codec<Integration>> INTEGRATION_CODECS = Map.ofEntries(
 			entry("modrinth", fromCodec(ModrinthIntegration.CODEC)),
 			entry("discord", fromCodec(DiscordIntegration.CODEC)),

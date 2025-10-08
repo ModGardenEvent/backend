@@ -260,15 +260,6 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 		return requirePermissions(ctx, userPermissions, new Permissions(permissions));
 	}
 
-	public record HashedSecret(byte[] salt, byte[] hash) {
-		@Override
-		public boolean equals(Object o) {
-			if (!(o instanceof HashedSecret)) return false;
-			if (this == o) return true;
-			return Arrays.equals(salt, ((HashedSecret) o).salt) && Arrays.equals(hash, ((HashedSecret) o).hash);
-		}
-	}
-
 	private record ValidationResult(boolean authorized, String userId, Permissions userPermissions) {
 		public static ValidationResult no() {
 			return new ValidationResult(false, NaturalId.getMissingno(), new Permissions());
