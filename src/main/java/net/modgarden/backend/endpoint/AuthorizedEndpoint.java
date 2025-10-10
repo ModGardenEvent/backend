@@ -98,11 +98,18 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 	///
 	/// ## Past Incidents
 	/// Security incidents related to this method are detailed below.
-	/// If an incident is not documented, create a sub-heading with the date
-	/// and an ominous title.
+	/// If an incident is not documented, create a sub-heading with
+	/// the date, the severity (Minimal, Moderate, Severe), known usage
+	/// (None, Rare, Common, Unknown), and an ominous title.
 	///
-	/// ### `2025-10-06` No Incidents!
+	/// ### `2025-10-06` (Minimal/None) No Incidents!
 	/// Yay.
+	/// ### `2025-10-08` (Moderate/None) Scope Leak
+	/// Prior to commit `bb823cd`, API keys were not correctly scoped.
+	/// Instead, API keys' permissions were restricted only to a
+	/// users' permissions. This is dangerous because administrators'
+	/// and project owners' API keys could access anything they could
+	/// access which violates the [Principle of Least Privilege](https://en.wikipedia.org/wiki/Principle_of_least_privilege).
 	private ValidationResult validateAuth(Context ctx) throws SQLException {
 		String authorization = ctx.header("Authorization");
 		if (authorization == null) {
