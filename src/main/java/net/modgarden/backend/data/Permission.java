@@ -24,7 +24,9 @@ public enum Permission {
 	/// Upload files to the CDN.
 	UPLOAD_TO_CDN(0x20, "upload_to_cdn", USER),
 	/// Generate and delete API keys on behalf of this user or project.
-	MODIFY_API_KEY(0x40, "modify_api_key", ALL),;
+	MODIFY_API_KEY(0x40, "modify_api_key", ALL),
+	/// List, modify, and delete files in the CDN.
+	MANAGE_CDN(0x80, "manage_cdn", USER),;
 
 	/// The default permissions that all users have.
 	///
