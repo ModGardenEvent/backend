@@ -1,10 +1,12 @@
+import org.jetbrains.gradle.ext.runConfigurations
+import org.jetbrains.gradle.ext.settings
+
 plugins {
     application
     java
     idea
     `java-library-distribution`
-	// doesn't work :(
-//    alias(libs.plugins.idea.ext) apply true
+    alias(libs.plugins.idea.ext) apply true
 }
 
 group = "net.modgarden"
@@ -80,19 +82,21 @@ application {
     mainClass = "net.modgarden.backend.ModGardenBackend"
 }
 
-// fixme wake me up when september ends (when idea_ext is fixed)
-//idea {
-//    project {
-//        settings.runConfigurations {
-//            create("Run", Application::class.java) {
-//                workingDirectory = "${rootProject.projectDir}/run"
-//                mainClass = "net.modgarden.backend.ModGardenBackend"
-//                moduleName = project.idea.module.name + ".main"
-//                includeProvidedDependencies = true
-//				envs = mapOf(
-//					"env" to "development"
-//				)
-//            }
-//        }
-//    }
-//}
+idea {
+	project {
+		settings {
+			runConfigurations {
+				create("Run Backend", org.jetbrains.gradle.ext.Application::class.java) {
+					workingDirectory = "${rootProject.projectDir}/run"
+					mainClass = "net.modgarden.backend.ModGardenBackend"
+					moduleName = project.idea.module.name + ".main"
+					includeProvidedDependencies = true
+					envs = mapOf(
+						"env" to "development",
+					)
+					jvmArgs = "--enable-native-access=ALL-UNNAMED"
+				}
+			}
+		}
+	}
+}

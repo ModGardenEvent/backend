@@ -11,7 +11,7 @@ jetbrains_annotations = "0.1.3"
 
 argon2-jvm = "2.12"
 
-#idea_ext = "1.1.9"
+idea_ext = "1.3"
 
 [libraries]
 dfu = { group = "com.mojang", name = "datafixerupper", version.ref = "dfu" }
@@ -29,4 +29,4 @@ jetbrains_annotations = { group = "org.jetbrains", name = "annotations", version
 argon2-jvm = { group = "de.mkammerer", name = "argon2-jvm", version.ref = "argon2-jvm" }
 
 [plugins]
-#idea_ext = { id = "org.jetbrains.gradle.plugin.idea-ext", version.ref = "idea_ext" }
+idea_ext = { id = "org.jetbrains.gradle.plugin.idea-ext", version.ref = "idea_ext" }
