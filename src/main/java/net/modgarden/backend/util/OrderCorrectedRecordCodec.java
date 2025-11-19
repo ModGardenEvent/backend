@@ -5,14 +5,13 @@ import com.mojang.serialization.*;
 
 import java.util.List;
 
-/**
- * Accounts for a DFU bug where RecordCodecBuilder swaps the half-point at which members are encoded.
- * <p>
- * This should only ever modify map encoding, which is where this bug is present.
- *
- * @see <a href="https://github.com/Mojang/DataFixerUpper/issues/101">Mojang/DataFixerUpper#101</a>
- * @param <E> The type parameter of the RecordCodecBuilder.
- */
+/// Accounts for a DFU bug where RecordCodecBuilder swaps the half-point at which members are encoded.
+///
+/// This should only ever modify map encoding, which is where this bug is present.
+///
+/// @see <a href="https://github.com/Mojang/DataFixerUpper/issues/101">Mojang/DataFixerUpper#101</a>
+/// @param <E> The type parameter of the RecordCodecBuilder.
+
 @SuppressWarnings("ClassCanBeRecord")
 public class OrderCorrectedRecordCodec<E> implements Codec<E> {
 	private final Codec<E> codec;
