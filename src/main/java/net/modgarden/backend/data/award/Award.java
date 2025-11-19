@@ -5,7 +5,6 @@ import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import de.mkammerer.snowflakeid.SnowflakeIdGenerator;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.endpoint.Endpoint;
@@ -21,7 +20,6 @@ public record Award(String id,
                     String sprite,
                     String discordEmote,
                     String tooltip) {
-    public static final SnowflakeIdGenerator ID_GENERATOR = SnowflakeIdGenerator.createDefault(4);
     public static final Codec<Award> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Award::id),
             Codec.STRING.fieldOf("slug").forGetter(Award::slug),

@@ -29,12 +29,10 @@ dependencies {
 	implementation(libs.javalin)
     implementation(libs.logback)
     implementation(libs.sqlite)
-    implementation(libs.snowflakeid)
 	implementation(libs.dotenv)
 	implementation(libs.jwt.api)
 	implementation(libs.jwt.impl)
 	implementation(libs.jwt.gson)
-    implementation(libs.base62)
 	implementation(libs.jetbrains.annotations)
 
 	implementation(libs.argon2.jvm)
