@@ -60,7 +60,7 @@ public class OrderCorrectedRecordCodec<E> implements Codec<E> {
 		} else {
 			for (Pair<T, T> entry : newValues.entries().toList()) {
 				T key = entry.getFirst();
-				T value = potentiallyCorrectElement(ops, entry.getFirst());
+				T value = potentiallyCorrectElement(ops, entry.getSecond());
 				builder.add(key, value);
 			}
 		}
