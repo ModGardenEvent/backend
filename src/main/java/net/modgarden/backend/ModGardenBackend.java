@@ -21,16 +21,20 @@ import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.fixer.DatabaseFixer;
 import net.modgarden.backend.data.user.User;
+import net.modgarden.backend.database.function.GenerateNaturalIdFromNumberFunction;
+import net.modgarden.backend.database.function.GenerateNaturalIdFunction;
+import net.modgarden.backend.database.function.UnixMillisFunction;
 import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.endpoint.v2.auth.DeleteKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.GenerateKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.ListKeysEndpoint;
+import net.modgarden.backend.endpoint.v2.project.GetProjectByIdEndpoint;
+import net.modgarden.backend.endpoint.v2.project.GetProjectByModIdEndpoint;
 import net.modgarden.backend.util.AuthUtil;
 import net.modgarden.backend.util.OrderCorrectedRecordCodec;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.sqlite.Function;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,7 +43,6 @@ import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.net.http.HttpClient;
 import java.sql.*;
-import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -69,22 +72,6 @@ public class ModGardenBackend {
 
 		ModGardenBackend.LOG.debug("1 {}, 4 {}, 26 {}, 29 {}, 52 {}, 53 {}, 79 {}", NaturalId.generateFromNumber(1, 2), NaturalId.generateFromNumber(4, 2), NaturalId.generateFromNumber(26, 2), NaturalId.generateFromNumber(29, 2), NaturalId.generateFromNumber(52, 2), NaturalId.generateFromNumber(53, 2), NaturalId.generateFromNumber(79, 2));
 		ModGardenBackend.LOG.debug("1 {}, 4 {}, 26 {}, 29 {}, 52 {}, 53 {}, 79 {}, 675 {}, 676 {}, 677 {}", NaturalId.generateFromNumber(1, 3), NaturalId.generateFromNumber(4, 3), NaturalId.generateFromNumber(26, 3), NaturalId.generateFromNumber(29, 3), NaturalId.generateFromNumber(52, 3), NaturalId.generateFromNumber(53, 3), NaturalId.generateFromNumber(79, 3), NaturalId.generateFromNumber(675, 3), NaturalId.generateFromNumber(676, 3), NaturalId.generateFromNumber(677, 3));
-
-		try {
-			boolean createdFile = new File("./database.db").createNewFile();
-			DatabaseFixer.createFixers();
-			if (createdFile) {
-				createDatabaseContents();
-				updateSchemaVersion();
-				LOG.debug("Successfully created database file.");
-			}
-			DatabaseFixer.fixDatabase();
-			if (!createdFile) {
-				updateSchemaVersion();
-			}
-		} catch (IOException ex) {
-			LOG.error("Failed to create database file.", ex);
-		}
 
 		registerCodec(Landing.class, Landing.CODEC);
 		registerCodec(BackendError.class, BackendError.CODEC);
@@ -116,12 +103,32 @@ public class ModGardenBackend {
 		app.start(7070);
 
 		LOG.info("Mod Garden Backend Started!");
+
+
+		try {
+			boolean createdFile = new File("./database.db").createNewFile();
+			DatabaseFixer.createFixers();
+			if (createdFile) {
+				createDatabaseContents();
+				updateSchemaVersion();
+				LOG.debug("Successfully created database file.");
+			}
+			DatabaseFixer.fixDatabase();
+			if (!createdFile) {
+				updateSchemaVersion();
+			}
+		} catch (IOException ex) {
+			LOG.error("Failed to create database file.", ex);
+		}
 	}
 
 	public void v2() {
 		post(GenerateKeyEndpoint::new);
 		delete(DeleteKeyEndpoint::new);
 		get(ListKeysEndpoint::new);
+
+		get(GetProjectByIdEndpoint::new);
+		get(GetProjectByModIdEndpoint::new);
 	}
 
 	private void get(Supplier<Endpoint> endpointSupplier) {
@@ -267,9 +274,21 @@ public class ModGardenBackend {
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS projects (
 				id TEXT UNIQUE NOT NULL,
-				slug TEXT UNIQUE NOT NULL,
 				PRIMARY KEY (id)
 			)
+			""");
+			statement.addBatch("""
+				CREATE TABLE IF NOT EXISTS project_metadata (
+					project_id TEXT UNIQUE NOT NULL,
+					mod_id TEXT NOT NULL,
+					name TEXT NOT NULL,
+					description TEXT,
+					source_url TEXT NOT NULL,
+					icon_url TEXT NOT NULL,
+					banner_url TEXT,
+					FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
+					PRIMARY KEY (project_id)
+				)
 			""");
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS project_roles (
@@ -352,36 +371,11 @@ public class ModGardenBackend {
 				PRIMARY KEY (code)
 			)
 			""");
-			Function.create(
-					connection, "generate_natural_id", new Function() {
-						@Override
-						protected void xFunc() throws SQLException {
-							String table = this.value_text(0);
-							String key = this.value_text(1);
-							String key2 = this.value_text(2);
-							int length = this.value_int(3);
-							this.result(NaturalId.generate(table, key, key2, length));
-						}
-					}
-			);
-			Function.create(
-					connection, "generate_natural_id_from_number", new Function() {
-						@Override
-						protected void xFunc() throws SQLException {
-							int number = this.value_int(0);
-							int length = this.value_int(1);
-							this.result(NaturalId.generateFromNumber(number, length));
-						}
-					}
-			);
-			Function.create(
-					connection, "unix_millis", new Function() {
-						@Override
-						protected void xFunc() throws SQLException {
-							this.result(Instant.now().toEpochMilli());
-						}
-					}
-			);
+
+			GenerateNaturalIdFunction.INSTANCE.create(connection);
+			GenerateNaturalIdFromNumberFunction.INSTANCE.create(connection);
+			UnixMillisFunction.INSTANCE.create(connection);
+
 			statement.executeBatch();
 		} catch (SQLException ex) {
 			LOG.error("Failed to create database tables. ", ex);

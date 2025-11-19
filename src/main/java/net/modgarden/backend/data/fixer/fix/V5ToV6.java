@@ -1,13 +1,15 @@
 package net.modgarden.backend.data.fixer.fix;
 
-import net.modgarden.backend.data.NaturalId;
 import net.modgarden.backend.data.fixer.DatabaseFix;
+import net.modgarden.backend.database.function.GenerateNaturalIdFromNumberFunction;
+import net.modgarden.backend.database.function.GenerateNaturalIdFunction;
+import net.modgarden.backend.database.function.UnixMillisFunction;
+import net.modgarden.backend.util.metadata.MetadataUtils;
 import org.jetbrains.annotations.Nullable;
 import org.sqlite.Function;
 
 import java.sql.Connection;
 import java.sql.SQLException;
-import java.time.Instant;
 import java.util.function.Consumer;
 
 public class V5ToV6 extends DatabaseFix {
@@ -19,36 +21,9 @@ public class V5ToV6 extends DatabaseFix {
 	public @Nullable Consumer<Connection> fix(Connection connection) throws SQLException {
 		var statement = connection.createStatement();
 
-		Function.create(
-				connection, "generate_natural_id", new Function() {
-					@Override
-					protected void xFunc() throws SQLException {
-						String table = this.value_text(0);
-						String key = this .value_text(1);
-						String key2 = this.value_text(2);
-						int length = this.value_int(3);
-						this.result(NaturalId.generate(table, key, key2, length));
-					}
-				}
-		);
-		Function.create(
-				connection, "generate_natural_id_from_number", new Function() {
-					@Override
-					protected void xFunc() throws SQLException {
-						int number = this.value_int(0);
-						int length = this.value_int(1);
-						this.result(NaturalId.generateFromNumber(number, length));
-					}
-				}
-		);
-		Function.create(
-				connection, "unix_millis", new Function() {
-					@Override
-					protected void xFunc() throws SQLException {
-						this.result(Instant.now().toEpochMilli());
-					}
-				}
-		);
+		GenerateNaturalIdFunction.INSTANCE.create(connection);
+		GenerateNaturalIdFromNumberFunction.INSTANCE.create(connection);
+		UnixMillisFunction.INSTANCE.create(connection);
 
 		// temp functions for the datafixer
 		Function.create(
@@ -148,13 +123,12 @@ public class V5ToV6 extends DatabaseFix {
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS projects (
 			id TEXT UNIQUE NOT NULL,
-			slug TEXT UNIQUE NOT NULL,
 			PRIMARY KEY (id)
 		)
 		""");
 		statement.addBatch("""
-		INSERT INTO projects (id, slug)
-		SELECT id, slug FROM projects_old
+		INSERT INTO projects (id)
+		SELECT id FROM projects_old
 		""");
 
 		statement.addBatch("""
@@ -437,8 +411,50 @@ public class V5ToV6 extends DatabaseFix {
 		SET slug = clean_slug_mg(slug)
 		""");
 
+		statement.addBatch("""
+		CREATE TABLE IF NOT EXISTS project_metadata (
+			project_id TEXT UNIQUE NOT NULL,
+			mod_id TEXT NOT NULL,
+			name TEXT NOT NULL,
+			description TEXT,
+			source_url TEXT NOT NULL,
+			icon_url TEXT NOT NULL,
+			banner_url TEXT,
+			FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			PRIMARY KEY (project_id)
+		)
+		""");
 
 		statement.executeBatch();
+
+		var modrinthSubmissions = connection.prepareStatement("""
+			SELECT s.project_id, mr.modrinth_id, mr.version_id
+			FROM submission_type_modrinth mr
+			INNER JOIN submissions s ON s.id = mr.submission_id
+		""").executeQuery();
+		var projectMetadataInsertStatement = connection.prepareStatement("INSERT INTO project_metadata VALUES (?, ?, ?, ?, ?, ?, ?)");
+
+		if (modrinthSubmissions.isBeforeFirst()) {
+			while (modrinthSubmissions.next()) {
+				String projectId = modrinthSubmissions.getString("project_id");
+				String modrinthId = modrinthSubmissions.getString("modrinth_id");
+				String modrinthVersionId = modrinthSubmissions.getString("version_id");
+
+				try {
+					var modrinthData = MetadataUtils.getMetadataFromModrinth(modrinthId, modrinthVersionId);
+					projectMetadataInsertStatement.setString(1, projectId);
+					projectMetadataInsertStatement.setString(2, modrinthData.modId());
+					projectMetadataInsertStatement.setString(3, modrinthData.name());
+					projectMetadataInsertStatement.setString(4, modrinthData.description());
+					projectMetadataInsertStatement.setString(5, modrinthData.sourceUrl());
+					projectMetadataInsertStatement.setString(6, modrinthData.iconUrl());
+					projectMetadataInsertStatement.setString(7, modrinthData.bannerUrl());
+					projectMetadataInsertStatement.executeUpdate();
+				} catch (Exception e) {
+					throw new RuntimeException(e);
+				}
+			}
+		}
 
 		return dropConnection -> {
 			try {
