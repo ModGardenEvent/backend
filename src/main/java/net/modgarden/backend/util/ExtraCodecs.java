@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Map;
 import java.util.UUID;
 
 public class ExtraCodecs {
@@ -21,4 +22,6 @@ public class ExtraCodecs {
 			string -> Instant.ofEpochMilli(Long.parseLong(string)),
 			instant -> Long.toString(instant.toEpochMilli())
 	);
+
+	public static final Codec<Map<String, Object>> EXT_CODEC = Codec.unboundedMap(Codec.STRING, new ExtObjectCodec());
 }

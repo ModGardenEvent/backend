@@ -1,254 +1,46 @@
 package net.modgarden.backend.data.event;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
-import com.mojang.serialization.JsonOps;
+import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.endpoint.Endpoint;
+import net.modgarden.backend.data.Platform;
+import net.modgarden.backend.data.event.platform.DownloadUrlPlatform;
+import net.modgarden.backend.data.event.platform.ModrinthPlatform;
 import net.modgarden.backend.util.ExtraCodecs;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Map;
 
-// TODO: Potentially allow GitHub only submissions. Not necessarily now, but more notes on this will be placed in internal team chats. - Calico
+import static java.util.Map.entry;
+
 public record Submission(String id,
                          String event,
+						 ZonedDateTime submitted,
 						 Project project,
-                         String modrinthVersionId,
-						 ZonedDateTime submitted) {
+						 Platform platform) {
+	private static final Map<String, MapCodec<Platform>> PLATFORM_CODECS = Map.ofEntries(
+			entry("modrinth", mapPlatformCodec(ModrinthPlatform.CODEC)),
+			entry("download_url", mapPlatformCodec(DownloadUrlPlatform.CODEC))
+	);
+	@SuppressWarnings("unchecked")
+	private static <P extends Platform> MapCodec<Platform> mapPlatformCodec(MapCodec<P> platformCodec) {
+		return platformCodec.xmap(p -> p, p -> (P)p);
+	}
+
 	public static final Codec<Submission> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Submission::id),
             Event.ID_CODEC.fieldOf("event").forGetter(Submission::event),
+			ExtraCodecs.ISO_DATE_TIME.fieldOf("time_submitted").forGetter(Submission::submitted),
 			Project.DIRECT_CODEC.fieldOf("project").forGetter(Submission::project),
-            Codec.STRING.fieldOf("modrinth_version_id").forGetter(Submission::modrinthVersionId),
-            ExtraCodecs.ISO_DATE_TIME.fieldOf("submitted").forGetter(Submission::submitted)
+			Codec.STRING.dispatch(Platform::getName, PLATFORM_CODECS::get).fieldOf("platform").forGetter(Submission::platform)
     ).apply(inst, Submission::new));
 	public static final Codec<String> ID_CODEC = Codec.STRING.validate(Submission::validate);
-	public static final Codec<Submission> CODEC = ID_CODEC.xmap(Submission::innerQuery, Submission::id);
-
-    public static void getSubmission(Context ctx) {
-        String path = ctx.pathParam("submission");
-        if (!path.matches(Endpoint.SAFE_URL_REGEX)) {
-            ctx.result("Illegal characters in path '" + path + "'.");
-            ctx.status(422);
-            return;
-        }
-        Submission submission = innerQuery(path);
-        if (submission == null) {
-            ModGardenBackend.LOG.error("Could not find submission '{}'.", path);
-            ctx.result("Could not find submission '" + path + "'.");
-            ctx.status(404);
-            return;
-        }
-
-        ModGardenBackend.LOG.debug("Successfully queried submission from path '{}'", path);
-        ctx.json(submission);
-    }
-
-	public static void getSubmissionsByUser(Context ctx) {
-		String user = ctx.pathParam("user");
-		if (!user.matches(Endpoint.SAFE_URL_REGEX)) {
-			ctx.result("Illegal characters in path '" + user + "'.");
-			ctx.status(422);
-			return;
-		}
-		var queryString = selectByUserStatement();
-		try (Connection connection = ModGardenBackend.createDatabaseConnection()) {
-			PreparedStatement prepared = connection.prepareStatement(queryString);
-			prepared.setString(1, user);
-			prepared.setString(2, user);
-			ResultSet result = prepared.executeQuery();
-			var submissions = new JsonArray();
-			while (result.next()) {
-				var submission = new JsonObject();
-				submission.addProperty("id", result.getString("id"));
-				submission.addProperty("event", result.getString("event"));
-				submission.addProperty("modrinth_version_id", result.getString("modrinth_version_id"));
-				submission.addProperty("submitted", result.getLong("submitted"));
-
-				String projectId = result.getString("project_id");
-				Project project = Project.queryFromId(projectId);
-				if (project == null)
-					throw new SQLException("Could not find project '" + projectId + "'.");
-				submission.add("project", Project.DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, project).getOrThrow(SQLException::new));
-
-				submissions.add(submission);
-			}
-			ctx.json(submissions);
-		} catch (SQLException ex) {
-			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
-		}
-	}
-
-	public static void getSubmissionsByEvent(Context ctx) {
-		String event = ctx.pathParam("event");
-		if (!event.matches(Endpoint.SAFE_URL_REGEX)) {
-			ctx.result("Illegal characters in path '" + event + "'.");
-			ctx.status(422);
-			return;
-		}
-		var queryString = selectByEventStatement();
-		try (Connection connection = ModGardenBackend.createDatabaseConnection()) {
-			PreparedStatement prepared = connection.prepareStatement(queryString);
-			prepared.setString(1, event);
-			prepared.setString(2, event);
-			ResultSet result = prepared.executeQuery();
-			var submissions = new JsonArray();
-			while (result.next()) {
-				var submission = new JsonObject();
-				submission.addProperty("id", result.getString("id"));
-				submission.addProperty("event", result.getString("event"));
-				submission.addProperty("modrinth_version_id", result.getString("modrinth_version_id"));
-				submission.addProperty("submitted", result.getLong("submitted"));
-
-				String projectId = result.getString("project_id");
-				Project project = Project.queryFromId(projectId);
-				if (project == null)
-					throw new SQLException("Could not find project '" + projectId + "'.");
-				submission.add("project", Project.DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, project).getOrThrow(SQLException::new));
-
-				submissions.add(submission);
-			}
-			ctx.json(submissions);
-		} catch (SQLException ex) {
-			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
-		}
-	}
-
-	public static void getSubmissionsByUserAndEvent(Context ctx) {
-		String user = ctx.pathParam("user");
-		String event = ctx.pathParam("event");
-		if (!user.matches(Endpoint.SAFE_URL_REGEX)) {
-			ctx.result("Illegal characters in path '" + user + "'.");
-			ctx.status(422);
-			return;
-		}
-		if (!event.matches(Endpoint.SAFE_URL_REGEX)) {
-			ctx.result("Illegal characters in path '" + event + "'.");
-			ctx.status(422);
-			return;
-		}
-		var queryString = selectByUserAndEventStatement();
-		try (Connection connection = ModGardenBackend.createDatabaseConnection();
-			 PreparedStatement eventStatement = connection.prepareStatement(queryString)) {
-			eventStatement.setString(1, user);
-			eventStatement.setString(2, user);
-			eventStatement.setString(3, event);
-			eventStatement.setString(4, event);
-			ResultSet result = eventStatement.executeQuery();
-			var submissions = new JsonArray();
-			while (result.next()) {
-				var submission = new JsonObject();
-				submission.addProperty("id", result.getString("id"));
-				submission.addProperty("event", result.getString("event"));
-				submission.addProperty("modrinth_version_id", result.getString("modrinth_version_id"));
-				submission.addProperty("submitted", result.getLong("submitted"));
-
-				String projectId = result.getString("project_id");
-				Project project = Project.queryFromId(projectId);
-				if (project == null)
-					throw new SQLException("Could not find project '" + projectId + "'.");
-				submission.add("project", Project.DIRECT_CODEC.encodeStart(JsonOps.INSTANCE, project).getOrThrow(SQLException::new));
-
-				submissions.add(submission);
-			}
-			ctx.json(submissions);
-		} catch (SQLException ex) {
-			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
-		}
-	}
-
-    public static Submission innerQuery(String id) {
-        try (Connection connection = ModGardenBackend.createDatabaseConnection();
-             PreparedStatement prepared = connection.prepareStatement(selectStatement())) {
-            prepared.setString(1, id);
-            ResultSet result = prepared.executeQuery();
-            if (!result.isBeforeFirst())
-                return null;
-
-
-			String projectId = result.getString("project_id");
-			Project project = Project.queryFromId(projectId);
-			if (project == null)
-				throw new SQLException("Could not find project '" + projectId + "'.");
-
-			return new Submission(
-					result.getString("id"),
-					result.getString("event"),
-					project,
-					result.getString("modrinth_version_id"),
-					ZonedDateTime.ofInstant(Instant.ofEpochMilli(result.getLong("submitted")), ZoneId.of("GMT"))
-			);
-        } catch (SQLException ex) {
-            ModGardenBackend.LOG.error("Exception in SQL query.", ex);
-        }
-        return null;
-    }
-
-    private static String selectStatement() {
-        return """
-					SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
-					FROM
-						submissions s
-					WHERE
-						s.id = ?
-					GROUP BY
-						s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
-				""";
-    }
-
-	private static String selectByUserStatement() {
-		return """
-					SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
-					FROM submissions s
-						LEFT JOIN projects p on p.id = s.project_id
-						LEFT JOIN project_authors a on a.project_id = s.project_id
-					WHERE a.user_id IN (
-						SELECT u.id
-						FROM users u
-						WHERE u.id = ? OR u.username = ?
-					)
-					GROUP BY s.id
-			""";
-	}
-
-	private static String selectByEventStatement() {
-		return """
-			SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
-			FROM submissions s
-				LEFT JOIN events e on e.id = s.event
-				WHERE s.event = ? OR e.slug = ?
-				GROUP BY s.id
-			""";
-	}
-
-	private static String selectByUserAndEventStatement() {
-		return """
-					SELECT s.id, s.project_id, s.event, s.modrinth_version_id, s.submitted
-					FROM submissions s
-						LEFT JOIN projects p on p.id = s.project_id
-						LEFT JOIN project_authors a on a.project_id = s.project_id
-					WHERE a.user_id IN (
-						SELECT u.id
-						FROM users u
-						WHERE u.id = ? OR u.username = ?
-					) AND s.event IN (
-						SELECT e.id
-						FROM events e
-						WHERE e.id = ? OR e.slug = ?
-					)
-					GROUP BY s.id
-			""";
-	}
 
 	private static DataResult<String> validate(String id) {
 		try (Connection connection = ModGardenBackend.createDatabaseConnection();
