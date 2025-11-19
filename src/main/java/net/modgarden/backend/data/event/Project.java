@@ -18,14 +18,14 @@ public record Project(String id,
 					  String slug,
 					  ProjectMetadata metadata,
 					  Map<String, String> team,
-					  Map<String, String> permissions,
+					  Map<String, Long> permissions,
 					  Map<String, Object> ext) {
 	public static final Codec<Project> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Project::id),
             Codec.STRING.fieldOf("slug").forGetter(Project::slug),
 			ProjectMetadata.CODEC.fieldOf("metadata").forGetter(Project::metadata),
 			Codec.unboundedMap(User.ID_CODEC, Codec.STRING).fieldOf("team").forGetter(Project::team),
-			Codec.unboundedMap(User.ID_CODEC, Codec.STRING).fieldOf("permissions").forGetter(Project::permissions),
+			Codec.unboundedMap(User.ID_CODEC, Codec.LONG).fieldOf("permissions").forGetter(Project::permissions),
 			ExtraCodecs.EXT_CODEC.fieldOf("ext").forGetter(Project::ext)
     ).apply(inst, Project::new)));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(Project::validate);
