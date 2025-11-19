@@ -80,7 +80,7 @@ application {
     mainClass = "net.modgarden.backend.ModGardenBackend"
 }
 
-// When refreshing the project, the entire build.gradle.kts may error because of IDEA Ext.
+// When refreshing the project, the entire build.gradle.kts may visually error because of IDEA Ext.
 // Refresh the project again to fix this. We'll likely have to report this to JetBrains.
 idea {
 	project {
