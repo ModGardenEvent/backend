@@ -26,6 +26,7 @@ import net.modgarden.backend.endpoint.v2.auth.DeleteKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.GenerateKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.ListKeysEndpoint;
 import net.modgarden.backend.util.AuthUtil;
+import net.modgarden.backend.util.OrderCorrectedRecordCodec;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -85,17 +86,17 @@ public class ModGardenBackend {
 			LOG.error("Failed to create database file.", ex);
 		}
 
-		CODEC_REGISTRY.put(Landing.class, Landing.CODEC);
-		CODEC_REGISTRY.put(BackendError.class, BackendError.CODEC);
-		CODEC_REGISTRY.put(Award.class, Award.DIRECT_CODEC);
-		CODEC_REGISTRY.put(Event.class, Event.DIRECT_CODEC);
-		CODEC_REGISTRY.put(Project.class, Project.DIRECT_CODEC);
-		CODEC_REGISTRY.put(Submission.class, Submission.DIRECT_CODEC);
-		CODEC_REGISTRY.put(User.class, User.DIRECT_CODEC);
-		CODEC_REGISTRY.put(AwardInstance.FullAwardData.class, AwardInstance.FullAwardData.CODEC);
-		CODEC_REGISTRY.put(GenerateKeyEndpoint.Request.class, GenerateKeyEndpoint.Request.CODEC);
-		CODEC_REGISTRY.put(GenerateKeyEndpoint.Response.class, GenerateKeyEndpoint.Response.CODEC);
-		CODEC_REGISTRY.put(ListKeysEndpoint.Response.class, ListKeysEndpoint.Response.CODEC);
+		registerCodec(Landing.class, Landing.CODEC);
+		registerCodec(BackendError.class, BackendError.CODEC);
+		registerCodec(Award.class, Award.DIRECT_CODEC);
+		registerCodec(Event.class, Event.DIRECT_CODEC);
+		registerCodec(Project.class, Project.DIRECT_CODEC);
+		registerCodec(Submission.class, Submission.DIRECT_CODEC);
+		registerCodec(User.class, User.DIRECT_CODEC);
+		registerCodec(AwardInstance.FullAwardData.class, AwardInstance.FullAwardData.CODEC);
+		registerCodec(GenerateKeyEndpoint.Request.class, GenerateKeyEndpoint.Request.CODEC);
+		registerCodec(GenerateKeyEndpoint.Response.class, GenerateKeyEndpoint.Response.CODEC);
+		registerCodec(ListKeysEndpoint.Response.class, ListKeysEndpoint.Response.CODEC);
 
 		Landing.createInstance();
 		AuthUtil.clearTokensEachFifteenMinutes();
@@ -408,6 +409,10 @@ public class ModGardenBackend {
 			return;
 		}
 		LOG.debug("Updated database schema version.");
+	}
+
+	private static void registerCodec(Type type, Codec<?> codec) {
+		CODEC_REGISTRY.put(type, new OrderCorrectedRecordCodec<>(codec));
 	}
 
 	private static JsonMapper createDFUMapper() {
