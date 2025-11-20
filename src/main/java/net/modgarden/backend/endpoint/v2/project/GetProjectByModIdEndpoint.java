@@ -23,23 +23,21 @@ public class GetProjectByModIdEndpoint extends GetProjectEndpoint {
 
 		try (
 				var connection = this.getDatabaseConnection();
-				var projectStatement = connection.prepareStatement("SELECT project_id FROM project_metadata WHERE mod_id = ?")
+				var projectMetadataStatement = connection.prepareStatement("""
+					SELECT project_id
+					FROM project_metadata
+					WHERE mod_id = ?
+				""")
 		) {
-			projectStatement.setString(1, modId);
-			ResultSet projectResult = projectStatement.executeQuery();
+			projectMetadataStatement.setString(1, modId);
+			ResultSet projectResult = projectMetadataStatement.executeQuery();
 			if (!projectResult.isBeforeFirst()) {
 				ctx.result("Could not find project from mod id '" + modId + "'.");
 				ctx.status(404);
 				return;
 			}
 			String projectId = projectResult.getString("project_id");
-			Project project = getProjectFromId(connection, projectId);
-
-			if (project == null) {
-				ctx.result("Could not create project object from mod id '" + modId + "'.");
-				ctx.status(500);
-				return;
-			}
+			Project project = GetProjectEndpoint.getProjectFromId(connection, projectId);
 
 			ctx.json(project);
 			ctx.status(200);

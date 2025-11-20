@@ -28,6 +28,8 @@ import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.endpoint.v2.auth.DeleteKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.GenerateKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.ListKeysEndpoint;
+import net.modgarden.backend.endpoint.v2.event.GetSubmissionByIdEndpoint;
+import net.modgarden.backend.endpoint.v2.event.GetSubmissionByModIdEndpoint;
 import net.modgarden.backend.endpoint.v2.project.GetProjectByIdEndpoint;
 import net.modgarden.backend.endpoint.v2.project.GetProjectByModIdEndpoint;
 import net.modgarden.backend.util.AuthUtil;
@@ -129,6 +131,9 @@ public class ModGardenBackend {
 
 		get(GetProjectByIdEndpoint::new);
 		get(GetProjectByModIdEndpoint::new);
+
+		get(GetSubmissionByIdEndpoint::new);
+		get(GetSubmissionByModIdEndpoint::new);
 	}
 
 	private void get(Supplier<Endpoint> endpointSupplier) {

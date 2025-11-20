@@ -3,14 +3,12 @@ package net.modgarden.backend.endpoint.v2.project;
 import io.javalin.http.Context;
 import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.endpoint.Endpoint;
-import net.modgarden.backend.endpoint.EndpointPath;
 import org.jetbrains.annotations.NotNull;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.util.*;
 
-@EndpointPath("/v2/auth")
 public abstract class GetProjectEndpoint extends Endpoint {
 	public GetProjectEndpoint(String path) {
 		super(2, "project/" + path);
@@ -19,7 +17,8 @@ public abstract class GetProjectEndpoint extends Endpoint {
 	@Override
 	public abstract void handle(@NotNull Context ctx) throws Exception;
 
-	protected Project getProjectFromId(@NotNull Connection connection, @NotNull String projectId) throws Exception {
+	public static Project getProjectFromId(@NotNull Connection connection,
+										   @NotNull String projectId) throws Exception {
 		Map<String, String> team = new HashMap<>();
 		Map<String, Long> permissions = new HashMap<>();
 		List<String> submissions = new ArrayList<>();

@@ -1,4 +1,4 @@
-package net.modgarden.backend.util.metadata;
+package net.modgarden.backend.util;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -32,7 +32,7 @@ public class MetadataUtils {
 														   String modrinthVersionId) throws Exception {
 		ModrinthOAuthClient authClient = OAuthService.MODRINTH.authenticate();
 
-		ExternalData externalData = ModrinthMetadataUtils.getModrinthExternalData(authClient, modrinthProjectId);
+		ExternalData externalData = ModrinthUtils.getModrinthExternalData(authClient, modrinthProjectId);
 
 		HttpResponse<InputStream> versionResponse = authClient
 				.get(

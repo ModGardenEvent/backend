@@ -22,7 +22,11 @@ public class GetProjectByIdEndpoint extends GetProjectEndpoint {
 		String projectId = ctx.pathParam("project_id");
 		try (
 				var connection = this.getDatabaseConnection();
-				var projectStatement = connection.prepareStatement("SELECT 1 FROM projects WHERE id = ?")
+				var projectStatement = connection.prepareStatement("""
+					SELECT 1
+					FROM projects
+					WHERE id = ?
+				""")
 		) {
 			projectStatement.setString(1, projectId);
 			ResultSet projectResult = projectStatement.executeQuery();
@@ -32,14 +36,7 @@ public class GetProjectByIdEndpoint extends GetProjectEndpoint {
 				return;
 			}
 
-			Project project = getProjectFromId(connection, projectId);
-
-			if (project == null) {
-				ctx.result("Could not create project object from id '" + projectId + "'.");
-				ctx.status(500);
-				return;
-			}
-
+			Project project = GetProjectEndpoint.getProjectFromId(connection, projectId);
 			ctx.json(project);
 			ctx.status(200);
 		}
