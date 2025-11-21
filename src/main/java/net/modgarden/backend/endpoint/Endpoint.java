@@ -27,6 +27,11 @@ public abstract class Endpoint implements Handler {
 		this.path = "/v" + version + "/" + path;
 	}
 
+	// for our other types of Endpoints that don't follow the /vN/<path> convention
+	Endpoint(String path) {
+		this.path = path;
+	}
+
 	@Override
 	public void handle(@NotNull Context ctx) throws Exception {
 		// validate all path params

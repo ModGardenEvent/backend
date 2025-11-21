@@ -37,6 +37,12 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 		this.hasBody = hasBody;
 	}
 
+	AuthorizedEndpoint(String path, PermissionScope permissionScope, boolean hasBody) {
+		super(path);
+		this.permissionScope = permissionScope;
+		this.hasBody = hasBody;
+	}
+
 	public static String generateRandomToken() {
 			return generateSecretString(10);
 	}
