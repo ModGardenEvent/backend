@@ -48,8 +48,6 @@ public abstract class GetProjectEndpoint extends Endpoint {
 
 			return new Project(
 					projectId,
-					// TODO: Add project types to database.
-					Project.Type.MOD,
 					new Project.Metadata(
 							projectMetadataResult.getString("mod_id"),
 							projectMetadataResult.getString("name"),
