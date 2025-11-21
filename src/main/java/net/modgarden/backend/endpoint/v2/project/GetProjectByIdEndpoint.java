@@ -11,10 +11,10 @@ import java.sql.ResultSet;
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.GET;
 
 @EndpointMethod(GET)
-@EndpointPath("/v2/project/id/{project_id}")
+@EndpointPath("/v2/project/{project_id}")
 public class GetProjectByIdEndpoint extends GetProjectEndpoint {
 	public GetProjectByIdEndpoint() {
-		super("id/{project_id}");
+		super("{project_id}");
 	}
 
 	@Override
@@ -31,7 +31,7 @@ public class GetProjectByIdEndpoint extends GetProjectEndpoint {
 			projectStatement.setString(1, projectId);
 			ResultSet projectResult = projectStatement.executeQuery();
 			if (!projectResult.isBeforeFirst()) {
-				ctx.result("Could not find project from id '" + projectId + "'.");
+				ctx.result("Could not find project from id '" + projectId + "'");
 				ctx.status(404);
 				return;
 			}
