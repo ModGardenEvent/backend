@@ -26,7 +26,9 @@ public enum Permission {
 	/// Generate and delete API keys on behalf of this user or project.
 	MODIFY_API_KEY(0x40, "modify_api_key", ALL),
 	/// List, modify, and delete files in the CDN.
-	MANAGE_CDN(0x80, "manage_cdn", USER),;
+	MANAGE_CDN(0x80, "manage_cdn", USER),
+	// Edit events and hide them.
+	EDIT_EVENT(0x100, "edit_event", USER);
 
 	/// The default permissions that all users have.
 	///
