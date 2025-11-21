@@ -38,10 +38,10 @@ public final class NaturalId {
 		return isValid(id) || PATTERN_LEGACY.matcher(id).hasMatch();
 	}
 
-	private static String generateUnchecked(int length, long seed) {
+	private static String generateUnchecked(int length, @Nullable Long seed) {
 		StringBuilder builder = new StringBuilder();
-		RandomGenerator random;
-		random = RandomGeneratorFactory.getDefault().create(seed);
+		RandomGenerator random = seed != null ? RandomGeneratorFactory.getDefault().create(seed) :
+				RandomGenerator.getDefault();
 		for (int i = 0; i < length; i++) {
 			builder.append(ALPHABET.charAt(random.nextInt(ALPHABET.length())));
 		}
@@ -54,9 +54,6 @@ public final class NaturalId {
 		String id = null;
 		try (Connection connection1 = ModGardenBackend.createDatabaseConnection()) {
 			while (id == null) {
-				if (seed == null) {
-					seed = RandomGenerator.getDefault().nextLong();
-				}
 				String naturalId = generateUnchecked(length, seed);
 				PreparedStatement exists;
 				if (key2 != null) {
@@ -74,7 +71,9 @@ public final class NaturalId {
 				if (!resultSet.getBoolean(1) && !isReserved(naturalId)) {
 					id = naturalId;
 				}
-				seed = null;
+				if (seed != null) {
+					seed = RandomGeneratorFactory.getDefault().create(seed).nextLong();
+				}
 			}
 		}
 		return id;
