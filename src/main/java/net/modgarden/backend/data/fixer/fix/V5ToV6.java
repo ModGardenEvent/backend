@@ -1,6 +1,5 @@
 package net.modgarden.backend.data.fixer.fix;
 
-import net.modgarden.backend.data.NaturalId;
 import net.modgarden.backend.data.fixer.DatabaseFix;
 import net.modgarden.backend.util.MetadataUtils;
 import org.jetbrains.annotations.Nullable;
@@ -20,18 +19,6 @@ public class V5ToV6 extends DatabaseFix {
 		var statement = connection.createStatement();
 
 		// temp functions for the datafixer
-		Function.create(
-				connection, "generate_natural_id_from_snowflake_id", new Function() {
-					@Override
-					protected void xFunc() throws SQLException {
-						String table = this.value_text(0);
-						String snowflakeId = this.value_text(1);
-						long seed = Long.parseLong(snowflakeId);
-
-						this.result(NaturalId.generate(table, "id", null, 5, seed));
-					}
-				}
-		);
 		Function.create(
 				connection, "clean_slug_mg", new Function() {
 					@Override

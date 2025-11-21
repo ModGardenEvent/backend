@@ -2,14 +2,12 @@ package net.modgarden.backend.data;
 
 import net.modgarden.backend.ModGardenBackend;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.random.RandomGenerator;
-import java.util.random.RandomGeneratorFactory;
 import java.util.regex.Pattern;
 
 public final class NaturalId {
@@ -38,10 +36,9 @@ public final class NaturalId {
 		return isValid(id) || PATTERN_LEGACY.matcher(id).hasMatch();
 	}
 
-	private static String generateUnchecked(int length, @Nullable Long seed) {
+	private static String generateUnchecked(int length) {
 		StringBuilder builder = new StringBuilder();
-		RandomGenerator random = seed != null ? RandomGeneratorFactory.getDefault().create(seed) :
-				RandomGenerator.getDefault();
+		RandomGenerator random = RandomGenerator.getDefault();
 		for (int i = 0; i < length; i++) {
 			builder.append(ALPHABET.charAt(random.nextInt(ALPHABET.length())));
 		}
@@ -50,11 +47,11 @@ public final class NaturalId {
 
 	@NotNull
 	public static String generate(String table, String key, String key2,
-								  int length, @Nullable Long seed) throws SQLException {
+								  int length) throws SQLException {
 		String id = null;
 		try (Connection connection1 = ModGardenBackend.createDatabaseConnection()) {
 			while (id == null) {
-				String naturalId = generateUnchecked(length, seed);
+				String naturalId = generateUnchecked(length);
 				PreparedStatement exists;
 				if (key2 != null) {
 					exists = connection1.prepareStatement("SELECT 1 FROM " + table + " WHERE ? = ? OR ? = ?");
@@ -70,9 +67,6 @@ public final class NaturalId {
 				ResultSet resultSet = exists.executeQuery();
 				if (!resultSet.getBoolean(1) && !isReserved(naturalId)) {
 					id = naturalId;
-				}
-				if (seed != null) {
-					seed = RandomGeneratorFactory.getDefault().create(seed).nextLong();
 				}
 			}
 		}
