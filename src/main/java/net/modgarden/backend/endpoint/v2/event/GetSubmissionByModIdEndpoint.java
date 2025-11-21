@@ -14,7 +14,7 @@ import static net.modgarden.backend.endpoint.EndpointMethod.Method.GET;
 @EndpointPath("/v2/event/{event_type_slug}/{event_slug}/mod_id/{mod_id}")
 public class GetSubmissionByModIdEndpoint extends GetSubmissionEndpoint {
 	public GetSubmissionByModIdEndpoint() {
-		super("mod_id/{mod_id}");
+		super("event/{event_type_slug}/{event_slug}/mod_id/{mod_id}");
 	}
 
 	@SuppressWarnings("DuplicatedCode")
@@ -46,7 +46,7 @@ public class GetSubmissionByModIdEndpoint extends GetSubmissionEndpoint {
 			var projectMetadataResult = projectMetadataStatement.executeQuery();
 
 			if (!projectMetadataResult.isBeforeFirst()) {
-				ctx.result("Could not find mod with id '" + modId + "'.");
+				ctx.result("Could not find mod with id '" + modId + "'");
 				ctx.status(404);
 				return;
 			}
@@ -56,7 +56,7 @@ public class GetSubmissionByModIdEndpoint extends GetSubmissionEndpoint {
 			var eventResult = eventStatement.executeQuery();
 
 			if (!eventResult.isBeforeFirst()) {
-				ctx.result("Could not find event '" + eventSlug + "' for event type '" + eventTypeSlug + "'.");
+				ctx.result("Could not find event '" + eventSlug + "' for event type '" + eventTypeSlug + "'");
 				ctx.status(404);
 				return;
 			}
@@ -71,7 +71,7 @@ public class GetSubmissionByModIdEndpoint extends GetSubmissionEndpoint {
 			String submissionId = submissionsResult.getString("id");
 
 			if (submissionId == null) {
-				ctx.result("Could not find submission for mod with ID '" + modId + "' for event '" + eventSlug + "' for event type '" + eventTypeSlug + "'.");
+				ctx.result("Could not find submission for mod with ID '" + modId + "' for event '" + eventSlug + "' for event type '" + eventTypeSlug + "'");
 				ctx.status(404);
 				return;
 			}

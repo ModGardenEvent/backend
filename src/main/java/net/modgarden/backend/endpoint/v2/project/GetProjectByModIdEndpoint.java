@@ -32,7 +32,7 @@ public class GetProjectByModIdEndpoint extends GetProjectEndpoint {
 			projectMetadataStatement.setString(1, modId);
 			ResultSet projectResult = projectMetadataStatement.executeQuery();
 			if (!projectResult.isBeforeFirst()) {
-				ctx.result("Could not find project from mod id '" + modId + "'.");
+				ctx.result("Could not find project from mod id '" + modId + "'");
 				ctx.status(404);
 				return;
 			}

@@ -16,7 +16,7 @@ public class GenerateNaturalIdFunction extends DatabaseFunction {
 		String key = this.value_text(1);
 		String key2 = this.value_text(2);
 		int length = this.value_int(3);
-		this.result(NaturalId.generate(table, key, key2, length, null));
+		this.result(NaturalId.generate(table, key, key2, length));
 	}
 
 	@Override
