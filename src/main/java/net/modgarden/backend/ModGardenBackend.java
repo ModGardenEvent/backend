@@ -102,7 +102,6 @@ public class ModGardenBackend {
 		registerCodec(Submission.class, Submission.DIRECT_CODEC);
 		registerCodec(User.class, User.DIRECT_CODEC);
 		registerCodec(AwardInstance.FullAwardData.class, AwardInstance.FullAwardData.CODEC);
-		registerCodec(GenerateKeyEndpoint.Request.class, GenerateKeyEndpoint.Request.CODEC);
 		registerCodec(GenerateKeyEndpoint.Response.class, GenerateKeyEndpoint.Response.CODEC);
 		registerCodec(ListKeysEndpoint.Response.class, ListKeysEndpoint.Response.CODEC);
 
@@ -130,6 +129,9 @@ public class ModGardenBackend {
 		delete(DeleteKeyEndpoint::new);
 		get(ListKeysEndpoint::new);
 
+		put(AddTeamMemberEndpoint::new);
+		delete(RemoveTeamMemberEndpoint::new);
+		put(SetTeamMemberRoleEndpoint::new);
 		delete(DeleteProjectEndpoint::new);
 		get(GetProjectByIdEndpoint::new);
 		get(GetProjectByModIdEndpoint::new);
