@@ -70,6 +70,24 @@ public class ModGardenBackend {
 		if ("development".equals(DOTENV.get("env")))
 			((ch.qos.logback.classic.Logger)LOG).setLevel(Level.DEBUG);
 
+		Landing.createInstance();
+
+		try {
+			boolean createdFile = new File("./database.db").createNewFile();
+			DatabaseFixer.createFixers();
+			if (createdFile) {
+				createDatabaseContents();
+				updateSchemaVersion();
+				LOG.debug("Successfully created database file.");
+			}
+			DatabaseFixer.fixDatabase();
+			if (!createdFile) {
+				updateSchemaVersion();
+			}
+		} catch (IOException ex) {
+			LOG.error("Failed to create database file.", ex);
+		}
+
 		registerCodec(Landing.class, Landing.CODEC);
 		registerCodec(BackendError.class, BackendError.CODEC);
 		registerCodec(Award.class, Award.DIRECT_CODEC);
@@ -82,7 +100,6 @@ public class ModGardenBackend {
 		registerCodec(GenerateKeyEndpoint.Response.class, GenerateKeyEndpoint.Response.CODEC);
 		registerCodec(ListKeysEndpoint.Response.class, ListKeysEndpoint.Response.CODEC);
 
-		Landing.createInstance();
 		AuthUtil.clearTokensEachFifteenMinutes();
 
 		Javalin app = Javalin.create(config -> config.jsonMapper(createDFUMapper()));
@@ -100,23 +117,6 @@ public class ModGardenBackend {
 		app.start(7070);
 
 		LOG.info("Mod Garden Backend Started!");
-
-
-		try {
-			boolean createdFile = new File("./database.db").createNewFile();
-			DatabaseFixer.createFixers();
-			if (createdFile) {
-				createDatabaseContents();
-				updateSchemaVersion();
-				LOG.debug("Successfully created database file.");
-			}
-			DatabaseFixer.fixDatabase();
-			if (!createdFile) {
-				updateSchemaVersion();
-			}
-		} catch (IOException ex) {
-			LOG.error("Failed to create database file.", ex);
-		}
 	}
 
 	public void v2() {
