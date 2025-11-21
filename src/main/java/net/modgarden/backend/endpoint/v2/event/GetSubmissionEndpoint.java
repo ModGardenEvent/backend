@@ -5,6 +5,7 @@ import net.modgarden.backend.data.Platform;
 import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.event.platform.ModrinthPlatform;
 import net.modgarden.backend.endpoint.Endpoint;
+import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.project.GetProjectEndpoint;
 import net.modgarden.backend.util.ModrinthUtils;
 import org.jetbrains.annotations.NotNull;
@@ -12,6 +13,7 @@ import org.jetbrains.annotations.NotNull;
 import java.sql.Connection;
 import java.sql.ResultSet;
 
+@EndpointPath("/v2/event/{event_type_slug}/{event_slug}")
 public abstract class GetSubmissionEndpoint extends Endpoint {
 	public GetSubmissionEndpoint(String path) {
 		super(2, "event/{event_type_slug}/{event_slug}/" + path);

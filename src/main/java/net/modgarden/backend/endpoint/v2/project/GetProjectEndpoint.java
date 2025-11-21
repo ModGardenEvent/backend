@@ -3,12 +3,14 @@ package net.modgarden.backend.endpoint.v2.project;
 import io.javalin.http.Context;
 import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.endpoint.Endpoint;
+import net.modgarden.backend.endpoint.EndpointPath;
 import org.jetbrains.annotations.NotNull;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.util.*;
 
+@EndpointPath("/v2/project")
 public abstract class GetProjectEndpoint extends Endpoint {
 	public GetProjectEndpoint(String path) {
 		super(2, "project/" + path);
