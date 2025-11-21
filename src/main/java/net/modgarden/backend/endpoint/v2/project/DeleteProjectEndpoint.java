@@ -20,10 +20,15 @@ public class DeleteProjectEndpoint extends AuthorizedProjectEndpoint {
 
 	@Override
 	public void handle(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
+		//noinspection DuplicatedCode
 		Permissions userPermissions = getDatabaseAccess()
 				.getUserPermissions(userId)
 				.unwrap(ctx);
-		if (userPermissions == null || !scopePermissions.hasPermissions(Permission.EDIT_PROJECT) && !userPermissions.hasPermissions(Permission.MODERATE_PROJECTS)) return;
+		if (userPermissions == null || !scopePermissions.hasPermissions(Permission.EDIT_PROJECT) && !userPermissions.hasPermissions(Permission.MODERATE_PROJECTS)) {
+			ctx.status(403);
+			ctx.result("User lacks permission; required " + Permission.EDIT_PROJECT);
+			return;
+		}
 
 		String projectId = ctx.pathParam("project_id");
 
