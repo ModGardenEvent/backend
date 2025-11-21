@@ -103,7 +103,6 @@ public class MetadataUtils {
 			String name = fmj.getAsJsonPrimitive("name").getAsString();
 			String description = fmj.getAsJsonPrimitive("description").getAsString();
 
-
 			String sourceUrl = getFmjSourceUrl(fmj, externalData);
 			// TODO: Handle Icon and Banner Uploads to CDN.
 			String iconUrl = "placeholder";
@@ -141,21 +140,21 @@ public class MetadataUtils {
 	}
 
 	private static String getFmjSourceUrl(JsonObject fmj, ExternalData data) {
-		if (data.externalSourceUrl() != null) {
-			return data.externalSourceUrl();
-		}
 		if (fmj.has("contact")) {
 			JsonElement contact = fmj.getAsJsonObject("contact");
 			if (contact.getAsJsonObject().has("sources")) {
 				return contact.getAsJsonObject().getAsJsonPrimitive("sources").getAsString();
 			}
 		}
+		if (data.externalSourceUrl() != null) {
+			return data.externalSourceUrl();
+		}
 		throw new RuntimeException("Could not find source URL from either fabric.mod.json or external data.");
 	}
 
 	public record ExternalData(@Nullable String externalSourceUrl,
-								  @Nullable String externalIconUrl,
-								  @Nullable String externalBannerUrl) {
+							   @Nullable String externalIconUrl,
+							   @Nullable String externalBannerUrl) {
 
 	}
 }
