@@ -1,10 +1,7 @@
 package net.modgarden.backend.data.fixer.fix;
 
-import com.mojang.datafixers.types.Func;
 import net.modgarden.backend.data.NaturalId;
 import net.modgarden.backend.data.fixer.DatabaseFix;
-import net.modgarden.backend.database.function.GenerateNaturalIdFunction;
-import net.modgarden.backend.database.function.UnixMillisFunction;
 import net.modgarden.backend.util.MetadataUtils;
 import org.jetbrains.annotations.Nullable;
 import org.sqlite.Function;
@@ -21,9 +18,6 @@ public class V5ToV6 extends DatabaseFix {
 	@Override
 	public @Nullable Consumer<Connection> fix(Connection connection) throws SQLException {
 		var statement = connection.createStatement();
-
-		GenerateNaturalIdFunction.INSTANCE.create(connection);
-		UnixMillisFunction.INSTANCE.create(connection);
 
 		// temp functions for the datafixer
 		Function.create(

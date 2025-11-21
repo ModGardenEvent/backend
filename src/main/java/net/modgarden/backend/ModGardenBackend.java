@@ -21,6 +21,7 @@ import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.fixer.DatabaseFixer;
 import net.modgarden.backend.data.user.User;
 import net.modgarden.backend.database.function.GenerateNaturalIdFunction;
+import net.modgarden.backend.database.function.HasPermissionsFunction;
 import net.modgarden.backend.database.function.UnixMillisFunction;
 import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.endpoint.v2.auth.DeleteKeyEndpoint;
@@ -31,6 +32,9 @@ import net.modgarden.backend.endpoint.v2.event.GetSubmissionByIdEndpoint;
 import net.modgarden.backend.endpoint.v2.event.GetSubmissionByModIdEndpoint;
 import net.modgarden.backend.endpoint.v2.project.GetProjectByIdEndpoint;
 import net.modgarden.backend.endpoint.v2.project.GetProjectByModIdEndpoint;
+import net.modgarden.backend.endpoint.v2.project.team.AddTeamMemberEndpoint;
+import net.modgarden.backend.endpoint.v2.project.team.RemoveTeamMemberEndpoint;
+import net.modgarden.backend.endpoint.v2.project.team.SetTeamMemberRoleEndpoint;
 import net.modgarden.backend.endpoint.v2.submission.DeleteSubmissionEndpoint;
 import net.modgarden.backend.util.AuthUtil;
 import net.modgarden.backend.util.OrderCorrectedRecordCodec;
@@ -155,11 +159,19 @@ public class ModGardenBackend {
 		this.app.delete(endpoint.getPath(), endpoint);
 	}
 
+	public static void registerDatabaseFunctions(Connection connection) throws SQLException {
+		GenerateNaturalIdFunction.INSTANCE.create(connection);
+		HasPermissionsFunction.INSTANCE.create(connection);
+		UnixMillisFunction.INSTANCE.create(connection);
+	}
+
 	public static Connection createDatabaseConnection() throws SQLException {
 		String url = "jdbc:sqlite:database.db";
 		Properties props = new Properties();
 		props.setProperty("foreign_keys", "true");
-		return DriverManager.getConnection(url, props);
+		Connection connection = DriverManager.getConnection(url, props);
+		registerDatabaseFunctions(connection);
+		return connection;
 	}
 
 	private static void createDatabaseContents() {
@@ -375,9 +387,6 @@ public class ModGardenBackend {
 				PRIMARY KEY (code)
 			)
 			""");
-
-			GenerateNaturalIdFunction.INSTANCE.create(connection);
-			UnixMillisFunction.INSTANCE.create(connection);
 
 			statement.executeBatch();
 		} catch (SQLException ex) {
