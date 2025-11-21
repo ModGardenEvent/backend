@@ -12,19 +12,16 @@ import org.jetbrains.annotations.NotNull;
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.DELETE;
 
 @EndpointMethod(DELETE)
-@EndpointPath("/v2/project/{project_id}/delete")
+@EndpointPath("/v2/project/{project_id}")
 public class DeleteProjectEndpoint extends AuthorizedProjectEndpoint {
 	public DeleteProjectEndpoint() {
-		super("{project_id}/delete", PermissionScope.PROJECT, false);
+		super("{project_id}", PermissionScope.ALL, false);
 	}
 
 	@Override
 	public void handle(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
 		//noinspection DuplicatedCode
-		Permissions userPermissions = getDatabaseAccess()
-				.getUserPermissions(userId)
-				.unwrap(ctx);
-		if (userPermissions == null || !scopePermissions.hasPermissions(Permission.EDIT_PROJECT) && !userPermissions.hasPermissions(Permission.MODERATE_PROJECTS)) {
+		if (!scopePermissions.hasPermissions(Permission.EDIT_PROJECT) && !scopePermissions.hasPermissions(Permission.MODERATE_PROJECTS)) {
 			ctx.status(403);
 			ctx.result("User lacks permission; required " + Permission.EDIT_PROJECT);
 			return;
