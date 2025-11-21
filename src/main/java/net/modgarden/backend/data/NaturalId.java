@@ -2,12 +2,14 @@ package net.modgarden.backend.data;
 
 import net.modgarden.backend.ModGardenBackend;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.random.RandomGenerator;
+import java.util.random.RandomGeneratorFactory;
 import java.util.regex.Pattern;
 
 public final class NaturalId {
@@ -36,41 +38,31 @@ public final class NaturalId {
 		return isValid(id) || PATTERN_LEGACY.matcher(id).hasMatch();
 	}
 
-	private static String generateUnchecked(int length) {
+	private static String generateUnchecked(int length, long seed) {
 		StringBuilder builder = new StringBuilder();
+		RandomGenerator random;
+		random = RandomGeneratorFactory.getDefault().create(seed);
 		for (int i = 0; i < length; i++) {
-			builder.append(ALPHABET.charAt(RandomGenerator.getDefault().nextInt(ALPHABET.length())));
+			builder.append(ALPHABET.charAt(random.nextInt(ALPHABET.length())));
 		}
 		return builder.toString();
 	}
 
 	@NotNull
-	public static String generateFromNumber(int number, int length) {
-		int base = ALPHABET.length();
-		int iterations = (int) (Math.log(number * base) / Math.log(base)); // what the fuck
-
-		StringBuilder result = new StringBuilder();
-
-		for (int i = 0; i < iterations; i++) {
-			result.append(ALPHABET.charAt(number % base));
-			number = number / base;
-		}
-
-		String padding = ("" + ALPHABET.charAt(0)).repeat(length - result.length());
-		return padding + result.reverse();
-	}
-
-	@NotNull
-	public static String generate(String table, String key, String key2, int length) throws SQLException {
+	public static String generate(String table, String key, String key2,
+								  int length, @Nullable Long seed) throws SQLException {
 		String id = null;
 		try (Connection connection1 = ModGardenBackend.createDatabaseConnection()) {
 			while (id == null) {
-				String naturalId = generateUnchecked(length);
+				if (seed == null) {
+					seed = RandomGenerator.getDefault().nextLong();
+				}
+				String naturalId = generateUnchecked(length, seed);
 				PreparedStatement exists;
 				if (key2 != null) {
-					exists = connection1.prepareStatement("SELECT true FROM " + table + " WHERE ? = ? OR ? = ?");
+					exists = connection1.prepareStatement("SELECT 1 FROM " + table + " WHERE ? = ? OR ? = ?");
 				} else {
-					exists = connection1.prepareStatement("SELECT true FROM " + table + " WHERE ? = ?");
+					exists = connection1.prepareStatement("SELECT 1 FROM " + table + " WHERE ? = ?");
 				}
 				exists.setString(1, key);
 				exists.setString(2, naturalId);
@@ -79,9 +71,10 @@ public final class NaturalId {
 					exists.setString(4, naturalId);
 				}
 				ResultSet resultSet = exists.executeQuery();
-				if (resultSet.isBeforeFirst() && !isReserved(naturalId)) {
+				if (!resultSet.getBoolean(1) && !isReserved(naturalId)) {
 					id = naturalId;
 				}
+				seed = null;
 			}
 		}
 		return id;

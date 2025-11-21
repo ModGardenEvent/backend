@@ -1,7 +1,8 @@
 package net.modgarden.backend.data.fixer.fix;
 
+import com.mojang.datafixers.types.Func;
+import net.modgarden.backend.data.NaturalId;
 import net.modgarden.backend.data.fixer.DatabaseFix;
-import net.modgarden.backend.database.function.GenerateNaturalIdFromNumberFunction;
 import net.modgarden.backend.database.function.GenerateNaturalIdFunction;
 import net.modgarden.backend.database.function.UnixMillisFunction;
 import net.modgarden.backend.util.MetadataUtils;
@@ -22,10 +23,21 @@ public class V5ToV6 extends DatabaseFix {
 		var statement = connection.createStatement();
 
 		GenerateNaturalIdFunction.INSTANCE.create(connection);
-		GenerateNaturalIdFromNumberFunction.INSTANCE.create(connection);
 		UnixMillisFunction.INSTANCE.create(connection);
 
 		// temp functions for the datafixer
+		Function.create(
+				connection, "generate_natural_id_from_snowflake_id", new Function() {
+					@Override
+					protected void xFunc() throws SQLException {
+						String table = this.value_text(0);
+						String snowflakeId = this.value_text(1);
+						long seed = Long.parseLong(snowflakeId);
+
+						this.result(NaturalId.generate(table, "id", null, 5, seed));
+					}
+				}
+		);
 		Function.create(
 				connection, "clean_slug_mg", new Function() {
 					@Override
@@ -160,11 +172,8 @@ public class V5ToV6 extends DatabaseFix {
 		SELECT id, event, project_id, submitted from submissions_old
 		""");
 		statement.addBatch("""
-		WITH cnt(i) AS (
-			SELECT 1 UNION SELECT i+1 FROM cnt
-		)
 		UPDATE submissions
-		SET id = concat('zzzz', generate_natural_id_from_number(ROWID - 1, 1))
+		SET id = generate_natural_id_from_snowflake_id('submissions', id)
 		""");
 
 		// Use submissions_old since it has not yet been deleted.
@@ -179,11 +188,8 @@ public class V5ToV6 extends DatabaseFix {
 		""");
 
 		statement.addBatch("""
-		WITH cnt(i) AS (
-			SELECT 1 UNION SELECT i+1 FROM cnt
-		)
 		UPDATE submissions_mr
-		SET id = concat('zzzz', generate_natural_id_from_number(ROWID - 1, 1))
+		SET id = generate_natural_id_from_snowflake_id('submissions_mr', id)
 		""");
 
 		statement.addBatch("""
@@ -363,11 +369,8 @@ public class V5ToV6 extends DatabaseFix {
 		""");
 
 		statement.addBatch("""
-		WITH cnt(i) AS (
-			SELECT 1 UNION SELECT i+1 FROM cnt
-		)
 		UPDATE users
-		SET id = concat('zzz', generate_natural_id_from_number(ROWID - 1, 2))
+		SET id = generate_natural_id_from_snowflake_id('users', id)
 		""");
 
 		statement.addBatch("""
@@ -400,24 +403,15 @@ public class V5ToV6 extends DatabaseFix {
 		""");
 
 		statement.addBatch("""
-		WITH cnt(i) AS (
-			SELECT 1 UNION SELECT i+1 FROM cnt
-		)
 		UPDATE projects
-		SET id = concat('zzzz', generate_natural_id_from_number(ROWID - 1, 1))
+		SET id = generate_natural_id_from_snowflake_id('projects', id)
 		""");
 
 		statement.addBatch("""
-		WITH cnt(i) AS (
-			SELECT 1 UNION SELECT i+1 FROM cnt
-		)
 		UPDATE events
-		SET id = concat('zzzz', generate_natural_id_from_number(ROWID - 1, 1))
+		SET id = generate_natural_id_from_snowflake_id('events', id)
 		""");
 		statement.addBatch("""
-		WITH cnt(i) AS (
-			SELECT 1 UNION SELECT i+1 FROM cnt
-		)
 		UPDATE events
 		SET slug = clean_slug_mg(slug)
 		""");

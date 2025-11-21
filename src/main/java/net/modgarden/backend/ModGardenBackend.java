@@ -13,7 +13,6 @@ import io.javalin.json.JsonMapper;
 import net.modgarden.backend.data.BackendError;
 import net.modgarden.backend.data.DevelopmentModeData;
 import net.modgarden.backend.data.Landing;
-import net.modgarden.backend.data.NaturalId;
 import net.modgarden.backend.data.award.Award;
 import net.modgarden.backend.data.award.AwardInstance;
 import net.modgarden.backend.data.event.Event;
@@ -21,7 +20,6 @@ import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.fixer.DatabaseFixer;
 import net.modgarden.backend.data.user.User;
-import net.modgarden.backend.database.function.GenerateNaturalIdFromNumberFunction;
 import net.modgarden.backend.database.function.GenerateNaturalIdFunction;
 import net.modgarden.backend.database.function.UnixMillisFunction;
 import net.modgarden.backend.endpoint.Endpoint;
@@ -71,9 +69,6 @@ public class ModGardenBackend {
 	public static void main(String[] args) {
 		if ("development".equals(DOTENV.get("env")))
 			((ch.qos.logback.classic.Logger)LOG).setLevel(Level.DEBUG);
-
-		ModGardenBackend.LOG.debug("1 {}, 4 {}, 26 {}, 29 {}, 52 {}, 53 {}, 79 {}", NaturalId.generateFromNumber(1, 2), NaturalId.generateFromNumber(4, 2), NaturalId.generateFromNumber(26, 2), NaturalId.generateFromNumber(29, 2), NaturalId.generateFromNumber(52, 2), NaturalId.generateFromNumber(53, 2), NaturalId.generateFromNumber(79, 2));
-		ModGardenBackend.LOG.debug("1 {}, 4 {}, 26 {}, 29 {}, 52 {}, 53 {}, 79 {}, 675 {}, 676 {}, 677 {}", NaturalId.generateFromNumber(1, 3), NaturalId.generateFromNumber(4, 3), NaturalId.generateFromNumber(26, 3), NaturalId.generateFromNumber(29, 3), NaturalId.generateFromNumber(52, 3), NaturalId.generateFromNumber(53, 3), NaturalId.generateFromNumber(79, 3), NaturalId.generateFromNumber(675, 3), NaturalId.generateFromNumber(676, 3), NaturalId.generateFromNumber(677, 3));
 
 		registerCodec(Landing.class, Landing.CODEC);
 		registerCodec(BackendError.class, BackendError.CODEC);
@@ -378,7 +373,6 @@ public class ModGardenBackend {
 			""");
 
 			GenerateNaturalIdFunction.INSTANCE.create(connection);
-			GenerateNaturalIdFromNumberFunction.INSTANCE.create(connection);
 			UnixMillisFunction.INSTANCE.create(connection);
 
 			statement.executeBatch();
