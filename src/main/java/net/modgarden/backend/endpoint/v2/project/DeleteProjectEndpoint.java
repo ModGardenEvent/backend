@@ -2,7 +2,6 @@ package net.modgarden.backend.endpoint.v2.project;
 
 import io.javalin.http.Context;
 import net.modgarden.backend.data.Permission;
-import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
@@ -15,7 +14,7 @@ import static net.modgarden.backend.endpoint.EndpointMethod.Method.DELETE;
 @EndpointPath("/v2/project/{project_id}")
 public class DeleteProjectEndpoint extends AuthorizedProjectEndpoint {
 	public DeleteProjectEndpoint() {
-		super("{project_id}", PermissionScope.ALL, false);
+		super("{project_id}", false);
 	}
 
 	@Override

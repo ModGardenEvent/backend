@@ -20,7 +20,7 @@ public enum Permission {
 	/// Edit this project.
 	EDIT_PROJECT(0x8, "edit_project", PROJECT),
 	/// Edit others' projects and hide them.
-	MODERATE_PROJECTS(0x10, "moderate_projects", USER),
+	MODERATE_PROJECTS(0x10, "moderate_projects", ALL),
 	/// Upload files to the CDN.
 	UPLOAD_TO_CDN(0x20, "upload_to_cdn", USER),
 	/// Generate and delete API keys on behalf of this user or project.

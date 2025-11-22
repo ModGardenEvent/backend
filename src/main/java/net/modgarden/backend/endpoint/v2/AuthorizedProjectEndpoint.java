@@ -13,8 +13,8 @@ import java.sql.ResultSet;
 
 @EndpointPath("/v2/project")
 public abstract class AuthorizedProjectEndpoint extends AuthorizedEndpoint {
-	public AuthorizedProjectEndpoint(String path, PermissionScope permissionScope, boolean hasBody) {
-		super(2, "project/" + path, permissionScope, hasBody);
+	public AuthorizedProjectEndpoint(String path, boolean hasBody) {
+		super(2, "project/" + path, PermissionScope.PROJECT, hasBody);
 	}
 
 	@Override

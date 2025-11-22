@@ -3,7 +3,6 @@ package net.modgarden.backend.endpoint.v2.project.member;
 import com.mojang.serialization.Codec;
 import io.javalin.http.Context;
 import net.modgarden.backend.data.Permission;
-import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.data.user.User;
 import net.modgarden.backend.endpoint.EndpointMethod;
@@ -19,7 +18,7 @@ import static net.modgarden.backend.endpoint.EndpointMethod.Method.PUT;
 @EndpointPath("/v2/project/{project_id}/set_role")
 public class SetRoleEndpoint extends AuthorizedProjectEndpoint {
 	public SetRoleEndpoint() {
-		super("{project_id}/set_role", PermissionScope.ALL, true);
+		super("{project_id}/set_role", true);
 	}
 
 	@Override

@@ -3,7 +3,6 @@ package net.modgarden.backend.endpoint.v2.project;
 import com.mojang.serialization.Codec;
 import io.javalin.http.Context;
 import net.modgarden.backend.data.NaturalId;
-import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
@@ -16,7 +15,7 @@ import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
 @EndpointPath("/v2/project/create")
 public class CreateProjectEndpoint extends AuthorizedProjectEndpoint {
 	public CreateProjectEndpoint() {
-		super("create", PermissionScope.USER, true);
+		super("create", true);
 	}
 
 	@Override
