@@ -141,7 +141,7 @@ public final class GenerateKeyEndpoint extends AuthEndpoint {
 					} else if (scope instanceof UserScope(Permissions permissions, Instant expires, String name)) {
 						return new Request<>(UserScope.TYPE, Optional.empty(), permissions, expires, name);
 					} else {
-						throw new IllegalStateException("unregistered scope type please do not let this ever happen");
+						throw new IllegalStateException("Unregistered scope type. Please do not let this ever happen.");
 					}
 				},
 				request -> {
