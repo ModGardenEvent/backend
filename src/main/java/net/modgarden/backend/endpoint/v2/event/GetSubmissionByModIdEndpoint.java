@@ -4,6 +4,7 @@ import io.javalin.http.Context;
 import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.v2.submission.GetSubmissionEndpoint;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Locale;

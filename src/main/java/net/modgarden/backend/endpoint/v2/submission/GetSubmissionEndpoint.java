@@ -1,4 +1,4 @@
-package net.modgarden.backend.endpoint.v2.event;
+package net.modgarden.backend.endpoint.v2.submission;
 
 import io.javalin.http.Context;
 import net.modgarden.backend.data.Platform;
