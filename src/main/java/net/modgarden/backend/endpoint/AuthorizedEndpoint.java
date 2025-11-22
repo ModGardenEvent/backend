@@ -290,7 +290,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 	}
 
 	protected boolean requireAnyPermissions(Context ctx, Permissions scopePermissions, Permission... permissions) {
-		return requireAllPermissions(ctx, scopePermissions, new Permissions(permissions));
+		return requireAnyPermissions(ctx, scopePermissions, new Permissions(permissions));
 	}
 
 	private record ValidationResult(boolean authorized, String userId, Permissions scopePermissions) {
