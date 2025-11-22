@@ -43,7 +43,7 @@ public class RemoveMemberEndpoint extends AuthorizedProjectEndpoint {
 				var permissionCountStatement = connection.prepareStatement("""
 					SELECT COUNT(*)
 					FROM project_roles
-					WHERE project_id = ? AND has_permissions(permissions, 256)
+					WHERE project_id = ? AND has_permissions(permissions, 1)
 				""");
 				var deleteStatement = connection.prepareStatement("""
 					DELETE FROM project_roles
@@ -58,13 +58,18 @@ public class RemoveMemberEndpoint extends AuthorizedProjectEndpoint {
 			// If a non-administrator attempts to remove an administrator, return.
 			if (!canModifyUser(ctx, connection, projectId, request.userId(), scopePermissions)) return;
 
-			boolean memberCanEditProject = memberPermissions.hasPermissions(Permission.EDIT_PROJECT);
+			boolean memberIsAdmin = memberPermissions.hasPermissions(Permission.ADMINISTRATOR);
 
 			// If the member can edit the project, check if there are any other project editors left within the project to avoid a situation where nobody is able to edit the project.
-			if (memberCanEditProject) {
+			// check if admin can edit admin and other admin exist, and we are admin this scope
+			if (memberIsAdmin && scopePermissions.hasPermissions(Permission.ADMINISTRATOR)) {
 				permissionCountStatement.setString(1, projectId);
 				ResultSet permissionCountResult = permissionCountStatement.executeQuery();
-				if (permissionCountResult.getInt(1) < 2) return;
+				if (permissionCountResult.getInt(1) < 2) {
+					ctx.status(400);
+					ctx.result("A project must have at least one administrator");
+					return;
+				}
 			}
 
 			deleteStatement.setString(1, projectId);
