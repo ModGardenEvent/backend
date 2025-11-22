@@ -423,8 +423,6 @@ public class V5ToV6 extends DatabaseFix {
 					projectMetadataInsertStatement.setString(3, modrinthData.name());
 					projectMetadataInsertStatement.setString(4, modrinthData.description());
 					projectMetadataInsertStatement.setString(5, modrinthData.sourceUrl());
-					projectMetadataInsertStatement.setString(6, modrinthData.iconUrl());
-					projectMetadataInsertStatement.setString(7, modrinthData.bannerUrl());
 					projectMetadataInsertStatement.executeUpdate();
 				} catch (Exception e) {
 					throw new RuntimeException(e);

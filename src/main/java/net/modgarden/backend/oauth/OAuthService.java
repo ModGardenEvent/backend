@@ -19,7 +19,8 @@ public enum OAuthService {
     DISCORD("1305609404837527612", OAuthService::authenticateDiscord),
     MODRINTH("Q2tuKyb4", OAuthService::authenticateModrinth),
 	GITHUB("Iv23li4vLb7sDuZOiRmf", OAuthService::authenticateGithub),
-	MINECRAFT_SERVICES(" e7ee42f6-e542-4ce6-9f7b-1d31941e84c6", OAuthService::authenticateMinecraftServices);
+	MINECRAFT_SERVICES("e7ee42f6-e542-4ce6-9f7b-1d31941e84c6", OAuthService::authenticateMinecraftServices),
+	BUNNY_CDN("unused", OAuthService::authenticateBunnyCdn);
 
 	public final String clientId;
 	private final OAuthClientSupplier authSupplier;
@@ -62,6 +63,10 @@ public enum OAuthService {
 
 	static OAuthClient authenticateMinecraftServices(String unused) {
 		return new MinecraftServicesOAuthClient();
+	}
+
+	static OAuthClient authenticateBunnyCdn(String unused) {
+		return new BunnyCdnOAuthClient();
 	}
 
 	@SuppressWarnings("unchecked")

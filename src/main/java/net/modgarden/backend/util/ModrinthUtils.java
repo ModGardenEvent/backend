@@ -52,10 +52,8 @@ public class ModrinthUtils {
 			JsonObject project = potentialProject.getAsJsonObject();
 
 			String sourceUrl = getSourceUrlFromModrinthProject(project);
-			String iconUrl = project.getAsJsonPrimitive("icon_url").getAsString();
-			String bannerUrl = getBannerUrlFromModrinthProject(project);
 
-			return new MetadataUtils.ExternalData(sourceUrl, iconUrl, bannerUrl);
+			return new MetadataUtils.ExternalData(sourceUrl);
 		}
 	}
 
@@ -66,18 +64,6 @@ public class ModrinthUtils {
 			return source.getAsJsonObject()
 					.getAsJsonPrimitive("url")
 					.getAsString();
-		}
-		return null;
-	}
-
-	public static String getBannerUrlFromModrinthProject(JsonObject project) {
-		if (project.has("gallery")) {
-			for (JsonElement galleryElement : project.getAsJsonArray("gallery")) {
-				JsonObject galleryObject = galleryElement.getAsJsonObject();
-				if (galleryObject.getAsJsonPrimitive("featured").getAsBoolean()) {
-					return galleryObject.getAsJsonPrimitive("url").getAsString();
-				}
-			}
 		}
 		return null;
 	}

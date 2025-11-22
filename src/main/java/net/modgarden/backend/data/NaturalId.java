@@ -1,8 +1,11 @@
 package net.modgarden.backend.data;
 
 import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.oauth.OAuthService;
+import net.modgarden.backend.oauth.client.BunnyCdnOAuthClient;
 import org.jetbrains.annotations.NotNull;
 
+import java.net.http.HttpResponse;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -66,6 +69,19 @@ public final class NaturalId {
 			}
 		}
 		return id;
+	}
+
+	public static String generateCdnLink(String basePath, int length) throws Exception {
+		String id = null;
+		while (id == null) {
+			String naturalId = generateUnchecked(length);
+			BunnyCdnOAuthClient client = OAuthService.BUNNY_CDN.authenticate();
+			HttpResponse<Void> response = client.get(basePath + "/" + naturalId, HttpResponse.BodyHandlers.discarding());
+			if (response.statusCode() == 404) {
+				id = naturalId;
+			}
+		}
+		return basePath + "/" + id;
 	}
 
 	public static String getMissingno() {

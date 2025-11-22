@@ -58,28 +58,21 @@ public record Project(String id,
 		return DataResult.error(() -> "Failed to get project with id '" + id + "'.");
 	}
 
-	public record Metadata(String modId, String name, @Nullable String description,
-						   String sourceUrl, String iconUrl, @Nullable String bannerUrl) {
+	public record Metadata(String modId, String name, @Nullable String description, String sourceUrl) {
 		public static final Codec<Metadata> CODEC = RecordCodecBuilder.create(inst -> inst.group(
 				Codec.STRING.fieldOf("mod_id").forGetter(Metadata::modId),
 				Codec.STRING.fieldOf("name").forGetter(Metadata::name),
 				Codec.STRING.optionalFieldOf("description").forGetter(Metadata::descriptionAsOptional),
-				Codec.STRING.fieldOf("source_url").forGetter(Metadata::sourceUrl),
-				Codec.STRING.fieldOf("icon_url").forGetter(Metadata::iconUrl),
-				Codec.STRING.optionalFieldOf("banner_url").forGetter(Metadata::bannerUrlAsOptional)
+				Codec.STRING.fieldOf("source_url").forGetter(Metadata::sourceUrl)
 		).apply(inst, Metadata::new));
 
 		@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-		private Metadata(String modId, String name, Optional<String> description, String sourceUrl, String iconUrl, Optional<String> bannerUrl) {
-			this(modId, name, description.orElse(null), sourceUrl, iconUrl, bannerUrl.orElse(null));
+		private Metadata(String modId, String name, Optional<String> description, String sourceUrl) {
+			this(modId, name, description.orElse(null), sourceUrl);
 		}
 
 		private Optional<String> descriptionAsOptional() {
 			return Optional.ofNullable(description);
-		}
-
-		private Optional<String> bannerUrlAsOptional() {
-			return Optional.ofNullable(bannerUrl);
 		}
 	}
 }

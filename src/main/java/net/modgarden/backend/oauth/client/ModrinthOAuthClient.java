@@ -32,4 +32,9 @@ public record ModrinthOAuthClient() implements OAuthClient {
 
         return ModGardenBackend.HTTP_CLIENT.send(req.build(), bodyHandler);
     }
+
+	@Override
+	public <T> HttpResponse<T> put(String endpoint, HttpRequest.BodyPublisher bodyPublisher, HttpResponse.BodyHandler<T> bodyHandler, String... headers) throws IOException, InterruptedException {
+		throw new UnsupportedOperationException("PUT endpoints are not implemented for ModrinthOAuthClient.");
+	}
 }

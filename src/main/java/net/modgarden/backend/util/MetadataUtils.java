@@ -25,6 +25,7 @@ import java.util.zip.ZipEntry;
 
 // Imo, it's okay to hardcode this to Fabric for now.
 // Especially considering we likely won't be running events outside it any time soon.
+//
 public class MetadataUtils {
 	private static final String USER_AGENT = "ModGardenEvent/backend/" + Landing.getInstance().version() + " (modgarden.net)";
 
@@ -104,17 +105,12 @@ public class MetadataUtils {
 			String description = fmj.getAsJsonPrimitive("description").getAsString();
 
 			String sourceUrl = getFmjSourceUrl(fmj, externalData);
-			// TODO: Handle Icon and Banner Uploads to CDN.
-			String iconUrl = "placeholder";
-			String bannerUrl = "placeholder";
 
 			metadata = new Project.Metadata(
 					modId,
 					name,
 					description,
-					sourceUrl,
-					iconUrl,
-					bannerUrl
+					sourceUrl
 			);
 		}
 
@@ -152,9 +148,5 @@ public class MetadataUtils {
 		throw new NullPointerException("Could not find source URL from either fabric.mod.json or external data.");
 	}
 
-	public record ExternalData(@Nullable String externalSourceUrl,
-							   @Nullable String externalIconUrl,
-							   @Nullable String externalBannerUrl) {
-
-	}
+	public record ExternalData(@Nullable String externalSourceUrl) {}
 }
