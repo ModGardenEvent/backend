@@ -28,7 +28,7 @@ public final class DeleteKeyEndpoint extends AuthEndpoint {
 			String userId,
 			Permissions scopePermissions
 	) throws Exception {
-		if (!this.requirePermissions(ctx, scopePermissions, Permission.MODIFY_API_KEY)) return;
+		if (this.requireAllPermissions(ctx, scopePermissions, Permission.MODIFY_API_KEY)) return;
 
 		UUID uuid = UUID.fromString(ctx.pathParam("uuid"));
 
@@ -50,7 +50,7 @@ public final class DeleteKeyEndpoint extends AuthEndpoint {
 				Permissions permissions = this.getDatabaseAccess()
 						.getProjectPermissions(userId, projectId)
 						.unwrap(ctx);
-				if (!this.requirePermissions(ctx, permissions, Permission.MODIFY_API_KEY)) return;
+				if (this.requireAllPermissions(ctx, permissions, Permission.MODIFY_API_KEY)) return;
 			}
 
 			deleteApiKeyStatement.setBytes(1, UuidUtils.toBytes(uuid));

@@ -23,11 +23,8 @@ public class RemoveTeamMemberEndpoint extends AuthorizedProjectEndpoint {
 	@Override
 	public void handle(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
 		//noinspection DuplicatedCode
-		if (!scopePermissions.hasPermissions(Permission.EDIT_PROJECT) && !scopePermissions.hasPermissions(Permission.MODERATE_PROJECTS)) {
-			ctx.status(403);
-			ctx.result("User lacks permission; required " + Permission.EDIT_PROJECT);
-			return;
-		}
+		if (this.requireAnyPermissions(ctx, scopePermissions,
+				Permission.EDIT_PROJECT, Permission.MODERATE_PROJECTS)) return;
 
 		String projectId = ctx.pathParam("project_id");
 		String memberUserId = ctx.pathParam("user_id");

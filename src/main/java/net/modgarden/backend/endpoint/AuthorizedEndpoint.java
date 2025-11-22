@@ -265,18 +265,32 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 		ctx.status(403);
 	}
 
-	protected boolean requirePermissions(Context ctx, Permissions scopePermissions, Permissions permissions) {
+	private boolean requireAllPermissions(Context ctx, Permissions scopePermissions, Permissions permissions) {
 		if (!scopePermissions.hasPermissions(permissions)) {
 			ctx.status(403);
 			ctx.result("User lacks permission; required " + permissions);
+			return true;
+		}
+
+		return false;
+	}
+
+	private boolean requireAnyPermissions(Context ctx, Permissions scopePermissions, Permissions permissions) {
+		if (!scopePermissions.hasAnyPermissions(permissions)) {
+			ctx.status(403);
+			ctx.result("User lacks permission; required any of " + permissions);
 			return false;
 		}
 
 		return true;
 	}
 
-	protected boolean requirePermissions(Context ctx, Permissions scopePermissions, Permission... permissions) {
-		return requirePermissions(ctx, scopePermissions, new Permissions(permissions));
+	protected boolean requireAllPermissions(Context ctx, Permissions scopePermissions, Permission... permissions) {
+		return requireAllPermissions(ctx, scopePermissions, new Permissions(permissions));
+	}
+
+	protected boolean requireAnyPermissions(Context ctx, Permissions scopePermissions, Permission... permissions) {
+		return requireAllPermissions(ctx, scopePermissions, new Permissions(permissions));
 	}
 
 	private record ValidationResult(boolean authorized, String userId, Permissions scopePermissions) {

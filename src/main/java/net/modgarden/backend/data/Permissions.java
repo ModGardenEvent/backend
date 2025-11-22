@@ -32,14 +32,24 @@ public record Permissions(long bits) {
 		return this.revokePermissions(new Permissions(permissions));
 	}
 
-	public boolean hasPermissions(Permissions permissions) {
-		boolean hasPermissions = (permissions.bits & this.bits) == permissions.bits;
+	public boolean hasPermissions(Permissions required) {
+		boolean hasPermissions = (required.bits & this.bits) == required.bits;
+		boolean hasAdministrator = hasAdministrator(this.bits);
+		return hasAdministrator || hasPermissions;
+	}
+
+	public boolean hasAnyPermissions(Permissions required) {
+		boolean hasPermissions = (required.bits & this.bits) > 0;
 		boolean hasAdministrator = hasAdministrator(this.bits);
 		return hasAdministrator || hasPermissions;
 	}
 
 	public boolean hasPermissions(Permission... permissions) {
 		return this.hasPermissions(new Permissions(permissions));
+	}
+
+	public boolean hasAnyPermissions(Permission... permissions) {
+		return this.hasAnyPermissions(new Permissions(permissions));
 	}
 
 	/// Only allows permissions in [#bits] and ignores all other permissions.

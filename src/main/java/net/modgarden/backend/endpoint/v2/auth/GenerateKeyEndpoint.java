@@ -33,7 +33,7 @@ public final class GenerateKeyEndpoint extends AuthEndpoint {
 
 	@Override
 	public void handle(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
-		if (!this.requirePermissions(ctx, scopePermissions, Permission.MODIFY_API_KEY)) return;
+		if (this.requireAllPermissions(ctx, scopePermissions, Permission.MODIFY_API_KEY)) return;
 
 		Request<?> request = this.decodeBody(ctx, Request.CODEC)
 				.unwrap(ctx);
@@ -82,7 +82,7 @@ public final class GenerateKeyEndpoint extends AuthEndpoint {
 					ResultSet resultSet = permissionStatement.executeQuery();
 					Permissions projectPermissions = new Permissions(resultSet.getLong("permissions"));
 					requestedPermissions = requestedPermissions.restrict(projectPermissions.bits());
-					if (!this.requirePermissions(ctx, projectPermissions, Permission.MODIFY_API_KEY)) return;
+					if (this.requireAllPermissions(ctx, projectPermissions, Permission.MODIFY_API_KEY)) return;
 				}
 			}
 			case "user" -> requestedPermissions = requestedPermissions.restrict(
