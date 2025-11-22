@@ -11,12 +11,11 @@ import java.util.List;
 ///
 /// @see <a href="https://github.com/Mojang/DataFixerUpper/issues/101">Mojang/DataFixerUpper#101</a>
 /// @param <E> The type parameter of the RecordCodecBuilder.
-
 @SuppressWarnings("ClassCanBeRecord")
-public class OrderCorrectedRecordCodec<E> implements Codec<E> {
+public class OrderCorrectedCodec<E> implements Codec<E> {
 	private final Codec<E> codec;
 
-	public OrderCorrectedRecordCodec(Codec<E> codec) {
+	public OrderCorrectedCodec(Codec<E> codec) {
 		this.codec = codec;
 	}
 
