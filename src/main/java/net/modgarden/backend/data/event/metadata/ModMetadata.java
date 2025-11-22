@@ -26,6 +26,11 @@ public record ModMetadata(String modId, String name, @Nullable String descriptio
 	}
 
 	@Override
+	public String getName() {
+		return "mod";
+	}
+
+	@Override
 	public MapCodec<ModMetadata> codec() {
 		return CODEC;
 	}

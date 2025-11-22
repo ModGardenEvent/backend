@@ -16,27 +16,25 @@ import java.sql.SQLException;
 import java.util.Map;
 
 import static java.util.Map.entry;
+import static net.modgarden.backend.data.Platform.fromMapCodec;
 
 public record Submission(String id,
                          String event,
 						 long timeSubmitted,
 						 Project project,
 						 Platform platform) {
-	private static final Map<String, MapCodec<Platform>> PLATFORM_CODECS = Map.ofEntries(
-			entry("modrinth", mapPlatformCodec(ModrinthPlatform.CODEC)),
-			entry("download_url", mapPlatformCodec(DownloadUrlPlatform.CODEC))
+	private static final Map<String, MapCodec<Platform>> PLATFORM_MAP_CODECS = Map.ofEntries(
+			entry("modrinth", fromMapCodec(ModrinthPlatform.CODEC)),
+			entry("download_url", fromMapCodec(DownloadUrlPlatform.CODEC))
 	);
-	@SuppressWarnings("unchecked")
-	private static <P extends Platform> MapCodec<Platform> mapPlatformCodec(MapCodec<P> platformCodec) {
-		return platformCodec.xmap(p -> p, p -> (P)p);
-	}
+	private static final Codec<Platform> PLATFORM_CODEC = Codec.STRING.dispatch(Platform::getName, PLATFORM_MAP_CODECS::get);
 
 	public static final Codec<Submission> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Submission::id),
             Event.ID_CODEC.fieldOf("event").forGetter(Submission::event),
 			Codec.LONG.fieldOf("time_submitted").forGetter(Submission::timeSubmitted),
 			Project.DIRECT_CODEC.fieldOf("project").forGetter(Submission::project),
-			Codec.STRING.dispatch(Platform::getName, PLATFORM_CODECS::get).fieldOf("platform").forGetter(Submission::platform)
+			PLATFORM_CODEC.fieldOf("platform").forGetter(Submission::platform)
     ).apply(inst, Submission::new));
 	public static final Codec<String> ID_CODEC = Codec.STRING.validate(Submission::validate);
 

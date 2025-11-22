@@ -11,6 +11,11 @@ public record DraftMetadata(String name) implements Metadata {
 	).apply(inst, DraftMetadata::new));
 
 	@Override
+	public String getName() {
+		return "draft";
+	}
+
+	@Override
 	public MapCodec<DraftMetadata> codec() {
 		return CODEC;
 	}

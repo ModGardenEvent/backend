@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 import static java.util.Map.entry;
-import static net.modgarden.backend.data.Metadata.fromCodec;
+import static net.modgarden.backend.data.Metadata.fromMapCodec;
 
 // TODO: Allow creating organisations, allow projects to be attributed to an organisation.
 public record Project(String id,
@@ -27,18 +27,10 @@ public record Project(String id,
 					  Map<String, Long> permissions,
 					  List<String> submissions) {
 	private static final Map<String, MapCodec<Metadata>> METADATA_MAP_CODECS = Map.ofEntries(
-			entry("draft", fromCodec(DraftMetadata.CODEC)),
-			entry("mod", fromCodec(ModMetadata.CODEC))
+			entry("draft", fromMapCodec(DraftMetadata.CODEC)),
+			entry("mod", fromMapCodec(ModMetadata.CODEC))
 	);
-	private static final Codec<Metadata> METADATA_CODEC = Codec.STRING.dispatch(metadata -> {
-		if (metadata instanceof DraftMetadata) {
-			return "draft";
-		} else if (metadata instanceof ModMetadata) {
-			return "mod";
-		} else {
-			throw new IllegalStateException("unregistered metadata type please do not let this ever happen");
-		}
-	}, METADATA_MAP_CODECS::get);
+	private static final Codec<Metadata> METADATA_CODEC = Codec.STRING.dispatch(Metadata::getName, METADATA_MAP_CODECS::get);
 
 	public static final Codec<Project> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Project::id),
