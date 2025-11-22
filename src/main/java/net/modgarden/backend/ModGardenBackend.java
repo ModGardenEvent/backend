@@ -39,7 +39,7 @@ import net.modgarden.backend.endpoint.v2.project.member.SetPermissionsEndpoint;
 import net.modgarden.backend.endpoint.v2.project.member.SetRoleEndpoint;
 import net.modgarden.backend.endpoint.v2.submission.DeleteSubmissionEndpoint;
 import net.modgarden.backend.util.AuthUtil;
-import net.modgarden.backend.util.OrderCorrectedCodec;
+import net.modgarden.backend.util.ReadableOrderCodec;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -430,7 +430,7 @@ public class ModGardenBackend {
 	}
 
 	private static void registerCodec(Type type, Codec<?> codec) {
-		CODEC_REGISTRY.put(type, new OrderCorrectedCodec<>(codec));
+		CODEC_REGISTRY.put(type, new ReadableOrderCodec<>(codec));
 	}
 
 	private static JsonMapper createDFUMapper() {
