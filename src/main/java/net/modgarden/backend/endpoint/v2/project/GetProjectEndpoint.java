@@ -52,9 +52,7 @@ public abstract class GetProjectEndpoint extends Endpoint {
 							projectMetadataResult.getString("mod_id"),
 							projectMetadataResult.getString("name"),
 							projectMetadataResult.getString("description"),
-							projectMetadataResult.getString("source_url"),
-							projectMetadataResult.getString("icon_url"),
-							projectMetadataResult.getString("banner_url")
+							projectMetadataResult.getString("source_url")
 					),
 					team,
 					permissions,
