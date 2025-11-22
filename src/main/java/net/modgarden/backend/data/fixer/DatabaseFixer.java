@@ -34,6 +34,7 @@ public class DatabaseFixer {
 	}
 
 	public static void fixDatabase() {
+		long startTime = System.currentTimeMillis();
 		int version = -1;
 		try (Connection connection = ModGardenBackend.createDatabaseConnection();
 			 PreparedStatement schemaVersion = connection.prepareStatement("SELECT version FROM schema")) {
@@ -67,5 +68,7 @@ public class DatabaseFixer {
 				ModGardenBackend.LOG.error("Failed to fix data: ", ex);
 			}
 		}
+		long endTime = System.currentTimeMillis();
+		ModGardenBackend.LOG.debug("Data-fixer took {}ms", endTime - startTime);
 	}
 }
