@@ -3,7 +3,10 @@ package net.modgarden.backend.util;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.*;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /// Accounts for a DFU bug where RecordCodecBuilder swaps the half-point at which members are encoded.
 ///
@@ -42,9 +45,20 @@ public class OrderCorrectedCodec<E> implements Codec<E> {
 	}
 
 	private static <T> RecordBuilder<T> correctEncoding(DynamicOps<T> ops, RecordBuilder<T> builder, MapLike<T> newValues) {
-		if (newValues.entries().count() > 4) {
-			List<Pair<T, T>> elements = newValues.entries().toList();
+		List<Pair<T, T>> elements = newValues.entries()
+				.collect(Collectors.toCollection(ArrayList::new));
+		// TODO: Un-hardcode from 'type' and try to detect where dispatch codecs are. This will work for now.
+		Optional<Pair<T, T>> dispatchKey = elements.stream().filter(pair -> ops.getStringValue(pair.getFirst())
+				.resultOrPartial()
+				.orElse("null")
+				.equals("type")
+		).findAny();
+		dispatchKey.ifPresent(pair -> {
+			builder.add(pair.getFirst(), pair.getSecond());
+			elements.remove(pair);
+		});
 
+		if (elements.size() > 3) {
 			for (int secondHalfIndex = (int)Math.ceil(elements.size() / 2.0F); secondHalfIndex < elements.size(); ++secondHalfIndex) {
 				T key = elements.get(secondHalfIndex).getFirst();
 				T value = potentiallyCorrectElement(ops, elements.get(secondHalfIndex).getSecond());
