@@ -3,7 +3,6 @@ package net.modgarden.backend.util;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import net.modgarden.backend.oauth.OAuthService;
 import net.modgarden.backend.oauth.client.ModrinthOAuthClient;
 import org.jetbrains.annotations.NotNull;
 
@@ -12,27 +11,6 @@ import java.io.InputStreamReader;
 import java.net.http.HttpResponse;
 
 public class ModrinthUtils {
-	public static String getSlugFromId(String modrinthProjectId) throws Exception {
-		ModrinthOAuthClient authClient = OAuthService.MODRINTH.authenticate();
-		HttpResponse<InputStream> projectResponse = authClient
-				.get(
-						"v3/project/" + modrinthProjectId,
-						HttpResponse.BodyHandlers.ofInputStream()
-				);
-
-		try (
-				InputStream projectStream = projectResponse.body();
-				InputStreamReader projectStreamReader = new InputStreamReader(projectStream)
-		) {
-			JsonElement potentialProject = JsonParser.parseReader(projectStreamReader);
-			if (!potentialProject.isJsonObject()) {
-				throw new IllegalStateException("Attempted to get a non-JSON Object Modrinth Project whilst getting slug from ID.");
-			}
-			JsonObject project = potentialProject.getAsJsonObject();
-			return project.getAsJsonPrimitive("slug").getAsString();
-		}
-	}
-
 	public static MetadataUtils.ExternalData getModrinthExternalData(@NotNull ModrinthOAuthClient authClient,
 																	 @NotNull String modrinthProjectId) throws Exception {
 		HttpResponse<InputStream> projectResponse = authClient
