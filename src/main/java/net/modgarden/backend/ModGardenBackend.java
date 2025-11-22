@@ -32,12 +32,13 @@ import net.modgarden.backend.endpoint.v2.event.GetSubmissionByIdEndpoint;
 import net.modgarden.backend.endpoint.v2.event.GetSubmissionByModIdEndpoint;
 import net.modgarden.backend.endpoint.v2.project.GetProjectByIdEndpoint;
 import net.modgarden.backend.endpoint.v2.project.GetProjectByModIdEndpoint;
-import net.modgarden.backend.endpoint.v2.project.team.AddTeamMemberEndpoint;
-import net.modgarden.backend.endpoint.v2.project.team.RemoveTeamMemberEndpoint;
-import net.modgarden.backend.endpoint.v2.project.team.SetTeamMemberRoleEndpoint;
+import net.modgarden.backend.endpoint.v2.project.member.AddMemberEndpoint;
+import net.modgarden.backend.endpoint.v2.project.member.RemoveMemberEndpoint;
+import net.modgarden.backend.endpoint.v2.project.member.SetPermissionsEndpoint;
+import net.modgarden.backend.endpoint.v2.project.member.SetRoleEndpoint;
 import net.modgarden.backend.endpoint.v2.submission.DeleteSubmissionEndpoint;
 import net.modgarden.backend.util.AuthUtil;
-import net.modgarden.backend.util.OrderCorrectedRecordCodec;
+import net.modgarden.backend.util.OrderCorrectedCodec;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -129,10 +130,11 @@ public class ModGardenBackend {
 		delete(DeleteKeyEndpoint::new);
 		get(ListKeysEndpoint::new);
 
-		put(AddTeamMemberEndpoint::new);
-		delete(RemoveTeamMemberEndpoint::new);
-		put(SetTeamMemberRoleEndpoint::new);
+		put(AddMemberEndpoint::new);
+		put(SetPermissionsEndpoint::new);
+		put(SetRoleEndpoint::new);
 		delete(DeleteProjectEndpoint::new);
+		delete(RemoveMemberEndpoint::new);
 		get(GetProjectByIdEndpoint::new);
 		get(GetProjectByModIdEndpoint::new);
 
@@ -420,7 +422,7 @@ public class ModGardenBackend {
 	}
 
 	private static void registerCodec(Type type, Codec<?> codec) {
-		CODEC_REGISTRY.put(type, new OrderCorrectedRecordCodec<>(codec));
+		CODEC_REGISTRY.put(type, new OrderCorrectedCodec<>(codec));
 	}
 
 	private static JsonMapper createDFUMapper() {

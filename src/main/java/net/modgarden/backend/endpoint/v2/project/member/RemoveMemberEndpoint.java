@@ -1,9 +1,11 @@
-package net.modgarden.backend.endpoint.v2.project.team;
+package net.modgarden.backend.endpoint.v2.project.member;
 
+import com.mojang.serialization.Codec;
 import io.javalin.http.Context;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
+import net.modgarden.backend.data.user.User;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthorizedProjectEndpoint;
@@ -14,24 +16,26 @@ import java.sql.ResultSet;
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.DELETE;
 
 @EndpointMethod(DELETE)
-@EndpointPath("/v2/project/{project_id}/team/{user_id}")
-public class RemoveTeamMemberEndpoint extends AuthorizedProjectEndpoint {
-	public RemoveTeamMemberEndpoint() {
-		super("{project_id}/team/{user_id}", PermissionScope.ALL, true);
+@EndpointPath("/v2/project/{project_id}/remove_member")
+public class RemoveMemberEndpoint extends AuthorizedProjectEndpoint {
+	public RemoveMemberEndpoint() {
+		super("{project_id}/remove_member", PermissionScope.ALL, true);
 	}
 
 	@Override
 	public void handle(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
 		//noinspection DuplicatedCode
-		if (this.requireAnyPermissions(ctx, scopePermissions,
-				Permission.EDIT_PROJECT, Permission.MODERATE_PROJECTS)) return;
 
 		String projectId = ctx.pathParam("project_id");
-		String memberUserId = ctx.pathParam("user_id");
+		Request request = decodeBody(ctx, Request.CODEC)
+				.unwrap(ctx);
+
+		if (request == null || !request.userId().equals(userId) && this.requireAnyPermissions(ctx, scopePermissions,
+				Permission.EDIT_PROJECT, Permission.MODERATE_PROJECTS)) return;
 
 		try (
 				var connection = this.getDatabaseConnection();
-				var permissionCheckStatement = connection.prepareStatement("""
+				var memberPermissionsStatement = connection.prepareStatement("""
 					SELECT permissions
 					FROM project_roles
 					WHERE project_id = ? AND user_id = ?
@@ -46,12 +50,14 @@ public class RemoveTeamMemberEndpoint extends AuthorizedProjectEndpoint {
 					WHERE project_id = ? AND user_id = ?
 				""")
 		) {
-			permissionCheckStatement.setString(1, projectId);
-			permissionCheckStatement.setString(2, memberUserId);
-			ResultSet memberPermissionsResult = permissionCheckStatement.executeQuery();
+			memberPermissionsStatement.setString(1, projectId);
+			memberPermissionsStatement.setString(2, request.userId());
+			ResultSet memberPermissionsResult = memberPermissionsStatement.executeQuery();
 			Permissions memberPermissions = new Permissions(memberPermissionsResult.getLong(1));
 
-			// TODO: Figure out if team members that can edit project can remove project administrators... That feels unintended.
+			// If a non-administrator attempts to remove an administrator, return.
+			if (!canModifyUser(connection, projectId, request.userId(), scopePermissions)) return;
+
 			boolean memberCanEditProject = memberPermissions.hasPermissions(Permission.EDIT_PROJECT);
 
 			// If the member can edit the project, check if there are any other project editors left within the project to avoid a situation where nobody is able to edit the project.
@@ -62,8 +68,12 @@ public class RemoveTeamMemberEndpoint extends AuthorizedProjectEndpoint {
 			}
 
 			deleteStatement.setString(1, projectId);
-			deleteStatement.setString(2, memberUserId);
+			deleteStatement.setString(2, request.userId());
 			deleteStatement.executeUpdate();
 		}
+	}
+
+	public record Request(String userId) {
+		public static final Codec<Request> CODEC = User.ID_CODEC.xmap(Request::new, Request::userId);
 	}
 }
