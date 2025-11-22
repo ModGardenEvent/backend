@@ -24,13 +24,8 @@ public abstract class GetSubmissionEndpoint extends Endpoint {
 												 @NotNull String submissionId) throws Exception {
 		try (
 				var submissionStatement = connection.prepareStatement("""
-					SELECT event, submitted
+					SELECT event, project_id, submitted
 					FROM submissions
-					WHERE id = ?
-				""");
-				var projectStatement = connection.prepareStatement("""
-					SELECT id
-					FROM projects
 					WHERE id = ?
 				""");
 				var modrinthSubmissionTypeStatement = connection.prepareStatement("""
@@ -41,9 +36,9 @@ public abstract class GetSubmissionEndpoint extends Endpoint {
 		) {
 			submissionStatement.setString(1, submissionId);
 			ResultSet submissionResult = submissionStatement.executeQuery();
-
-			projectStatement.setString(1, submissionId);
-			ResultSet projectResult = projectStatement.executeQuery();
+			if (!submissionResult.isBeforeFirst()) {
+				throw new NullPointerException("Could not find submission '" + submissionId + "'");
+			}
 
 			modrinthSubmissionTypeStatement.setString(1, submissionId);
 			ResultSet modrinthSubmissionTypeResult = modrinthSubmissionTypeStatement.executeQuery();
@@ -65,7 +60,7 @@ public abstract class GetSubmissionEndpoint extends Endpoint {
 					submissionId,
 					submissionResult.getString("event"),
 					submissionResult.getLong("submitted"),
-					GetProjectEndpoint.getProjectFromId(connection, projectResult.getString("id")),
+					GetProjectEndpoint.getProjectFromId(connection, submissionResult.getString("project_id")),
 					platform
 			);
 		}

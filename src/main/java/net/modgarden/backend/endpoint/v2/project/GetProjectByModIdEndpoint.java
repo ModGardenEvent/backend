@@ -25,18 +25,20 @@ public class GetProjectByModIdEndpoint extends GetProjectEndpoint {
 				var connection = this.getDatabaseConnection();
 				var projectMetadataStatement = connection.prepareStatement("""
 					SELECT project_id
-					FROM project_metadata
+					FROM project_mod_metadata
 					WHERE mod_id = ?
 				""")
 		) {
 			projectMetadataStatement.setString(1, modId);
 			ResultSet projectResult = projectMetadataStatement.executeQuery();
-			if (!projectResult.isBeforeFirst()) {
+			String projectId = projectResult.getString("project_id");
+
+			if (projectId == null) {
 				ctx.result("Could not find project from mod id '" + modId + "'");
 				ctx.status(404);
 				return;
 			}
-			String projectId = projectResult.getString("project_id");
+
 			Project project = GetProjectEndpoint.getProjectFromId(connection, projectId);
 
 			ctx.json(project);

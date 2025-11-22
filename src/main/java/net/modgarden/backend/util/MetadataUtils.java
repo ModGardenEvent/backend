@@ -5,7 +5,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.Landing;
-import net.modgarden.backend.data.event.Project;
+import net.modgarden.backend.data.Metadata;
+import net.modgarden.backend.data.event.metadata.ModMetadata;
 import net.modgarden.backend.oauth.OAuthService;
 import net.modgarden.backend.oauth.client.ModrinthOAuthClient;
 import org.jetbrains.annotations.NotNull;
@@ -18,19 +19,18 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 
-// Imo, it's okay to hardcode this to Fabric for now.
-// Especially considering we likely won't be running events outside it any time soon.
-//
+/// Imo, it's okay to hardcode this to Fabric for now.
+/// Especially considering we likely won't be running events outside it any time soon, if ever.
+/// @see Metadata
+/// @see ModMetadata
 public class MetadataUtils {
 	private static final String USER_AGENT = "ModGardenEvent/backend/" + Landing.getInstance().version() + " (modgarden.net)";
 
-	public static Project.Metadata getMetadataFromModrinth(String modrinthProjectId,
-														   String modrinthVersionId) throws Exception {
+	public static Metadata getMetadataFromModrinth(String modrinthProjectId,
+												   String modrinthVersionId) throws Exception {
 		ModrinthOAuthClient authClient = OAuthService.MODRINTH.authenticate();
 
 		ExternalData externalData = ModrinthUtils.getModrinthExternalData(authClient, modrinthProjectId);
@@ -49,35 +49,34 @@ public class MetadataUtils {
 				throw new IllegalStateException("Attempted to get a non-JSON Object Modrinth Version whilst getting project metadata.");
 			}
 			JsonObject version = potentialVersion.getAsJsonObject();
-			URI jarUri = null;
+			URI primaryUri = null;
 			for (JsonElement potentialFile : version.getAsJsonArray("files")) {
 				if (potentialFile.isJsonObject()) {
 					JsonObject file = potentialFile.getAsJsonObject();
 					if (file.getAsJsonPrimitive("primary").getAsBoolean()) {
-						jarUri = URI.create(file.getAsJsonPrimitive("url").getAsString());
+						primaryUri = URI.create(file.getAsJsonPrimitive("url").getAsString());
 						break;
 					}
 				}
 			}
 
-			if (jarUri == null) {
-				throw new IllegalStateException("Could not find valid primary version URL from Modrinth version whilst getting project metadata.");
+			if (primaryUri == null) {
+				throw new IllegalStateException("Could not find valid primary download URL from Modrinth version whilst getting project metadata.");
 			}
 
-			List<String> loaders = new ArrayList<>();
 			for (JsonElement element : version.getAsJsonArray("loaders")) {
-				loaders.add(element.getAsJsonPrimitive().getAsString());
+				String loader = element.getAsJsonPrimitive().getAsString();
+				if (loader.equals("fabric")) {
+					return getMetadataFromFabricModJson(primaryUri, externalData);
+				}
 			}
 
-			if (loaders.contains("fabric")) {
-				return getMetadataFromFabricModJson(jarUri, externalData);
-			}
-			throw new UnsupportedOperationException("All modloaders associated with the specified version are not implemented.");
+			throw new UnsupportedOperationException("All mod-loaders associated with the specified version are not implemented.");
 		}
 	}
 
-	public static Project.Metadata getMetadataFromFabricModJson(@NotNull URI jarUri,
-																@NotNull ExternalData externalData) throws Exception {
+	public static Metadata getMetadataFromFabricModJson(@NotNull URI jarUri,
+														@NotNull ExternalData externalData) throws Exception {
 		var request = HttpRequest.newBuilder()
 				.header("User-Agent", USER_AGENT)
 				.uri(jarUri)
@@ -87,7 +86,7 @@ public class MetadataUtils {
 		HttpResponse<Path> response = ModGardenBackend.HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(temporaryFolder));
 		Path temporaryFilePath = response.body();
 
-		Project.Metadata metadata;
+		Metadata metadata;
 		try (
 				JarFile jarFile = new JarFile(temporaryFilePath.toFile());
 				InputStream fmjStream = getFmjAsStream(jarFile);
@@ -106,7 +105,7 @@ public class MetadataUtils {
 
 			String sourceUrl = getFmjSourceUrl(fmj, externalData);
 
-			metadata = new Project.Metadata(
+			metadata = new ModMetadata(
 					modId,
 					name,
 					description,

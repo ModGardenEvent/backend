@@ -27,6 +27,7 @@ import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.endpoint.v2.auth.DeleteKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.GenerateKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.ListKeysEndpoint;
+import net.modgarden.backend.endpoint.v2.project.CreateProjectEndpoint;
 import net.modgarden.backend.endpoint.v2.project.DeleteProjectEndpoint;
 import net.modgarden.backend.endpoint.v2.submission.GetSubmissionByIdEndpoint;
 import net.modgarden.backend.endpoint.v2.event.GetSubmissionByModIdEndpoint;
@@ -130,6 +131,7 @@ public class ModGardenBackend {
 		delete(DeleteKeyEndpoint::new);
 		get(ListKeysEndpoint::new);
 
+		post(CreateProjectEndpoint::new);
 		put(AddMemberEndpoint::new);
 		put(SetPermissionsEndpoint::new);
 		put(SetRoleEndpoint::new);
@@ -298,14 +300,20 @@ public class ModGardenBackend {
 			)
 			""");
 			statement.addBatch("""
-				CREATE TABLE IF NOT EXISTS project_metadata (
+				CREATE TABLE IF NOT EXISTS project_draft_metadata (
+					project_id TEXT UNIQUE NOT NULL,
+					name TEXT NOT NULL,
+					FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
+					PRIMARY KEY (project_id)
+				)
+			""");
+			statement.addBatch("""
+				CREATE TABLE IF NOT EXISTS project_mod_metadata (
 					project_id TEXT UNIQUE NOT NULL,
 					mod_id TEXT NOT NULL,
 					name TEXT NOT NULL,
 					description TEXT,
 					source_url TEXT NOT NULL,
-					icon_url TEXT NOT NULL,
-					banner_url TEXT,
 					FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
 					PRIMARY KEY (project_id)
 				)

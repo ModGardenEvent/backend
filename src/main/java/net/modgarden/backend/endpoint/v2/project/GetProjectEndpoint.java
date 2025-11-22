@@ -1,7 +1,10 @@
 package net.modgarden.backend.endpoint.v2.project;
 
 import io.javalin.http.Context;
+import net.modgarden.backend.data.Metadata;
 import net.modgarden.backend.data.event.Project;
+import net.modgarden.backend.data.event.metadata.DraftMetadata;
+import net.modgarden.backend.data.event.metadata.ModMetadata;
 import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.endpoint.EndpointPath;
 import org.jetbrains.annotations.NotNull;
@@ -19,18 +22,56 @@ public abstract class GetProjectEndpoint extends Endpoint {
 	@Override
 	public abstract void handle(@NotNull Context ctx) throws Exception;
 
+	// TODO: Require view project permissions or being a member of the project to view draft projects.
 	public static Project getProjectFromId(@NotNull Connection connection,
 										   @NotNull String projectId) throws Exception {
 		Map<String, String> team = new HashMap<>();
 		Map<String, Long> permissions = new HashMap<>();
 		List<String> submissions = new ArrayList<>();
 		try (
-				var projectRolesStatement = connection.prepareStatement("SELECT user_id, permissions, role_name FROM project_roles WHERE project_id = ?");
-				var projectMetadataStatement = connection.prepareStatement("SELECT mod_id, name, description, source_url, icon_url, banner_url FROM project_metadata WHERE project_id = ?");
-				var submissionsStatement = connection.prepareStatement("SELECT id FROM submissions WHERE project_id = ?")
+				var projectRolesStatement = connection.prepareStatement("""
+					SELECT user_id, permissions, role_name
+					FROM project_roles
+					WHERE project_id = ?
+				""");
+				var projectDraftMetadataStatement = connection.prepareStatement("""
+					SELECT name
+					FROM project_draft_metadata
+					WHERE project_id = ?
+				""");
+				var projectModMetadataStatement = connection.prepareStatement("""
+					SELECT mod_id, name, description, source_url
+					FROM project_mod_metadata
+					WHERE project_id = ?
+				""");
+				var submissionsStatement = connection.prepareStatement("""
+					SELECT id
+					FROM submissions
+					WHERE project_id = ?
+				""")
 		) {
-			projectMetadataStatement.setString(1, projectId);
-			ResultSet projectMetadataResult = projectMetadataStatement.executeQuery();
+			projectModMetadataStatement.setString(1, projectId);
+			ResultSet projectModMetadataResult = projectModMetadataStatement.executeQuery();
+
+			projectDraftMetadataStatement.setString(1, projectId);
+			ResultSet projectDraftMetadataResult = projectDraftMetadataStatement.executeQuery();
+
+			Metadata metadata;
+			if (projectModMetadataResult.isBeforeFirst()) {
+				metadata = new ModMetadata(
+						projectModMetadataResult.getString("mod_id"),
+						projectModMetadataResult.getString("name"),
+						projectModMetadataResult.getString("description"),
+						projectModMetadataResult.getString("source_url")
+				);
+			} else if (projectDraftMetadataResult.isBeforeFirst()) {
+				metadata = new DraftMetadata(
+						projectDraftMetadataResult.getString("name")
+				);
+			} else {
+				throw new NullPointerException("Could not find metadata for project '" + projectId + "'");
+			}
+
 
 			projectRolesStatement.setString(1, projectId);
 			ResultSet projectRolesResult = projectRolesStatement.executeQuery();
@@ -48,17 +89,10 @@ public abstract class GetProjectEndpoint extends Endpoint {
 
 			return new Project(
 					projectId,
-					new Project.Metadata(
-							projectMetadataResult.getString("mod_id"),
-							projectMetadataResult.getString("name"),
-							projectMetadataResult.getString("description"),
-							projectMetadataResult.getString("source_url")
-					),
+					metadata,
 					team,
 					permissions,
-					submissions,
-					// TODO: Add ext field to the database.
-					Collections.emptyMap()
+					submissions
 			);
 		}
 	}

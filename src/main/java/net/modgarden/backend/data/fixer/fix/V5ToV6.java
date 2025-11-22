@@ -1,5 +1,6 @@
 package net.modgarden.backend.data.fixer.fix;
 
+import net.modgarden.backend.data.event.metadata.ModMetadata;
 import net.modgarden.backend.data.fixer.DatabaseFix;
 import net.modgarden.backend.util.MetadataUtils;
 import org.jetbrains.annotations.Nullable;
@@ -121,15 +122,22 @@ public class V5ToV6 extends DatabaseFix {
 		SELECT id FROM projects_old
 		""");
 
+
 		statement.addBatch("""
-		CREATE TABLE IF NOT EXISTS project_metadata (
+			CREATE TABLE IF NOT EXISTS project_draft_metadata (
+				project_id TEXT UNIQUE NOT NULL,
+				name TEXT NOT NULL,
+				FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				PRIMARY KEY (project_id)
+			)
+		""");
+		statement.addBatch("""
+		CREATE TABLE IF NOT EXISTS project_mod_metadata (
 			project_id TEXT UNIQUE NOT NULL,
 			mod_id TEXT NOT NULL,
 			name TEXT NOT NULL,
 			description TEXT,
 			source_url TEXT NOT NULL,
-			icon_url TEXT NOT NULL,
-			banner_url TEXT,
 			FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			PRIMARY KEY (project_id)
 		)
@@ -148,13 +156,14 @@ public class V5ToV6 extends DatabaseFix {
 			PRIMARY KEY(id)
 		)
 		""");
+		// Update submissions old instead of submissions to make sure submissions_mr shares the correct data-fixed IDs.
+		statement.addBatch("""
+		UPDATE submissions_old
+		SET id = generate_natural_id('submissions', id, NULL, 5)
+		""");
 		statement.addBatch("""
 		INSERT INTO submissions (id, event, project_id, submitted)
 		SELECT id, event, project_id, submitted from submissions_old
-		""");
-		statement.addBatch("""
-		UPDATE submissions
-		SET id = generate_natural_id_from_snowflake_id('submissions', id)
 		""");
 
 		// Use submissions_old since it has not yet been deleted.
@@ -166,11 +175,6 @@ public class V5ToV6 extends DatabaseFix {
 		SET modrinth_id = (
 			SELECT modrinth_id FROM projects_old WHERE submissions_mr.project_id = projects_old.id
 		)
-		""");
-
-		statement.addBatch("""
-		UPDATE submissions_mr
-		SET id = generate_natural_id_from_snowflake_id('submissions_mr', id)
 		""");
 
 		statement.addBatch("""
@@ -351,7 +355,7 @@ public class V5ToV6 extends DatabaseFix {
 
 		statement.addBatch("""
 		UPDATE users
-		SET id = generate_natural_id_from_snowflake_id('users', id)
+		SET id = generate_natural_id('users', id, NULL, 5)
 		""");
 
 		statement.addBatch("""
@@ -385,12 +389,12 @@ public class V5ToV6 extends DatabaseFix {
 
 		statement.addBatch("""
 		UPDATE projects
-		SET id = generate_natural_id_from_snowflake_id('projects', id)
+		SET id = generate_natural_id('projects', id, NULL, 5)
 		""");
 
 		statement.addBatch("""
 		UPDATE events
-		SET id = generate_natural_id_from_snowflake_id('events', id)
+		SET id = generate_natural_id('events', id, NULL, 5)
 		""");
 		statement.addBatch("""
 		UPDATE events
@@ -405,8 +409,8 @@ public class V5ToV6 extends DatabaseFix {
 			INNER JOIN submissions s ON s.id = mr.submission_id
 		""");
 		var projectMetadataInsertStatement = connection.prepareStatement("""
-			INSERT INTO project_metadata (project_id, mod_id, name, description, source_url, icon_url, banner_url)
-			VALUES (?, ?, ?, ?, ?, ?, ?)
+			INSERT INTO project_mod_metadata (project_id, mod_id, name, description, source_url)
+			VALUES (?, ?, ?, ?, ?)
 		""");
 		var modrinthSubmissionsResult = modrinthSubmissionsStatement.executeQuery();
 
@@ -417,12 +421,15 @@ public class V5ToV6 extends DatabaseFix {
 				String modrinthVersionId = modrinthSubmissionsResult.getString("version_id");
 
 				try {
-					var modrinthData = MetadataUtils.getMetadataFromModrinth(modrinthId, modrinthVersionId);
+					var modrinthMetadata = MetadataUtils.getMetadataFromModrinth(modrinthId, modrinthVersionId);
+					if (!(modrinthMetadata instanceof ModMetadata(
+							String modId, String name, String description, String sourceUrl
+					))) continue;
 					projectMetadataInsertStatement.setString(1, projectId);
-					projectMetadataInsertStatement.setString(2, modrinthData.modId());
-					projectMetadataInsertStatement.setString(3, modrinthData.name());
-					projectMetadataInsertStatement.setString(4, modrinthData.description());
-					projectMetadataInsertStatement.setString(5, modrinthData.sourceUrl());
+					projectMetadataInsertStatement.setString(2, modId);
+					projectMetadataInsertStatement.setString(3, name);
+					projectMetadataInsertStatement.setString(4, description);
+					projectMetadataInsertStatement.setString(5, sourceUrl);
 					projectMetadataInsertStatement.executeUpdate();
 				} catch (Exception e) {
 					throw new RuntimeException(e);

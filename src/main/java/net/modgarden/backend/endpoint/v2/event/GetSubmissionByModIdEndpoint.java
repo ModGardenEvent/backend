@@ -32,9 +32,9 @@ public class GetSubmissionByModIdEndpoint extends GetSubmissionEndpoint {
 					FROM events
 					WHERE event_type_slug = ? AND slug = ?
 				""");
-				var projectMetadataStatement = connection.prepareStatement("""
+				var projectModMetadataStatement = connection.prepareStatement("""
 					SELECT project_id
-					FROM project_metadata
+					FROM project_mod_metadata
 					WHERE mod_id = ?
 				""");
 				var submissionsStatement = connection.prepareStatement("""
@@ -43,21 +43,21 @@ public class GetSubmissionByModIdEndpoint extends GetSubmissionEndpoint {
 					WHERE project_id = ? AND event = ?
 				""")
 		) {
-			projectMetadataStatement.setString(1, modId);
-			var projectMetadataResult = projectMetadataStatement.executeQuery();
-
-			if (!projectMetadataResult.isBeforeFirst()) {
-				ctx.result("Could not find mod with id '" + modId + "'");
-				ctx.status(404);
-				return;
-			}
-
 			eventStatement.setString(1, eventTypeSlug);
 			eventStatement.setString(2, eventSlug);
 			var eventResult = eventStatement.executeQuery();
 
 			if (!eventResult.isBeforeFirst()) {
 				ctx.result("Could not find event '" + eventSlug + "' for event type '" + eventTypeSlug + "'");
+				ctx.status(404);
+				return;
+			}
+
+			projectModMetadataStatement.setString(1, modId);
+			var projectMetadataResult = projectModMetadataStatement.executeQuery();
+
+			if (!projectMetadataResult.isBeforeFirst()) {
+				ctx.result("Could not find mod with id '" + modId + "'");
 				ctx.status(404);
 				return;
 			}
