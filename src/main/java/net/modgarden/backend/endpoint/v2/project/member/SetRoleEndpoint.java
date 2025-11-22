@@ -44,7 +44,7 @@ public class SetRoleEndpoint extends AuthorizedProjectEndpoint {
 				""")
 		) {
 			for (Map.Entry<String, String> usersToRoleName : request.usersToRoleName().entrySet()) {
-				if (!canModifyUser(connection, projectId, usersToRoleName.getKey(), scopePermissions)) return;
+				if (!canModifyUser(ctx, connection, projectId, usersToRoleName.getKey(), scopePermissions)) return;
 
 				updateStatement.setString(1, usersToRoleName.getValue());
 				updateStatement.setString(2, projectId);

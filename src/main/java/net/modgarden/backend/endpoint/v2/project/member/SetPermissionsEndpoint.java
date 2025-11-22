@@ -45,7 +45,7 @@ public class SetPermissionsEndpoint extends AuthorizedProjectEndpoint {
 				""")
 		) {
 			for (Map.Entry<String, Permissions> usersToPermissions : request.usersToPermissions().entrySet()) {
-				if (!canModifyUser(connection, projectId, usersToPermissions.getKey(), scopePermissions)) return;
+				if (!canModifyUser(ctx, connection, projectId, usersToPermissions.getKey(), scopePermissions)) return;
 
 				updateStatement.setLong(1, usersToPermissions.getValue().bits());
 				updateStatement.setString(2, projectId);

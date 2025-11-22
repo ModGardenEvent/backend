@@ -20,10 +20,13 @@ public abstract class AuthorizedProjectEndpoint extends AuthorizedEndpoint {
 	@Override
 	public abstract void handle(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception;
 
-	protected static boolean canModifyUser(Connection connection,
-										   String projectId,
-										   String userIdToModify,
-										   Permissions selfPermissions) throws Exception {
+	protected static boolean canModifyUser(
+			Context ctx,
+			Connection connection,
+			String projectId,
+			String userIdToModify,
+			Permissions selfPermissions
+	) throws Exception {
 		try (
 				var memberPermissionsStatement = connection.prepareStatement("""
 					SELECT permissions
@@ -37,8 +40,11 @@ public abstract class AuthorizedProjectEndpoint extends AuthorizedEndpoint {
 			Permissions memberPermissions = new Permissions(memberPermissionsResult.getLong(1));
 
 			// If a non-administrator attempts to edit the permissions of an administrator, return false.
-			if (memberPermissions.hasPermissions(Permission.ADMINISTRATOR) && !selfPermissions.hasPermissions(Permission.ADMINISTRATOR))
+			if (memberPermissions.hasPermissions(Permission.ADMINISTRATOR) && !selfPermissions.hasPermissions(Permission.ADMINISTRATOR)) {
+				ctx.status(403);
+				ctx.result("Non-administrators may not edit administrators' permissions on projects");
 				return false;
+			}
 		}
 
 		return true;

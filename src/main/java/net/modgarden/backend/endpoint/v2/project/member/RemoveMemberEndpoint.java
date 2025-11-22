@@ -56,7 +56,7 @@ public class RemoveMemberEndpoint extends AuthorizedProjectEndpoint {
 			Permissions memberPermissions = new Permissions(memberPermissionsResult.getLong(1));
 
 			// If a non-administrator attempts to remove an administrator, return.
-			if (!canModifyUser(connection, projectId, request.userId(), scopePermissions)) return;
+			if (!canModifyUser(ctx, connection, projectId, request.userId(), scopePermissions)) return;
 
 			boolean memberCanEditProject = memberPermissions.hasPermissions(Permission.EDIT_PROJECT);
 
