@@ -10,21 +10,19 @@ import net.modgarden.backend.data.Platform;
 /// An example based on Variant Lib would be as follows.
 /// ```json
 /// {
+/// 	"type": "modrinth",
 /// 	"project_id": "LQCrGzOR",
 /// 	"version_id": "Qt7I0urr"
-/// 	"slug": "variant-lib"
 /// }
 /// ```
 ///
 /// @param projectId	The project ID of the Modrinth project.
 /// @param versionId	The version ID to pull from Modrinth for the mod JAR.
-/// @param slug			The slug of the Modrinth project.
 ///
-public record ModrinthPlatform(String projectId, String versionId, String slug) implements Platform {
+public record ModrinthPlatform(String projectId, String versionId) implements Platform {
 	public static final MapCodec<ModrinthPlatform> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
 			Codec.STRING.fieldOf("project_id").forGetter(ModrinthPlatform::projectId),
-			Codec.STRING.fieldOf("version_id").forGetter(ModrinthPlatform::versionId),
-			Codec.STRING.fieldOf("slug").forGetter(ModrinthPlatform::slug)
+			Codec.STRING.fieldOf("version_id").forGetter(ModrinthPlatform::versionId)
 	).apply(inst, ModrinthPlatform::new));
 
 	@Override

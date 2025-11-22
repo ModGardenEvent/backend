@@ -46,11 +46,9 @@ public abstract class GetSubmissionEndpoint extends Endpoint {
 			Platform platform;
 			// TODO: Implement download URL submission type.
 			if (modrinthSubmissionTypeResult.isBeforeFirst()) {
-				String modrinthId = modrinthSubmissionTypeResult.getString("modrinth_id");
 				platform = new ModrinthPlatform(
-						modrinthId,
-						modrinthSubmissionTypeResult.getString("version_id"),
-						ModrinthUtils.getSlugFromId(modrinthId)
+						modrinthSubmissionTypeResult.getString("modrinth_id"),
+						modrinthSubmissionTypeResult.getString("version_id")
 				);
 			} else {
 				throw new RuntimeException("Submission does not have a valid 'platform'");
