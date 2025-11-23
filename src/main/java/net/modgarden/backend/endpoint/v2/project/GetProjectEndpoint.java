@@ -23,6 +23,7 @@ public abstract class GetProjectEndpoint extends Endpoint {
 	public abstract void handle(@NotNull Context ctx) throws Exception;
 
 	// TODO: Require view project permissions or being a member of the project to view draft projects.
+	// todo: cali why is this not in DatabaseAccess :tiny_pineapple:
 	public static Project getProjectFromId(@NotNull Connection connection,
 										   @NotNull String projectId) throws Exception {
 		Map<String, String> team = new HashMap<>();
