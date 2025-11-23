@@ -21,7 +21,7 @@ public class CreateProjectEndpoint extends AuthorizedProjectEndpoint {
 	}
 
 	@Override
-	public void handle(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
+	public void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
 		String generatedProjectId = NaturalId.generate("projects", "id", null, 5);
 		Request request = decodeBody(ctx, Request.CODEC)
 				.unwrap(ctx);

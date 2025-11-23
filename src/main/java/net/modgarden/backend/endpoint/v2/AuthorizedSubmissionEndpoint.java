@@ -21,5 +21,5 @@ public abstract class AuthorizedSubmissionEndpoint extends AuthorizedEndpoint {
 	protected abstract String getProjectId(Context ctx) throws SQLException;
 
 	@Override
-	public abstract void handle(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception;
+	public abstract void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception;
 }

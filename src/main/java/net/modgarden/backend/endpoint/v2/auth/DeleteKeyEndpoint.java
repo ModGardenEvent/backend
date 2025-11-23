@@ -23,7 +23,7 @@ public final class DeleteKeyEndpoint extends AuthEndpoint {
 	}
 
 	@Override
-	public void handle(
+	public void onRequest(
 			@NotNull Context ctx,
 			String userId,
 			Permissions scopePermissions

@@ -18,7 +18,7 @@ public class GetProjectByIdEndpoint extends GetProjectEndpoint {
 	}
 
 	@Override
-	public void handle(@NotNull Context ctx) throws Exception {
+	public void onRequest(@NotNull Context ctx) throws Exception {
 		String projectId = ctx.pathParam("project_id");
 		try (
 				var connection = this.getDatabaseConnection();

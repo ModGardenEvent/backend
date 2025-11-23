@@ -30,7 +30,7 @@ public final class ListKeysEndpoint extends AuthEndpoint {
 	}
 
 	@Override
-	public void handle(
+	public void onRequest(
 			@NotNull Context ctx,
 			String userId,
 			Permissions scopePermissions

@@ -32,7 +32,7 @@ public final class GenerateKeyEndpoint extends AuthEndpoint {
 	}
 
 	@Override
-	public void handle(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
+	public void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
 		if (this.requireAllPermissions(ctx, scopePermissions, Permission.MODIFY_API_KEY)) return;
 
 		Request<?> request = this.decodeBody(ctx, Request.CODEC)

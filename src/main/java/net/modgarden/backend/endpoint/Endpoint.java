@@ -10,6 +10,7 @@ import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import net.modgarden.backend.HypertextResult;
 import net.modgarden.backend.database.DatabaseAccess;
+import net.modgarden.backend.endpoint.exception.NotFoundException;
 import org.jetbrains.annotations.NotNull;
 
 import java.sql.Connection;
@@ -33,7 +34,7 @@ public abstract class Endpoint implements Handler {
 	}
 
 	@Override
-	public void handle(@NotNull Context ctx) throws Exception {
+	public final void handle(@NotNull Context ctx) throws Exception {
 		// validate all path params
 		for (String pathParam : ctx.pathParamMap().values()) {
 			if (!pathParam.matches(SAFE_URL_REGEX)) {
@@ -42,7 +43,16 @@ public abstract class Endpoint implements Handler {
 				return;
 			}
 		}
+
+		try {
+			this.onRequest(ctx);
+		} catch (NotFoundException npe) {
+			ctx.status(404);
+			ctx.result(npe.getMessage());
+		}
 	}
+
+	public abstract void onRequest(@NotNull Context ctx) throws Exception;
 
 	public String getPath() {
 		return path;

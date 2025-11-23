@@ -18,7 +18,7 @@ public class GetProjectByModIdEndpoint extends GetProjectEndpoint {
 	}
 
 	@Override
-	public void handle(@NotNull Context ctx) throws Exception {
+	public void onRequest(@NotNull Context ctx) throws Exception {
 		String modId = ctx.pathParam("mod_id");
 
 		try (

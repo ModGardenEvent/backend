@@ -10,6 +10,7 @@ import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.event.metadata.DraftMetadata;
 import net.modgarden.backend.data.event.metadata.ModMetadata;
 import net.modgarden.backend.data.event.platform.ModrinthPlatform;
+import net.modgarden.backend.endpoint.exception.NotFoundException;
 import org.jetbrains.annotations.NotNull;
 
 import java.sql.Connection;
@@ -27,7 +28,7 @@ public final class DatabaseAccess {
 
 	public String getProjectIdFromSubmissionId(
 			@NotNull String submissionId
-	) throws SQLException, NullPointerException {
+	) throws SQLException, NotFoundException {
 		Connection connection = this.getDatabaseConnection();
 		try (
 				var submissionIdStatement = connection.prepareStatement("""
@@ -39,7 +40,7 @@ public final class DatabaseAccess {
 			submissionIdStatement.setString(1, submissionId);
 			ResultSet submissionResult = submissionIdStatement.executeQuery();
 			if (!submissionResult.isBeforeFirst()) {
-				throw new NullPointerException("Could not find submission '" + submissionId + "'");
+				throw new NotFoundException("Could not find submission '" + submissionId + "'");
 			}
 
 			return submissionResult.getString("project_id");
@@ -65,7 +66,7 @@ public final class DatabaseAccess {
 			submissionStatement.setString(1, submissionId);
 			ResultSet submissionResult = submissionStatement.executeQuery();
 			if (!submissionResult.isBeforeFirst()) {
-				throw new NullPointerException("Could not find submission '" + submissionId + "'");
+				throw new NotFoundException("Could not find submission '" + submissionId + "'");
 			}
 
 			modrinthSubmissionTypeStatement.setString(1, submissionId);
@@ -140,7 +141,7 @@ public final class DatabaseAccess {
 						projectDraftMetadataResult.getString("name")
 				);
 			} else {
-				throw new NullPointerException("Could not find metadata for project '" + projectId + "'");
+				throw new NotFoundException("Could not find metadata for project '" + projectId + "'");
 			}
 
 

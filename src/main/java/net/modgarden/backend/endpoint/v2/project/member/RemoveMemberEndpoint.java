@@ -22,7 +22,7 @@ public class RemoveMemberEndpoint extends AuthorizedProjectEndpoint {
 	}
 
 	@Override
-	public void handle(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
+	public void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
 		//noinspection DuplicatedCode
 
 		String projectId = this.getProjectId(ctx);

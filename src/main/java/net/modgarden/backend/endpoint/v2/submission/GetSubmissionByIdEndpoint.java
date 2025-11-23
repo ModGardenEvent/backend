@@ -19,7 +19,7 @@ public class GetSubmissionByIdEndpoint extends GetSubmissionEndpoint {
 	}
 
 	@Override
-	public void handle(@NotNull Context ctx) throws Exception {
+	public void onRequest(@NotNull Context ctx) throws Exception {
 		String submissionId = ctx.pathParam("submission_id").toLowerCase(Locale.ROOT);
 
 		try (

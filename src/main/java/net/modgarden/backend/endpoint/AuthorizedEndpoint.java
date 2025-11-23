@@ -75,17 +75,16 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 		return ARGON.verify(hash, secret.toCharArray());
 	}
 
-	protected abstract void handle(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception;
+	protected abstract void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception;
 
 	@Override
-	public final void handle(@NotNull Context ctx) throws Exception {
+	public final void onRequest(@NotNull Context ctx) throws Exception {
 		ValidationResult validationResult = validateAuth(ctx);
 		if (!validationResult.authorized()) {
 			return;
 		}
 
-		super.handle(ctx);
-		this.handle(ctx, validationResult.userId(), validationResult.scopePermissions());
+		this.onRequest(ctx, validationResult.userId(), validationResult.scopePermissions());
 	}
 
 	protected @Nullable String getProjectId(Context ctx) throws SQLException {

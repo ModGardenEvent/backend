@@ -14,5 +14,5 @@ public abstract class AuthEndpoint extends AuthorizedEndpoint {
 	}
 
 	@Override
-	public abstract void handle(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception;
+	public abstract void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception;
 }

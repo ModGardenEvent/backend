@@ -21,7 +21,7 @@ public class GetSubmissionByModIdEndpoint extends GetSubmissionEndpoint {
 
 	@SuppressWarnings("DuplicatedCode")
 	@Override
-	public void handle(@NotNull Context ctx) throws Exception {
+	public void onRequest(@NotNull Context ctx) throws Exception {
 		String eventTypeSlug = ctx.pathParam("event_type_slug").toLowerCase(Locale.ROOT);
 		String eventSlug = ctx.pathParam("event_slug").toLowerCase(Locale.ROOT);
 		String modId = ctx.pathParam("mod_id").toLowerCase(Locale.ROOT);

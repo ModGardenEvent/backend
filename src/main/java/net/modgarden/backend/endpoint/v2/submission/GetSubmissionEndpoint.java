@@ -10,5 +10,5 @@ public abstract class GetSubmissionEndpoint extends Endpoint {
 	}
 
 	@Override
-	public abstract void handle(@NotNull Context ctx) throws Exception;
+	public abstract void onRequest(@NotNull Context ctx) throws Exception;
 }
