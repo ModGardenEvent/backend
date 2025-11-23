@@ -9,6 +9,8 @@ import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthorizedSubmissionEndpoint;
 import org.jetbrains.annotations.NotNull;
 
+import java.sql.SQLException;
+
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.DELETE;
 
 @EndpointMethod(DELETE)
@@ -36,5 +38,11 @@ public class DeleteSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
 			statement.setString(1, submissionId);
 			statement.executeUpdate();
 		}
+	}
+
+	@NotNull
+	@Override
+	protected String getProjectId(Context ctx) throws SQLException {
+		return this.getDatabaseAccess().getProjectIdFromSubmissionId(ctx.pathParam("submission_id"));
 	}
 }

@@ -3,11 +3,13 @@ package net.modgarden.backend.endpoint.v2.project;
 import com.mojang.serialization.Codec;
 import io.javalin.http.Context;
 import net.modgarden.backend.data.NaturalId;
+import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthorizedProjectEndpoint;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
 
@@ -15,7 +17,7 @@ import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
 @EndpointPath("/v2/project/create")
 public class CreateProjectEndpoint extends AuthorizedProjectEndpoint {
 	public CreateProjectEndpoint() {
-		super("create", true);
+		super("create", PermissionScope.USER, true);
 	}
 
 	@Override
@@ -55,6 +57,13 @@ public class CreateProjectEndpoint extends AuthorizedProjectEndpoint {
 			ctx.status(201);
 			ctx.header("Location", "/v2/project/" + generatedProjectId);
 		}
+	}
+
+	@NotNull
+	@SuppressWarnings("DataFlowIssue") // we don't care since this endpoint doesn't require project perms
+	@Override
+	protected String getProjectId(Context ctx) {
+		return null;
 	}
 
 	public record Request(String name) {

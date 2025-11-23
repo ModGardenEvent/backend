@@ -23,7 +23,7 @@ public class DeleteProjectEndpoint extends AuthorizedProjectEndpoint {
 		if (this.requireAnyPermissions(ctx, scopePermissions,
 				Permission.EDIT_PROJECT, Permission.MODERATE_PROJECTS)) return;
 
-		String projectId = ctx.pathParam("project_id");
+		String projectId = this.getProjectId(ctx);
 
 		try (
 				var connection = this.getDatabaseConnection();
@@ -35,5 +35,11 @@ public class DeleteProjectEndpoint extends AuthorizedProjectEndpoint {
 			statement.setString(1, projectId);
 			statement.executeUpdate();
 		}
+	}
+
+	@NotNull
+	@Override
+	protected String getProjectId(Context ctx) {
+		return ctx.pathParam("project_id");
 	}
 }

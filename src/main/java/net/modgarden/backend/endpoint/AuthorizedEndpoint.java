@@ -1,9 +1,5 @@
 package net.modgarden.backend.endpoint;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonSyntaxException;
 import de.mkammerer.argon2.Argon2Advanced;
 import de.mkammerer.argon2.Argon2Factory;
 import io.javalin.http.Context;
@@ -14,6 +10,7 @@ import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.endpoint.v2.auth.GenerateKeyEndpoint;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.security.SecureRandom;
 import java.sql.ResultSet;
@@ -91,6 +88,10 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 		this.handle(ctx, validationResult.userId(), validationResult.scopePermissions());
 	}
 
+	protected @Nullable String getProjectId(Context ctx) throws SQLException {
+		return null;
+	}
+
 	/// # Caution
 	/// Modifying this method is a dangerous game.
 	///
@@ -133,19 +134,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 			return new ValidationResult(true, "grbot", scopePermissions);
 		}
 
-		JsonObject body;
-		String projectId = null;
-		if (this.hasBody) {
-			try {
-				body = JsonParser.parseString(ctx.body()).getAsJsonObject();
-				JsonElement projectIdElement = body.get("project_id");
-				if (projectIdElement != null) {
-					projectId = projectIdElement.getAsString();
-				}
-			} catch (JsonSyntaxException | IllegalStateException e) {
-				this.invalidBody(ctx, e.getMessage());
-			}
-		}
+		String projectId = this.getProjectId(ctx);
 
 		String idSecretPair = authorization.split(" ")[1];
 		String[] idSecretPairSplit = idSecretPair.split(":");

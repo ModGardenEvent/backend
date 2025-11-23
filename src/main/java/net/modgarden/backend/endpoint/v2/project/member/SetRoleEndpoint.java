@@ -27,7 +27,7 @@ public class SetRoleEndpoint extends AuthorizedProjectEndpoint {
 		if (this.requireAnyPermissions(ctx, scopePermissions,
 				Permission.EDIT_PROJECT, Permission.MODERATE_PROJECTS)) return;
 
-		String projectId = ctx.pathParam("project_id");
+		String projectId = this.getProjectId(ctx);
 
 		Request request = decodeBody(ctx, Request.CODEC)
 				.unwrap(ctx);
@@ -43,7 +43,7 @@ public class SetRoleEndpoint extends AuthorizedProjectEndpoint {
 				""")
 		) {
 			for (Map.Entry<String, String> usersToRoleName : request.usersToRoleName().entrySet()) {
-				if (!canModifyUser(ctx, connection, projectId, usersToRoleName.getKey(), scopePermissions)) return;
+				if (requireUserCanModifyMember(ctx, connection, projectId, usersToRoleName.getKey(), scopePermissions)) return;
 
 				updateStatement.setString(1, usersToRoleName.getValue());
 				updateStatement.setString(2, projectId);
@@ -51,6 +51,12 @@ public class SetRoleEndpoint extends AuthorizedProjectEndpoint {
 				updateStatement.executeUpdate();
 			}
 		}
+	}
+
+	@NotNull
+	@Override
+	protected String getProjectId(Context ctx) {
+		return ctx.pathParam("project_id");
 	}
 
 	public record Request(Map<String, String> usersToRoleName) {

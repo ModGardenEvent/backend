@@ -9,6 +9,7 @@ import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthorizedProjectEndpoint;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.PUT;
 
@@ -25,7 +26,7 @@ public class AddMemberEndpoint extends AuthorizedProjectEndpoint {
 		if (this.requireAnyPermissions(ctx, scopePermissions,
 				Permission.EDIT_PROJECT, Permission.MODERATE_PROJECTS)) return;
 
-		String projectId = ctx.pathParam("project_id");
+		String projectId = this.getProjectId(ctx);
 		Request request = decodeBody(ctx, Request.CODEC)
 				.unwrap(ctx);
 
@@ -42,6 +43,12 @@ public class AddMemberEndpoint extends AuthorizedProjectEndpoint {
 			insertStatement.setString(2, request.userId());
 			insertStatement.executeUpdate();
 		}
+	}
+
+	@NotNull
+	@Override
+	protected String getProjectId(Context ctx) {
+		return ctx.pathParam("project_id");
 	}
 
 	public record Request(String userId) {

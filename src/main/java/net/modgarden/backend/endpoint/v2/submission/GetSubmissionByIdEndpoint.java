@@ -2,6 +2,7 @@ package net.modgarden.backend.endpoint.v2.submission;
 
 import io.javalin.http.Context;
 import net.modgarden.backend.data.event.Submission;
+import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import org.jetbrains.annotations.NotNull;
@@ -38,7 +39,7 @@ public class GetSubmissionByIdEndpoint extends GetSubmissionEndpoint {
 				return;
 			}
 
-			Submission submission = GetSubmissionEndpoint.getSubmissionFromId(connection, submissionId);
+			Submission submission = this.getDatabaseAccess().getSubmissionFromId(submissionId);
 			ctx.json(submission);
 			ctx.status(200);
 		}

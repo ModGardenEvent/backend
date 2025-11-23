@@ -36,7 +36,7 @@ public class GetProjectByIdEndpoint extends GetProjectEndpoint {
 				return;
 			}
 
-			Project project = GetProjectEndpoint.getProjectFromId(connection, projectId);
+			Project project = this.getDatabaseAccess().getProjectFromId(projectId);
 			ctx.json(project);
 			ctx.status(200);
 		}

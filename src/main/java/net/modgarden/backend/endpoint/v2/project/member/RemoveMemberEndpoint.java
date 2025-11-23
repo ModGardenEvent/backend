@@ -25,7 +25,7 @@ public class RemoveMemberEndpoint extends AuthorizedProjectEndpoint {
 	public void handle(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
 		//noinspection DuplicatedCode
 
-		String projectId = ctx.pathParam("project_id");
+		String projectId = this.getProjectId(ctx);
 		Request request = decodeBody(ctx, Request.CODEC)
 				.unwrap(ctx);
 
@@ -55,7 +55,7 @@ public class RemoveMemberEndpoint extends AuthorizedProjectEndpoint {
 			Permissions memberPermissions = new Permissions(memberPermissionsResult.getLong(1));
 
 			// If a non-administrator attempts to remove an administrator, return.
-			if (!canModifyUser(ctx, connection, projectId, request.userId(), scopePermissions)) return;
+			if (requireUserCanModifyMember(ctx, connection, projectId, request.userId(), scopePermissions)) return;
 
 			boolean memberIsAdmin = memberPermissions.hasPermissions(Permission.ADMINISTRATOR);
 
@@ -75,6 +75,12 @@ public class RemoveMemberEndpoint extends AuthorizedProjectEndpoint {
 			deleteStatement.setString(2, request.userId());
 			deleteStatement.executeUpdate();
 		}
+	}
+
+	@NotNull
+	@Override
+	protected String getProjectId(Context ctx) {
+		return ctx.pathParam("project_id");
 	}
 
 	public record Request(String userId) {
