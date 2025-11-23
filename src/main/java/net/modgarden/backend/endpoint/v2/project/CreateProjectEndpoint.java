@@ -53,6 +53,7 @@ public class CreateProjectEndpoint extends AuthorizedProjectEndpoint {
 			projectRolesStatement.executeUpdate();
 
 			ctx.status(201);
+			ctx.header("Location", "/v2/project/" + generatedProjectId);
 		}
 	}
 
