@@ -24,7 +24,7 @@ public class DeleteSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
 	public void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
 		//noinspection DuplicatedCode
 		if (this.requireAnyPermissions(ctx, scopePermissions,
-				Permission.EDIT_PROJECT, Permission.MODERATE_PROJECTS)) return;
+				Permission.EDIT_PROJECT)) return;
 
 		String submissionId = ctx.pathParam("submission_id");
 

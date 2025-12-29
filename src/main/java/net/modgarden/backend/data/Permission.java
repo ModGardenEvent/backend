@@ -13,29 +13,32 @@ public enum Permission {
 	/// Signifies that this user has every permission.
 	/// Do not give this out unless it is absolutely necessary for an individual team member to receive this.
 	ADMINISTRATOR(0x1, "administrator", ALL),
-	/// Edit your own profile.
-	EDIT_PROFILE(0x2, "edit_profile", USER),
+	/// Create, edit, and manage roles for users or projects.
+	MANAGE_ROLES(0x2, "manage_roles", ALL),
+	/// Create, edit, and hide events.
+	EDIT_EVENT(0x4, "edit_event", USER),
 	/// Edit others' profiles and punish users.
-	MODERATE_USERS(0x4, "moderate_users", USER),
+	MODERATE_USERS(0x8, "moderate_users", USER),
+	/// Edit your own profile.
+	EDIT_PROFILE(0x10, "edit_profile", USER),
 	/// Edit this project.
-	EDIT_PROJECT(0x8, "edit_project", PROJECT),
-	/// Edit others' projects and hide them.
-	MODERATE_PROJECTS(0x10, "moderate_projects", ALL),
+	EDIT_PROJECT(0x20, "edit_project", ALL),
+	/// Join, participate, and submit projects in events.
+	PARTICIPATE(0x40, "participate", USER),
 	/// Upload files to the CDN.
-	UPLOAD_TO_CDN(0x20, "upload_to_cdn", USER),
-	/// Generate and delete API keys on behalf of this user or project.
-	MODIFY_API_KEY(0x40, "modify_api_key", ALL),
+	UPLOAD_TO_CDN(0x80, "upload_to_cdn", USER),
 	/// List, modify, and delete files in the CDN.
-	MANAGE_CDN(0x80, "manage_cdn", USER),
-	/// Edit events and hide them.
-	EDIT_EVENT(0x100, "edit_event", USER);
+	MANAGE_CDN(0x100, "manage_cdn", USER),
+	/// Generate and delete API keys on behalf of this user or project.
+	MODIFY_API_KEY(0x200, "modify_api_key", ALL),;
 
 	/// The default permissions that all users have.
 	///
 	/// At some point, we're going to switch to user roles,
 	/// but for now, users have inherent, default permissions.
 	public static final Permissions DEFAULT_USER_PERMISSIONS = new Permissions(
-			EDIT_PROFILE
+			EDIT_PROFILE,
+			PARTICIPATE
 	);
 
 	public static final Codec<Permission> CODEC = Codec.STRING.flatXmap(string -> {

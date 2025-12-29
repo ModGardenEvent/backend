@@ -3,6 +3,7 @@ package net.modgarden.backend.endpoint.v2.project;
 import com.mojang.serialization.Codec;
 import io.javalin.http.Context;
 import net.modgarden.backend.data.NaturalId;
+import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.endpoint.EndpointMethod;
@@ -22,6 +23,9 @@ public class CreateProjectEndpoint extends AuthorizedProjectEndpoint {
 
 	@Override
 	public void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
+		if (this.requireAnyPermissions(ctx, scopePermissions,
+				Permission.PARTICIPATE)) return;
+
 		String generatedProjectId = NaturalId.generate("projects", "id", null, 5);
 		Request request = decodeBody(ctx, Request.CODEC)
 				.unwrap(ctx);

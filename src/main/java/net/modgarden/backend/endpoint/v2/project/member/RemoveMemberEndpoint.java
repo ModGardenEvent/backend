@@ -30,7 +30,7 @@ public class RemoveMemberEndpoint extends AuthorizedProjectEndpoint {
 				.unwrap(ctx);
 
 		if (request == null || !request.userId().equals(userId) && this.requireAnyPermissions(ctx, scopePermissions,
-				Permission.EDIT_PROJECT, Permission.MODERATE_PROJECTS)) return;
+				Permission.EDIT_PROJECT)) return;
 
 		try (
 				var connection = this.getDatabaseConnection();

@@ -25,7 +25,7 @@ public class SetPermissionsEndpoint extends AuthorizedProjectEndpoint {
 	public void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
 		//noinspection DuplicatedCode
 		if (this.requireAnyPermissions(ctx, scopePermissions,
-				Permission.EDIT_PROJECT, Permission.MODERATE_PROJECTS)) return;
+				Permission.EDIT_PROJECT)) return;
 
 		String projectId = ctx.pathParam("project_id");
 
