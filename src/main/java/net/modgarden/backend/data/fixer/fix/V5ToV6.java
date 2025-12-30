@@ -42,9 +42,57 @@ public class V5ToV6 extends DatabaseFix {
 			PRIMARY KEY(id)
 		)
 		""");
+
+
+		statement.addBatch("""
+		CREATE TABLE IF NOT EXISTS user_role_definitions (
+			id TEXT UNIQUE NOT NULL,
+			name TEXT NOT NULL,
+			permissions INTEGER NOT NULL,
+			created INTEGER NOT NULL,
+			PRIMARY KEY (id)
+		)
+		""");
+		statement.addBatch("""
+		CREATE TABLE IF NOT EXISTS user_roles (
+			role_id TEXT NOT NULL,
+			user_id TEXT NOT NULL,
+			FOREIGN KEY (role_id) REFERENCES user_role_definitions(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
+		)
+		""");
+		statement.addBatch("""
+		CREATE UNIQUE INDEX idx_user_roles_two_ids ON user_roles(role_id, user_id)
+		""");
+
+		statement.addBatch("""
+		INSERT INTO user_role_definitions VALUES ('admin', 'Administrator', 1, unix_millis())
+		""");
+		statement.addBatch("""
+		CREATE TEMP TRIGGER temp_migrate_user_permissions INSERT ON users
+		 WHEN new.permissions == 1 BEGIN
+			INSERT INTO user_roles VALUES ('admin', new.id);
+		END
+		""");
 		statement.addBatch("""
 		INSERT INTO users (id, username, created, permissions)
-		SELECT id, username, created, permissions from users_old
+		SELECT id, username, created, permissions FROM users_old
+		""");
+
+		// Update user permissions automatically based on role
+		statement.addBatch("""
+		CREATE TRIGGER user_role_trigger_insert INSERT ON user_roles BEGIN
+			UPDATE users SET permissions = permissions | role_permissions FROM (
+				SELECT permissions AS role_permissions FROM user_role_definitions WHERE id = new.role_id
+			) WHERE id == new.user_id;
+		END
+		""");
+		statement.addBatch("""
+		CREATE TRIGGER user_role_trigger_delete DELETE ON user_roles BEGIN
+			UPDATE users SET permissions = permissions & ~role_permissions FROM (
+				SELECT permissions AS role_permissions FROM user_role_definitions WHERE id = old.role_id
+			) WHERE id == old.user_id;
+		END
 		""");
 
 
@@ -159,7 +207,7 @@ public class V5ToV6 extends DatabaseFix {
 		// Update submissions old instead of submissions to make sure submissions_mr shares the correct data-fixed IDs.
 		statement.addBatch("""
 		UPDATE submissions_old
-		SET id = generate_natural_id('submissions', id, NULL, 5)
+		SET id = generate_natural_id('submissions', 'id', NULL, 5)
 		""");
 		statement.addBatch("""
 		INSERT INTO submissions (id, event, project_id, submitted)
@@ -355,13 +403,16 @@ public class V5ToV6 extends DatabaseFix {
 
 		statement.addBatch("""
 		UPDATE users
-		SET id = generate_natural_id('users', id, NULL, 5)
+		SET id = generate_natural_id('users', 'id', NULL, 5)
 		""");
 
 		statement.addBatch("""
 		UPDATE users
-		SET id = 'mgacc', permissions = 1
+		SET id = 'mgacc'
 		WHERE username == 'mod_garden'
+		""");
+		statement.addBatch("""
+		INSERT INTO user_roles VALUES ('admin', 'mgacc')
 		""");
 		statement.addBatch("""
 		UPDATE user_bios
@@ -389,16 +440,25 @@ public class V5ToV6 extends DatabaseFix {
 
 		statement.addBatch("""
 		UPDATE projects
-		SET id = generate_natural_id('projects', id, NULL, 5)
+		SET id = generate_natural_id('projects', 'id', NULL, 5)
 		""");
 
 		statement.addBatch("""
 		UPDATE events
-		SET id = generate_natural_id('events', id, NULL, 5)
+		SET id = generate_natural_id('events', 'id', NULL, 5)
 		""");
 		statement.addBatch("""
 		UPDATE events
 		SET slug = clean_slug_mg(slug)
+		""");
+
+
+		// Randomize User Role Definition IDs
+		// Users must not be updated after this point
+		statement.addBatch("""
+		UPDATE user_role_definitions
+		SET id = generate_natural_id('user_role_definitions', 'id', NULL, 5)
+		WHERE id == 'admin'
 		""");
 
 		statement.executeBatch();
@@ -414,6 +474,8 @@ public class V5ToV6 extends DatabaseFix {
 		""");
 		var modrinthSubmissionsResult = modrinthSubmissionsStatement.executeQuery();
 
+		// this is awful, and it's making the fixer take ages.
+		// let's never let this be necessary again, please.
 		if (modrinthSubmissionsResult.isBeforeFirst()) {
 			while (modrinthSubmissionsResult.next()) {
 				String projectId = modrinthSubmissionsResult.getString("project_id");

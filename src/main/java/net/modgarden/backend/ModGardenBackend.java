@@ -193,6 +193,39 @@ public class ModGardenBackend {
 			)
 			""");
 			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS user_role_definitions (
+				id TEXT UNIQUE NOT NULL,
+				name TEXT NOT NULL,
+				permissions INTEGER NOT NULL,
+				created INTEGER NOT NULL
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS user_roles (
+				role_id TEXT NOT NULL,
+				user_id TEXT NOT NULL,
+				FOREIGN KEY (role_id) REFERENCES user_role_definitions(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE
+			)
+			""");
+			statement.addBatch("""
+			CREATE UNIQUE INDEX idx_user_roles_two_ids ON user_roles(role_id, user_id)
+			""");
+			statement.addBatch("""
+			CREATE TRIGGER user_role_trigger INSERT ON user_roles BEGIN
+				UPDATE users SET permissions = permissions | role_permissions FROM (
+					SELECT permissions AS role_permissions FROM user_role_definitions WHERE id = NEW.role_id
+				);
+			END
+			""");
+			statement.addBatch("""
+			CREATE TRIGGER user_role_trigger DELETE ON user_roles BEGIN
+				UPDATE users SET permissions = permissions & ~role_permissions FROM (
+					SELECT permissions AS role_permissions FROM user_role_definitions WHERE id = OLD.role_id
+				);
+			END
+			""");
+			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS user_bios (
 				user_id TEXT UNIQUE NOT NULL,
 				display_name TEXT NOT NULL,

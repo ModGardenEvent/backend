@@ -18,14 +18,6 @@ public record AwardInstance(String awardId,
 			AwardTier.CODEC.fieldOf("tier_override").forGetter(AwardInstance::tier)
     ).apply(inst, AwardInstance::new));
 
-    public record UserValues(String awardId,
-                             String customData) {
-        public static final Codec<UserValues> CODEC = RecordCodecBuilder.create(inst -> inst.group(
-                Award.ID_CODEC.fieldOf("award_id").forGetter(UserValues::awardId),
-                Codec.STRING.fieldOf("custom_data").forGetter(UserValues::customData)
-        ).apply(inst, UserValues::new));
-    }
-
 	public record FullAwardData(String awardId,
 								String awardedTo,
 								String customData,
