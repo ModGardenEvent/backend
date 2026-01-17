@@ -18,7 +18,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-// TODO: Document this class. - Calico.
+// TODO: Document this class.
 /// This accounts for a DFU bug where RecordCodecBuilder swaps the half-point at which members are encoded, as well as
 /// moving any encoded {@link KeyDispatchCodec} based fields to the top of the encoded map, which is a change that Mojang
 /// will not make because it'd mess heavily with {@link DSL#remainder()} based data fixing.
