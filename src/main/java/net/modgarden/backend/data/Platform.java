@@ -2,9 +2,13 @@ package net.modgarden.backend.data;
 
 import com.mojang.serialization.MapCodec;
 
+import java.sql.Connection;
+
 public interface Platform {
-	String getName();
+	String typeName();
 	MapCodec<? extends Platform> getCodec();
+
+	void addToDatabase(Connection connection, String gardenProjectId, String submissionId) throws Exception;
 
 	static <T extends Platform> MapCodec<Platform> fromMapCodec(MapCodec<T> codec) {
 		//noinspection unchecked

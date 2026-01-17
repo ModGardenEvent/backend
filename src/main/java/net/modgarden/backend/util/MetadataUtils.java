@@ -23,7 +23,7 @@ import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 
 /// Imo, it's okay to hardcode this to Fabric for now.
-/// Especially considering we likely won't be running events outside it any time soon, if ever.
+/// We can definitely implement resource/data-packs later.
 /// @see Metadata
 /// @see ModMetadata
 public class MetadataUtils {

@@ -30,7 +30,7 @@ public record Project(String id,
 			entry("draft", fromMapCodec(DraftMetadata.CODEC)),
 			entry("mod", fromMapCodec(ModMetadata.CODEC))
 	);
-	private static final Codec<Metadata> METADATA_CODEC = Codec.STRING.dispatch(Metadata::getName, METADATA_MAP_CODECS::get);
+	private static final Codec<Metadata> METADATA_CODEC = Codec.STRING.dispatch(Metadata::typeName, METADATA_MAP_CODECS::get);
 
 	public static final Codec<Project> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Project::id),

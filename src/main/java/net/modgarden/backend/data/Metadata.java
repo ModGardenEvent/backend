@@ -3,7 +3,7 @@ package net.modgarden.backend.data;
 import com.mojang.serialization.MapCodec;
 
 public interface Metadata {
-	String getName();
+	String typeName();
 	MapCodec<? extends Metadata> codec();
 
 	static <T extends Metadata> MapCodec<Metadata> fromMapCodec(MapCodec<T> codec) {

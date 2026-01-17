@@ -3,7 +3,12 @@ package net.modgarden.backend.data.event.platform;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.modgarden.backend.data.Metadata;
 import net.modgarden.backend.data.Platform;
+import net.modgarden.backend.data.event.metadata.ModMetadata;
+import net.modgarden.backend.util.MetadataUtils;
+
+import java.sql.Connection;
 
 /// A platform for Modrinth releases, linking to a specific version as part of a Modrinth project.
 ///
@@ -26,12 +31,44 @@ public record ModrinthPlatform(String projectId, String versionId) implements Pl
 	).apply(inst, ModrinthPlatform::new));
 
 	@Override
-	public String getName() {
+	public String typeName() {
 		return "modrinth";
 	}
 
 	@Override
 	public MapCodec<ModrinthPlatform> getCodec() {
 		return CODEC;
+	}
+
+	@Override
+	public void addToDatabase(Connection connection, String gardenProjectId, String submissionId) throws Exception {
+		try (
+				var submissionTypeModrinthStatement = connection.prepareStatement("""
+					INSERT INTO submission_type_modrinth (submission_id, modrinth_id, version_id)
+					VALUES (?, ?, ?)
+				""");
+				var projectModMetadataStatement = connection.prepareStatement("""
+					INSERT INTO project_mod_metadata (project_id, mod_id, name, description, source_url)
+					VALUES (?, ?, ?, ?, ?)
+				""")
+		) {
+			submissionTypeModrinthStatement.setString(1, submissionId);
+			submissionTypeModrinthStatement.setString(2, projectId);
+			submissionTypeModrinthStatement.setString(3, versionId);
+			submissionTypeModrinthStatement.executeUpdate();
+
+
+			Metadata metadata = MetadataUtils.getMetadataFromModrinth(projectId, versionId);
+			if (metadata instanceof ModMetadata(String modId, String name, String description, String sourceUrl)) {
+				projectModMetadataStatement.setString(1, gardenProjectId);
+				projectModMetadataStatement.setString(2, modId);
+				projectModMetadataStatement.setString(3, name);
+				projectModMetadataStatement.setString(4, description);
+				projectModMetadataStatement.setString(5, sourceUrl);
+				projectModMetadataStatement.executeUpdate();
+			} else {
+				throw new UnsupportedOperationException("Unsupported metadata type for Modrinth platform '" + metadata.typeName() + "'");
+			}
+		}
 	}
 }
