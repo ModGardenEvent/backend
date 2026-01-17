@@ -17,7 +17,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 
 // witnesses would be *real* nice here. *sigh*
-@EndpointPath("/v2")
+@EndpointPath("/")
 public abstract class Endpoint implements Handler {
 	public static final String SAFE_URL_REGEX = "[a-zA-Z0-9!@$()`.+,_\"-]+";
 
