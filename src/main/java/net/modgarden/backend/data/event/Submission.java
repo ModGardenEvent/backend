@@ -27,7 +27,7 @@ public record Submission(String id,
 			entry("modrinth", fromMapCodec(ModrinthPlatform.CODEC)),
 			entry("download_url", fromMapCodec(DownloadUrlPlatform.CODEC))
 	);
-	private static final Codec<Platform> PLATFORM_CODEC = Codec.STRING.dispatch(Platform::getName, PLATFORM_MAP_CODECS::get);
+	public static final Codec<Platform> PLATFORM_CODEC = Codec.STRING.dispatch(Platform::typeName, PLATFORM_MAP_CODECS::get);
 
 	public static final Codec<Submission> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Submission::id),

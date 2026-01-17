@@ -27,13 +27,34 @@ public class DeleteProjectEndpoint extends AuthorizedProjectEndpoint {
 
 		try (
 				var connection = this.getDatabaseConnection();
-				var statement = connection.prepareStatement("""
+				var projectStatement = connection.prepareStatement("""
 					DELETE FROM projects
 					WHERE id = ?
+				""");
+				var projectDraftMetadataStatement = connection.prepareStatement("""
+					DELETE FROM project_draft_metadata
+					WHERE project_id = ?
+				""");
+				var projectModMetadataStatement = connection.prepareStatement("""
+					DELETE FROM project_mod_metadata
+					WHERE project_id = ?
+				""");
+				var projectRolesStatement = connection.prepareStatement("""
+					DELETE FROM project_roles
+					WHERE project_id = ?
 				""")
 		) {
-			statement.setString(1, projectId);
-			statement.executeUpdate();
+			projectStatement.setString(1, projectId);
+			projectStatement.executeUpdate();
+
+			projectDraftMetadataStatement.setString(1, projectId);
+			projectDraftMetadataStatement.executeUpdate();
+
+			projectModMetadataStatement.setString(1, projectId);
+			projectModMetadataStatement.executeUpdate();
+
+			projectRolesStatement.setString(1, projectId);
+			projectRolesStatement.executeUpdate();
 		}
 	}
 

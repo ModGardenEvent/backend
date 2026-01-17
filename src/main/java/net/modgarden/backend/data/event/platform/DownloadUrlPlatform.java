@@ -5,6 +5,8 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.modgarden.backend.data.Platform;
 
+import java.sql.Connection;
+
 /// A platform for download URLs, useful for Git Releases without depending on a specific Git host.
 ///
 /// An example based on Variant Lib would be as follows.
@@ -23,12 +25,17 @@ public record DownloadUrlPlatform(String downloadUrl) implements Platform {
 	).apply(inst, DownloadUrlPlatform::new));
 
 	@Override
-	public String getName() {
+	public String typeName() {
 		return "download_url";
 	}
 
 	@Override
 	public MapCodec<DownloadUrlPlatform> getCodec() {
 		return CODEC;
+	}
+
+	@Override
+	public void addToDatabase(Connection connection, String gardenProjectId, String submissionId) throws Exception {
+		throw new UnsupportedOperationException("DownloadUrlPlatform#addToDatabase not implemented");
 	}
 }

@@ -11,7 +11,7 @@ public record DraftMetadata(String name) implements Metadata {
 	).apply(inst, DraftMetadata::new));
 
 	@Override
-	public String getName() {
+	public String typeName() {
 		return "draft";
 	}
 

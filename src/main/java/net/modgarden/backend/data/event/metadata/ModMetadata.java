@@ -26,7 +26,7 @@ public record ModMetadata(String modId, String name, @Nullable String descriptio
 	}
 
 	@Override
-	public String getName() {
+	public String typeName() {
 		return "mod";
 	}
 

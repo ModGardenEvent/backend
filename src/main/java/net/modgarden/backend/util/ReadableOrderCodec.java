@@ -10,13 +10,15 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-// TODO: Document this class. - Calico.
+// TODO: Document this class.
 /// This accounts for a DFU bug where RecordCodecBuilder swaps the half-point at which members are encoded, as well as
 /// moving any encoded {@link KeyDispatchCodec} based fields to the top of the encoded map, which is a change that Mojang
 /// will not make because it'd mess heavily with {@link DSL#remainder()} based data fixing.
@@ -28,6 +30,27 @@ import java.util.stream.Collectors;
 /// @see <a href="https://github.com/Mojang/DataFixerUpper/issues/101">Mojang/DataFixerUpper#101</a>
 /// @param <E> The type parameter of the root codec.
 public class ReadableOrderCodec<E> implements Codec<E> {
+	private static final MethodHandle FIELD_DECODER_ELEMENT_CODEC =
+			find(lookup -> MethodHandles.privateLookupIn(FieldDecoder.class, lookup)
+					.findGetter(FieldDecoder.class, "elementCodec", Decoder.class)
+			).orElseThrow();
+	private static final MethodHandle KEY_DISPATCH_CODEC_DECODER =
+			find(lookup -> MethodHandles.privateLookupIn(KeyDispatchCodec.class, lookup)
+					.findGetter(KeyDispatchCodec.class, "decoder", Function.class)
+			).orElseThrow();
+	private static final MethodHandle KEY_DISPATCH_CODEC_KEY_CODEC =
+			find(lookup -> MethodHandles.privateLookupIn(KeyDispatchCodec.class, lookup)
+					.findGetter(KeyDispatchCodec.class, "keyCodec", Codec.class)
+			).orElseThrow();
+	private static final MethodHandle RECORD_CODEC_BUILDER_DECODER =
+			find(lookup -> MethodHandles.privateLookupIn(RecordCodecBuilder.class, lookup)
+					.findGetter(RecordCodecBuilder.class, "decoder", MapDecoder.class)
+			).orElseThrow();
+	private static final MethodHandle RECURSIVE_CODEC_WRAPPED =
+			find(lookup -> MethodHandles.privateLookupIn(Codec.RecursiveCodec.class, lookup)
+					.findGetter(Codec.RecursiveCodec.class, "wrapped", Supplier.class)
+			).orElseThrow();
+
 	private final Codec<E> codec;
 
 	public ReadableOrderCodec(Codec<E> codec) {
@@ -169,9 +192,9 @@ public class ReadableOrderCodec<E> implements Codec<E> {
 				addKeyDispatchFieldLocationToSet(locations, ops, rootValue, fieldLocation, keyDispatchCodec);
 				return;
 			}
-			@Nullable RecordCodecBuilder<?, ?> recordCodecBuilder = reflectInternalBuilderFromRecordCodec(mapCodec);
+			@Nullable RecordCodecBuilder<?, ?> recordCodecBuilder = invokeInternalBuilderFromRecordCodec(mapCodec);
 			if (recordCodecBuilder != null) {
-				MapDecoder<?> rootMapDecoder = reflectDecoderFromRecordCodecBuilder(recordCodecBuilder);
+				MapDecoder<?> rootMapDecoder = invokeDecoderFromRecordCodecBuilder(recordCodecBuilder);
 				addToKeyDispatchFieldLocationSet(locations, ops, rootValue, rootMapDecoder, fieldLocation);
 			}
 			return;
@@ -188,7 +211,7 @@ public class ReadableOrderCodec<E> implements Codec<E> {
 
 	private <T> void addToKeyDispatchFieldLocationSet(FieldLocationSets locations, DynamicOps<T> ops, T rootValue,
 													  MapDecoder<?> rootDecoder, @Nullable FieldLocation fieldLocation) {
-		List<MapDecoder<?>> reflectedFieldsFromRecordCodecBuilder = reflectDecodersFromRecordCodecDecoder(rootDecoder, locations.recordCodecBuilderFields, fieldLocation);
+		List<MapDecoder<?>> reflectedFieldsFromRecordCodecBuilder = invokeDecodersFromRecordCodecDecoder(rootDecoder, locations.recordCodecBuilderFields, fieldLocation);
 		if (reflectedFieldsFromRecordCodecBuilder.isEmpty()) {
 			locations.recordCodecBuilderFields.add(fieldLocation);
 		}
@@ -202,7 +225,7 @@ public class ReadableOrderCodec<E> implements Codec<E> {
 			FieldLocation newFieldLocation = new FieldLocation(fieldLocation, keys.getFirst());
 
 			if (!(decoder instanceof MapCodec<?> mapCodec)) {
-				List<MapDecoder<?>> reflectedCodecs = reflectDecodersFromRecordCodecDecoder(decoder, locations.recordCodecBuilderFields, fieldLocation);
+				List<MapDecoder<?>> reflectedCodecs = invokeDecodersFromRecordCodecDecoder(decoder, locations.recordCodecBuilderFields, fieldLocation);
 				if (reflectedCodecs.isEmpty()) {
 					locations.recordCodecBuilderFields.add(fieldLocation);
 				}
@@ -213,15 +236,15 @@ public class ReadableOrderCodec<E> implements Codec<E> {
 			}
 
 			// Check whether the internal MapCodec is a RecordCodecBuilder.
-			@Nullable RecordCodecBuilder<?, ?> recordCodecBuilder = reflectInternalBuilderFromRecordCodec(mapCodec);
+			@Nullable RecordCodecBuilder<?, ?> recordCodecBuilder = invokeInternalBuilderFromRecordCodec(mapCodec);
 			if (recordCodecBuilder != null) {
-				MapDecoder<?> rootMapDecoder = reflectDecoderFromRecordCodecBuilder(recordCodecBuilder);
+				MapDecoder<?> rootMapDecoder = invokeDecoderFromRecordCodecBuilder(recordCodecBuilder);
 				addToKeyDispatchFieldLocationSet(locations, ops, rootValue, rootMapDecoder, newFieldLocation);
 			}
 
-			MapDecoder<?> internalDecoder = reflectElementDecoderFromFieldMapCodec(mapCodec);
+			MapDecoder<?> internalDecoder = invokeElementDecoderFromFieldMapCodec(mapCodec);
 			if (internalDecoder instanceof FieldDecoder<?> fieldDecoder) {
-				@Nullable Codec<?> elementCodec = mapAwayFromRecursiveCodec(reflectCodecFromFieldDecoder(fieldDecoder));
+				@Nullable Codec<?> elementCodec = mapAwayFromRecursiveCodec(invokeCodecFromFieldDecoder(fieldDecoder));
 				if (elementCodec == null) continue;
 				addToKeyDispatchFieldLocationSet(locations, ops, rootValue, elementCodec, newFieldLocation);
 			}
@@ -237,7 +260,7 @@ public class ReadableOrderCodec<E> implements Codec<E> {
 		locations.keyDispatchFields.add(dispatchTypeFieldLocation); // We have a match!
 
 		MapDecoder<?> dispatchValueDecoder = reflectDecoderFromKeyDispatchCodec(ops, dispatchTypeFieldLocation.getEncasedField(ops, rootValue), keyDispatchCodec);
-		List<MapDecoder<?>> dispatchDecoders = reflectDecodersFromRecordCodecDecoder(dispatchValueDecoder, locations.recordCodecBuilderFields, currentLocation);
+		List<MapDecoder<?>> dispatchDecoders = invokeDecodersFromRecordCodecDecoder(dispatchValueDecoder, locations.recordCodecBuilderFields, currentLocation);
 		for (MapDecoder<?> dispatchDecoder : dispatchDecoders) {
 			addToKeyDispatchFieldLocationSet(locations, ops, rootValue, dispatchDecoder, currentLocation);
 		}
@@ -324,99 +347,120 @@ public class ReadableOrderCodec<E> implements Codec<E> {
 
 	private static Codec<?> mapAwayFromRecursiveCodec(Codec<?> codec) {
 		return codec instanceof Codec.RecursiveCodec<?> recursiveCodec ?
-				reflectInternalCodecFromRecursiveCodec(recursiveCodec) : codec;
+				invokeInternalCodecFromRecursiveCodec(recursiveCodec) : codec;
 	}
 
-	private static Codec<?> reflectInternalCodecFromRecursiveCodec(RecursiveCodec<?> recursiveCodec) {
+	private static Codec<?> invokeInternalCodecFromRecursiveCodec(RecursiveCodec<?> recursiveCodec) {
 		try {
-			Field f = recursiveCodec.getClass().getDeclaredField("wrapped");
-			f.setAccessible(true);
-			if (f.get(recursiveCodec) instanceof Supplier<?> supplier && supplier.get() instanceof Codec<?> codec) {
+			Object wrappedObj = RECURSIVE_CODEC_WRAPPED.invoke(recursiveCodec);
+			if (wrappedObj instanceof Supplier<?> supplier && supplier.get() instanceof Codec<?> codec) {
 				return codec;
 			}
-		} catch (NoSuchFieldException | IllegalAccessException ignored) {
+		} catch (Throwable ignored) {
 		}
 		throw new UnsupportedOperationException("Could not obtain 'wrapped' field within RecursiveCodec.");
 	}
 
-	/// Potentially gets a RecordCodecBuilder from a map codec.
+	///  Potentially invokes a {@link RecordCodecBuilder} from a {@link MapCodec}.
 	///
 	/// @param mapCodec A MapCodec.
 	/// @return The internal RecordCodecBuilder, or null if the MapCodec is not a RecordCodecBuilder based codec.
 	@Nullable
-	private static <E> RecordCodecBuilder<?, ?> reflectInternalBuilderFromRecordCodec(MapCodec<E> mapCodec) {
+	public static <E> RecordCodecBuilder<?, ?> invokeInternalBuilderFromRecordCodec(MapCodec<E> mapCodec) {
 		try {
-			Field f = mapCodec.getClass().getDeclaredField("val$builder");
-			f.setAccessible(true);
-			return (RecordCodecBuilder<?, ?>) f.get(mapCodec);
-		} catch (NoSuchFieldException | IllegalAccessException ignored) {
+			Class<?> clazz = mapCodec.getClass();
+			Field field = clazz.getDeclaredField("val$builder");
+			Optional<MethodHandle> handle = find(lookup ->
+					MethodHandles.privateLookupIn(clazz, lookup)
+							.unreflectGetter(field)
+			);
+			if (handle.isEmpty())
+				return null;
+
+			if (handle.get().invoke(mapCodec) instanceof RecordCodecBuilder<?, ?> rcb)
+				return rcb;
+		} catch (Throwable ignored) {
 		}
 		return null;
 	}
 
-	private static MapDecoder<?> reflectDecoderFromRecordCodecBuilder(RecordCodecBuilder<?, ?> recordCodecBuilder) {
+	/// Invokes the internal {@link MapDecoder} field from within a {@link RecordCodecBuilder}.
+	///
+	/// @param recordCodecBuilder A RecordCodecBuilder.
+	/// @return The internal decoder.
+	/// @throws NullPointerException If the 'decoder' field is unable to be found.
+	public static MapDecoder<?> invokeDecoderFromRecordCodecBuilder(RecordCodecBuilder<?, ?> recordCodecBuilder) {
 		try {
-			Field f = recordCodecBuilder.getClass().getDeclaredField("decoder");
-			f.setAccessible(true);
-			return (MapDecoder<?>) f.get(recordCodecBuilder);
-		} catch (NoSuchFieldException | IllegalAccessException ignored) {
+			Object decoderObj = RECORD_CODEC_BUILDER_DECODER.invoke(recordCodecBuilder);
+			if (decoderObj instanceof MapDecoder<?> decoder) {
+				return decoder;
+			}
+		} catch (Throwable ignored) {
 		}
-		throw new UnsupportedOperationException("Could not obtain 'decoder' field within RecordCodecBuilder.");
+		throw new NullPointerException("Could not obtain 'decoder' field within RecordCodecBuilder.");
 	}
 
-	private static MapDecoder<?> reflectElementDecoderFromFieldMapCodec(MapCodec<?> mapCodec) {
+	private static MapDecoder<?> invokeElementDecoderFromFieldMapCodec(MapCodec<?> mapCodec) {
 		try {
-			Field recordCodecBuilder = mapCodec.getClass().getDeclaredField("val$decoder");
-			recordCodecBuilder.setAccessible(true);
-			return (MapDecoder<?>) recordCodecBuilder.get(mapCodec);
-		} catch (NoSuchFieldException | IllegalAccessException ignored) {
+			Class<?> clazz = mapCodec.getClass();
+			Field field = mapCodec.getClass().getDeclaredField("val$decoder");
+			Optional<MethodHandle> handle = find(lookup ->
+					MethodHandles.privateLookupIn(clazz, lookup)
+							.unreflectGetter(field)
+			);
+			if (handle.isEmpty())
+				return null;
+
+			if (handle.get().invoke(mapCodec) instanceof MapDecoder<?> decoder)
+				return decoder;
+		} catch (Throwable ignored) {
 		}
 		return null;
 	}
 
-
-	private static Codec<?> reflectCodecFromFieldDecoder(FieldDecoder<?> mapCodec) {
+	private static Codec<?> invokeCodecFromFieldDecoder(FieldDecoder<?> mapCodec) {
 		try {
-			Field recordCodecBuilder = mapCodec.getClass().getDeclaredField("elementCodec");
-			recordCodecBuilder.setAccessible(true);
-			return (Codec<?>) recordCodecBuilder.get(mapCodec);
-		} catch (NoSuchFieldException | IllegalAccessException ignored) {
+			if (FIELD_DECODER_ELEMENT_CODEC.invoke(mapCodec) instanceof Codec<?> codec) {
+				return codec;
+			}
+		} catch (Throwable ignored) {
 		}
 		return null;
 	}
 
-	/// Reflects all codecs from a {@link RecordCodecBuilder}.
+	/// Invokes all inner codecs from a {@link RecordCodecBuilder}.
 	///
 	/// @param decoder The decoder to retrieve decoders from.
 	/// @return A list of MapDecoders obtained from the decoder.
-	private static List<MapDecoder<?>> reflectDecodersFromRecordCodecDecoder(MapDecoder<?> decoder, Set<FieldLocation> recordCodecBuilderFields, FieldLocation currentLocation) {
+	private static List<MapDecoder<?>> invokeDecodersFromRecordCodecDecoder(MapDecoder<?> decoder, Set<FieldLocation> recordCodecBuilderFields, FieldLocation currentLocation) {
 		List<MapDecoder<?>> decoders = new ArrayList<>();
+		Class<?> clazz = decoder.getClass();
 		try {
-			for (Field field : decoder.getClass().getDeclaredFields()) {
-				field.setAccessible(true);
-				Object object = field.get(decoder);
+			for (Field field : clazz.getDeclaredFields()) {
+				Object object = find(lookup -> MethodHandles.privateLookupIn(clazz, lookup).unreflectGetter(field))
+						.orElseThrow()
+						.invoke(decoder);
 				if (object instanceof MapDecoder<?> innerDecoder) {
-					decoders.addAll(reflectDecodersFromRecordCodecDecoder(innerDecoder, recordCodecBuilderFields, currentLocation));
+					decoders.addAll(invokeDecodersFromRecordCodecDecoder(innerDecoder, recordCodecBuilderFields, currentLocation));
 				} else if (object instanceof RecordCodecBuilder<?, ?> recordCodecBuilder) {
-					MapDecoder<?> innerDecoder = reflectDecoderFromRecordCodecBuilder(recordCodecBuilder);
+					MapDecoder<?> innerDecoder = invokeDecoderFromRecordCodecBuilder(recordCodecBuilder);
 					if (field.getName().startsWith("val$function")) {
-						decoders.addAll(reflectDecodersFromRecordCodecDecoder(innerDecoder, recordCodecBuilderFields, currentLocation));
+						decoders.addAll(invokeDecodersFromRecordCodecDecoder(innerDecoder, recordCodecBuilderFields, currentLocation));
 					} else {
 						decoders.add(innerDecoder);
 					}
 					recordCodecBuilderFields.add(currentLocation);
 				}
 			}
-		} catch (IllegalAccessException ignored) {}
+		} catch (Throwable ignored) {
+		}
 		return decoders;
 	}
 
 	@SuppressWarnings("unchecked")
 	private static <T, K, V> MapDecoder<? extends V> reflectDecoderFromKeyDispatchCodec(DynamicOps<T> value, T keyValue, KeyDispatchCodec<K, V> dispatchCodec) {
 		try {
-			Field keyCodecField = dispatchCodec.getClass().getDeclaredField("keyCodec");
-			keyCodecField.setAccessible(true);
-			Object keyCodecAsObj = keyCodecField.get(dispatchCodec);
+			Object keyCodecAsObj = KEY_DISPATCH_CODEC_KEY_CODEC.invoke(dispatchCodec);
 			if (keyCodecAsObj instanceof Codec<?>) {
 				Codec<K> keyCodec = (Codec<K>) keyCodecAsObj;
 				DataResult<K> decodedKey = keyCodec.parse(value, keyValue);
@@ -424,12 +468,23 @@ public class ReadableOrderCodec<E> implements Codec<E> {
 					throw new Exception();
 				K result = decodedKey.resultOrPartial().orElseThrow();
 
-				Field decoderField = dispatchCodec.getClass().getDeclaredField("decoder");
-				decoderField.setAccessible(true);
-				var decoder = (Function<? super K, ? extends DataResult<? extends MapDecoder<? extends V>>>) decoderField.get(dispatchCodec);
+				var decoder = (Function<? super K, ? extends DataResult<? extends MapDecoder<? extends V>>>) KEY_DISPATCH_CODEC_DECODER.invoke(dispatchCodec);
 				return decoder.apply(result).resultOrPartial().orElseThrow();
 			}
-		} catch (Exception ignored) {}
+		} catch (Throwable ignored) {}
 		throw new UnsupportedOperationException("Could not obtain either 'keyCodec' or 'decoder' field within KeyDispatchCodec.");
+	}
+
+
+	private interface Finder {
+		MethodHandle find(MethodHandles.Lookup lookup) throws NoSuchMethodException, NoSuchFieldException, IllegalAccessException;
+	}
+
+	private static Optional<MethodHandle> find(Finder finder) {
+		try {
+			return Optional.of(finder.find(MethodHandles.lookup()));
+		} catch (NoSuchMethodException | NoSuchFieldException | NullPointerException | IllegalAccessException e) {
+			return Optional.empty();
+		}
 	}
 }
