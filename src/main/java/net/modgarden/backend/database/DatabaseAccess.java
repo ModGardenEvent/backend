@@ -3,6 +3,9 @@ package net.modgarden.backend.database;
 import net.modgarden.backend.HypertextResult;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.Metadata;
+import net.modgarden.backend.data.NaturalId;
+import net.modgarden.backend.data.Permission;
+import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.data.Platform;
 import net.modgarden.backend.data.event.Project;
@@ -11,32 +14,302 @@ import net.modgarden.backend.data.event.metadata.DraftMetadata;
 import net.modgarden.backend.data.event.metadata.ModMetadata;
 import net.modgarden.backend.data.event.platform.ModrinthPlatform;
 import net.modgarden.backend.endpoint.exception.NotFoundException;
+import net.modgarden.backend.util.FallibleSupplier;
+import net.modgarden.backend.util.LazyValue;
+import net.modgarden.backend.util.UuidUtils;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
-public final class DatabaseAccess {
-	public Connection getDatabaseConnection() throws SQLException {
-		return ModGardenBackend.createDatabaseConnection();
+/// Centralized access to database operations.
+public final class DatabaseAccess implements AutoCloseable {
+	private static final ScopedValue<DatabaseAccess> SCOPED_VALUE = ScopedValue.newInstance();
+
+	private final LazyValue<Connection> connection = LazyValue.of();
+
+	private DatabaseAccess() {
+	}
+
+	/// Binds the [ScopedValue] of this [DatabaseAccess] to the current thread.
+	///
+	/// @return a [ScopedValue.Carrier] which should be used to wrap subsequent calls that need [DatabaseAccess].
+	public static ScopedValue.Carrier bind() {
+		return ScopedValue.where(SCOPED_VALUE, new DatabaseAccess());
+	}
+
+	/// @return the current thread's access to the database. This may differ from other threads.
+	public static DatabaseAccess get() {
+		return SCOPED_VALUE.orElseThrow(() -> new IllegalStateException("DatabaseAccess is not available in this " +
+				"context"));
+	}
+
+	/// **Warning:** do not call [Connection#close()] or use it in a try-with-resources as this will prematurely close
+	/// the connection.
+	private Connection getConnection() throws SQLException {
+		return this.connection.getOrCreate(ModGardenBackend::createDatabaseConnection);
+	}
+
+	/// @return the value returned by the supplier or the default value if an exception is thrown.
+	public <T, X extends Throwable> T logIfThrown(FallibleSupplier<T, X> operation, T defaultValue) {
+		try {
+			return operation.get();
+		} catch (Throwable t) {
+			ModGardenBackend.LOG.error("Exception during DatabaseAccess operation", t);
+			return defaultValue;
+		}
+	}
+
+	/// @return the value returned by the supplier or the default value if an exception is thrown.
+	public <X extends Throwable> boolean logIfThrown(FallibleSupplier<Boolean, X> operation) {
+		return this.logIfThrown(operation, false);
+	}
+
+	// Auth
+
+	public record ApiKey(String hash, UUID uuid, Instant expires, String name) {
+	}
+
+	public record ApiKeyScope(PermissionScope scope, String projectId, Permissions permissions) {
+	}
+
+	public Collection<ApiKey> getApiKeys(String userId) throws SQLException {
+		try (var apiKeyStatement =
+				     this.getConnection()
+						     .prepareStatement("SELECT hash, uuid, expires, name FROM api_keys WHERE user_id = ?")) {
+			apiKeyStatement.setString(1, userId);
+			Collection<ApiKey> apiKeys = new ArrayList<>();
+			ResultSet resultSet = apiKeyStatement.executeQuery();
+
+			if (!resultSet.isBeforeFirst()) {
+				return List.of();
+			}
+
+			while (resultSet.next()) {
+				apiKeys.add(new ApiKey(
+						resultSet.getString("hash"),
+						UuidUtils.fromBytes(resultSet.getBytes("uuid")),
+						Instant.ofEpochMilli(resultSet.getLong("expires")),
+						resultSet.getString("name")
+				));
+			}
+
+			return apiKeys;
+		}
+	}
+
+	public Optional<ApiKeyScope> getApiKeyScope(UUID uuid) throws SQLException {
+		try (var apiKeyScopeStatement =
+				     this.getConnection()
+						     .prepareStatement("SELECT scope, project_id, permissions FROM api_key_scopes WHERE uuid = ?")) {
+			apiKeyScopeStatement.setBytes(1, UuidUtils.toBytes(uuid));
+			ResultSet resultSet = apiKeyScopeStatement.executeQuery();
+
+			if (!resultSet.isBeforeFirst()) {
+				return Optional.empty();
+			}
+
+			return Optional.of(new ApiKeyScope(
+					PermissionScope.fromString(resultSet.getString("scope")),
+					resultSet.getString("project_id"),
+					new Permissions(resultSet.getLong("permissions"))
+			));
+		}
+	}
+
+	public Optional<ApiKeyScope> getApiKeyScope(UUID uuid, String projectId) throws SQLException {
+		try (var apiKeyScopeStatement =
+				     this.getConnection()
+						     .prepareStatement("SELECT scope, project_id, permissions FROM api_key_scopes WHERE uuid = ? AND project_id = ?")) {
+			apiKeyScopeStatement.setBytes(1, UuidUtils.toBytes(uuid));
+			apiKeyScopeStatement.setString(2, projectId);
+			ResultSet resultSet = apiKeyScopeStatement.executeQuery();
+
+			if (!resultSet.isBeforeFirst()) {
+				return Optional.empty();
+			}
+
+			return Optional.of(new ApiKeyScope(
+					PermissionScope.fromString(resultSet.getString("scope")),
+					resultSet.getString("project_id"),
+					new Permissions(resultSet.getLong("permissions"))
+			));
+		}
+	}
+
+	public void deleteApiKey(UUID uuid) throws SQLException {
+		try (var apiKeyExpiredStatement =
+				     this.getConnection().prepareStatement("DELETE FROM api_keys WHERE uuid = ?")) {
+			apiKeyExpiredStatement.setBytes(1, UuidUtils.toBytes(uuid));
+			apiKeyExpiredStatement.execute();
+		}
+	}
+
+	public void createApiKey(
+			byte[] uuid,
+			String userId,
+			String hash,
+			Instant expires,
+			String name
+	) throws SQLException {
+		try (var apiKeyStatement =
+				     this.getConnection().prepareStatement("INSERT INTO api_keys(uuid, user_id, hash, expires, name) VALUES (?, ?, ?, ?, ?)")) {
+			apiKeyStatement.setBytes(1, uuid);
+			apiKeyStatement.setString(2, userId);
+			apiKeyStatement.setString(3, hash);
+			apiKeyStatement.setLong(4, expires.toEpochMilli());
+			apiKeyStatement.setString(5, name);
+			apiKeyStatement.execute();
+		}
+	}
+
+	public void createApiKeyScope(
+			byte[] uuid,
+			String scope,
+			@Nullable String projectId,
+			Permissions requestedPermissions
+	) throws SQLException {
+		try (var apiKeyScopeStatement =
+				     this.getConnection().prepareStatement("INSERT INTO api_key_scopes(uuid, scope, project_id, permissions) VALUES (?, ?, ?, ?)")) {
+			apiKeyScopeStatement.setBytes(1, uuid);
+			apiKeyScopeStatement.setString(2, scope);
+			if (projectId != null) {
+				apiKeyScopeStatement.setString(3, projectId);
+			} else {
+				apiKeyScopeStatement.setNull(3, Types.NULL);
+			}
+			apiKeyScopeStatement.setLong(4, requestedPermissions.bits());
+			apiKeyScopeStatement.execute();
+		}
+	}
+
+	// Users
+
+	public boolean userExists(String id) throws SQLException {
+		try (PreparedStatement prepared = this.getConnection()
+				.prepareStatement("SELECT 1 FROM users WHERE id = ?")) {
+			prepared.setString(1, id);
+			ResultSet result = prepared.executeQuery();
+			return result != null && result.getBoolean(1);
+		}
+	}
+
+	public HypertextResult<Permissions> getUserPermissions(String userId) throws SQLException {
+		try (var userStatement = this.getConnection()
+				.prepareStatement("SELECT permissions FROM users WHERE id = ?")) {
+			userStatement.setString(1, userId);
+			ResultSet resultSet = userStatement.executeQuery();
+			if (!resultSet.isBeforeFirst()) {
+				return new HypertextResult<>(404, "User does not exist.");
+			}
+
+			return new HypertextResult<>(new Permissions(resultSet.getLong("permissions")));
+		}
+	}
+
+	// Projects
+
+	private void createProject(String projectId, String ownerUserId, String name) throws SQLException {
+		try (
+				var projectStatement = this.getConnection().prepareStatement("""
+					INSERT INTO projects (id)
+					VALUES (?)
+				""");
+				var projectDraftMetadataStatement = this.getConnection().prepareStatement("""
+					INSERT INTO project_draft_metadata (project_id, name)
+					VALUES (?, ?)
+				""");
+				var projectRolesStatement = this.getConnection().prepareStatement("""
+					INSERT OR IGNORE INTO project_roles (project_id, user_id, permissions)
+					VALUES (?, ?, 1)
+				""")
+		) {
+			projectStatement.setString(1, projectId);
+			projectStatement.executeUpdate();
+
+			projectDraftMetadataStatement.setString(1, projectId);
+			projectDraftMetadataStatement.setString(2, name);
+			projectDraftMetadataStatement.executeUpdate();
+
+			projectRolesStatement.setString(1, projectId);
+			projectRolesStatement.setString(2, ownerUserId);
+			projectRolesStatement.executeUpdate();
+		}
+	}
+
+	public String createProject(String ownerUserId, String name) throws SQLException {
+		String projectId = NaturalId.generate("projects", "id", null, 5);
+		this.createProject(projectId, ownerUserId, name);
+		return projectId;
+	}
+
+	public void deleteProject(String projectId) throws SQLException {
+		Connection connection = this.getConnection();
+
+		try (
+				var projectStatement = connection.prepareStatement("""
+					DELETE FROM projects
+					WHERE id = ?
+				""");
+				var projectDraftMetadataStatement = connection.prepareStatement("""
+					DELETE FROM project_draft_metadata
+					WHERE project_id = ?
+				""");
+				var projectModMetadataStatement = connection.prepareStatement("""
+					DELETE FROM project_mod_metadata
+					WHERE project_id = ?
+				""");
+				var projectRolesStatement = connection.prepareStatement("""
+					DELETE FROM project_roles
+					WHERE project_id = ?
+				""")
+		) {
+			projectStatement.setString(1, projectId);
+			projectStatement.executeUpdate();
+
+			projectDraftMetadataStatement.setString(1, projectId);
+			projectDraftMetadataStatement.executeUpdate();
+
+			projectModMetadataStatement.setString(1, projectId);
+			projectModMetadataStatement.executeUpdate();
+
+			projectRolesStatement.setString(1, projectId);
+			projectRolesStatement.executeUpdate();
+		}
+	}
+
+	public void setRoleName(String projectId, String userId, String roleName) throws SQLException {
+		try (var updateStatement = this.getConnection().prepareStatement("""
+					UPDATE project_roles
+					SET role_name = ?
+					WHERE project_id = ? AND user_id = ?
+				""")) {
+			updateStatement.setString(1, roleName);
+			updateStatement.setString(2, projectId);
+			updateStatement.setString(3, userId);
+		}
 	}
 
 	public String getProjectIdFromSubmissionId(
 			@NotNull String submissionId
 	) throws SQLException, NotFoundException {
-		Connection connection = this.getDatabaseConnection();
-		try (
-				var submissionIdStatement = connection.prepareStatement("""
+		try (var submissionIdStatement = this.getConnection().prepareStatement("""
 					SELECT project_id
 					FROM submissions
 					WHERE id = ?
-				""");
-		) {
+				""")) {
 			submissionIdStatement.setString(1, submissionId);
 			ResultSet submissionResult = submissionIdStatement.executeQuery();
 			if (!submissionResult.isBeforeFirst()) {
@@ -47,59 +320,55 @@ public final class DatabaseAccess {
 		}
 	}
 
-	public Submission getSubmissionFromId(
-			@NotNull String submissionId
-	) throws Exception {
-		Connection connection = this.getDatabaseConnection();
-		try (
-				var submissionStatement = connection.prepareStatement("""
-					SELECT event, project_id, submitted
-					FROM submissions
-					WHERE id = ?
-				""");
-				var modrinthSubmissionTypeStatement = connection.prepareStatement("""
-					SELECT modrinth_id, version_id
-					FROM submission_type_modrinth
-					WHERE submission_id = ?
-				""")
-		) {
-			submissionStatement.setString(1, submissionId);
-			ResultSet submissionResult = submissionStatement.executeQuery();
-			if (!submissionResult.isBeforeFirst()) {
-				throw new NotFoundException("Could not find submission '" + submissionId + "'");
+	public HypertextResult<Void> canUserModifyMember(
+			String projectId,
+			String memberUserIdToModify,
+			Permissions selfPermissions
+	) throws SQLException {
+		try (var memberPermissionsStatement = this.getConnection().prepareStatement("""
+					SELECT permissions
+					FROM project_roles
+					WHERE project_id = ? AND user_id = ?
+				""")) {
+			memberPermissionsStatement.setString(1, projectId);
+			memberPermissionsStatement.setString(2, memberUserIdToModify);
+			ResultSet memberPermissionsResult = memberPermissionsStatement.executeQuery();
+			Permissions memberPermissions = new Permissions(memberPermissionsResult.getLong(1));
+
+			// If a non-administrator attempts to edit the permissions of an administrator, return false.
+			if (memberPermissions.hasPermissions(Permission.ADMINISTRATOR) && !selfPermissions.hasPermissions(Permission.ADMINISTRATOR)) {
+				return new HypertextResult<>(403, "Non-administrators may not edit administrators' permissions on projects");
 			}
+		}
 
-			modrinthSubmissionTypeStatement.setString(1, submissionId);
-			ResultSet modrinthSubmissionTypeResult = modrinthSubmissionTypeStatement.executeQuery();
+		return new HypertextResult<>(null);
+	}
 
-			Platform platform;
-			// TODO: Implement download URL submission type.
-			if (modrinthSubmissionTypeResult.isBeforeFirst()) {
-				platform = new ModrinthPlatform(
-						modrinthSubmissionTypeResult.getString("modrinth_id"),
-						modrinthSubmissionTypeResult.getString("version_id")
-				);
-			} else {
-				throw new RuntimeException("Submission does not have a valid 'platform'");
-			}
-
-			return new Submission(
-					submissionId,
-					submissionResult.getString("event"),
-					submissionResult.getLong("submitted"),
-					this.getProjectFromId(submissionResult.getString("project_id")),
-					platform
-			);
+	public void setProjectMemberPermissions(
+			Permissions permissions,
+			String projectId,
+			String userId
+	) throws SQLException {
+		try (var updateStatement = this.getConnection().prepareStatement("""
+					UPDATE project_roles
+					SET permissions = ?
+					WHERE project_id = ? AND user_id = ?
+				""")) {
+			updateStatement.setLong(1, permissions.bits());
+			updateStatement.setString(2, projectId);
+			updateStatement.setString(3, userId);
+			updateStatement.executeUpdate();
 		}
 	}
 
 	public Project getProjectFromId(
 			@NotNull String projectId
 	) throws Exception {
-		Connection connection = this.getDatabaseConnection();
+		Connection connection = this.getConnection();
 		Map<String, String> team = new HashMap<>();
 		Map<String, Long> permissions = new HashMap<>();
 		List<String> submissions = new ArrayList<>();
+
 		try (
 				var projectRolesStatement = connection.prepareStatement("""
 					SELECT user_id, permissions, role_name
@@ -169,26 +438,14 @@ public final class DatabaseAccess {
 		}
 	}
 
-	public HypertextResult<Permissions> getUserPermissions(String userId) throws SQLException {
-		try (
-				var connection = getDatabaseConnection();
-				var userStatement = connection.prepareStatement("SELECT permissions FROM users WHERE id = ?")
-		) {
-			userStatement.setString(1, userId);
-			ResultSet resultSet = userStatement.executeQuery();
-			if (!resultSet.isBeforeFirst()) {
-				return new HypertextResult<>(404, "User does not exist.");
-			}
+	public HypertextResult<Permissions> getProjectMemberPermissions(String userId, String projectId) throws SQLException {
+		Connection connection = this.getConnection();
 
-			return new HypertextResult<>(new Permissions(resultSet.getLong("permissions")));
-		}
-	}
-
-	public HypertextResult<Permissions> getProjectPermissions(String userId, String projectId) throws SQLException {
-		try (
-				var connection = getDatabaseConnection();
-				var userStatement = connection.prepareStatement("SELECT permissions FROM project_roles WHERE user_id = ? AND project_id = ?")
-		) {
+		try (var userStatement = connection.prepareStatement("""
+					SELECT permissions
+					FROM project_roles
+					WHERE user_id = ? AND project_id = ?
+				""")) {
 			userStatement.setString(1, userId);
 			userStatement.setString(2, projectId);
 			ResultSet resultSet = userStatement.executeQuery();
@@ -198,5 +455,205 @@ public final class DatabaseAccess {
 
 			return new HypertextResult<>(new Permissions(resultSet.getLong("permissions")));
 		}
+	}
+
+	public void addProjectMember(String projectId, String userId) throws SQLException {
+		try (
+				var insertStatement = this.getConnection().prepareStatement("""
+					INSERT OR IGNORE INTO project_roles (project_id, user_id)
+					VALUES (?, ?)
+				""")
+		) {
+			insertStatement.setString(1, projectId);
+			insertStatement.setString(2, userId);
+			insertStatement.executeUpdate();
+		}
+	}
+
+	public void removeProjectMember(String projectId, String userId) throws SQLException {
+		try (var deleteStatement = this.getConnection().prepareStatement("""
+					DELETE FROM project_roles
+					WHERE project_id = ? AND user_id = ?
+				""")) {
+			deleteStatement.setString(1, projectId);
+			deleteStatement.setString(2, userId);
+			deleteStatement.executeUpdate();
+		}
+	}
+
+	public int getProjectAdministratorCount(String projectId) throws SQLException {
+		try (var permissionCountStatement = this.getConnection().prepareStatement("""
+					SELECT COUNT(*)
+					FROM project_roles
+					WHERE project_id = ? AND has_permissions(permissions, 1)
+				""")) {
+			permissionCountStatement.setString(1, projectId);
+			ResultSet permissionCountResult = permissionCountStatement.executeQuery();
+			return permissionCountResult.getInt(1);
+		}
+	}
+
+	public boolean projectExists(String projectId) throws SQLException {
+		try (var projectStatement =
+				     this.getConnection().prepareStatement("SELECT id FROM projects WHERE id = ?")) {
+			projectStatement.setString(1, projectId);
+			ResultSet resultSet = projectStatement.executeQuery();
+			return resultSet.isBeforeFirst();
+		}
+	}
+
+	public HypertextResult<Void> assertProjectExists(String projectId) throws SQLException {
+		if (!this.projectExists(projectId)) {
+			return new HypertextResult<>(404, "Project with ID " + projectId + " does not exist");
+		} else {
+			return new HypertextResult<>(null);
+		}
+	}
+
+	@Nullable
+	public String getProjectIdFromModId(String modId) throws SQLException {
+		try (var projectModMetadataStatement = this.getConnection().prepareStatement("""
+					SELECT project_id
+					FROM project_mod_metadata
+					WHERE mod_id = ?
+				""")) {
+			projectModMetadataStatement.setString(1, modId);
+			ResultSet projectMetadataResult = projectModMetadataStatement.executeQuery();
+
+			if (!projectMetadataResult.isBeforeFirst()) {
+				return null;
+			}
+
+			return projectMetadataResult.getString("project_id");
+		}
+	}
+
+	// Submissions
+
+	public String createEmptySubmission(String themeId, String projectId) throws SQLException {
+		try (var submissionsStatement = this.getConnection().prepareStatement("""
+					INSERT INTO submissions (id, theme_id, project_id, submitted)
+					VALUES (?, ?, ?, ?)
+				""")) {
+			String submissionId = NaturalId.generate("submissions", "id", null, 5);
+			submissionsStatement.setString(1, submissionId);
+			submissionsStatement.setString(2, themeId);
+			submissionsStatement.setString(3, projectId);
+			submissionsStatement.setLong(4, System.currentTimeMillis());
+			return submissionId;
+		}
+	}
+
+	public void deleteSubmission(String submissionId) throws SQLException {
+		Connection connection = this.getConnection();
+
+		try (
+				var submissionsStatement = connection.prepareStatement("""
+					DELETE FROM submissions
+					WHERE id = ?
+				""");
+				var typeModrinthStatement = connection.prepareStatement("""
+					DELETE FROM submission_type_modrinth
+					WHERE submission_id = ?
+				""")
+		) {
+			submissionsStatement.setString(1, submissionId);
+			submissionsStatement.executeUpdate();
+
+			typeModrinthStatement.setString(1, submissionId);
+			typeModrinthStatement.executeUpdate();
+		}
+	}
+
+	public HypertextResult<Submission> getSubmission(
+			@NotNull String submissionId
+	) throws Exception {
+		Connection connection = this.getConnection();
+
+		try (
+				var submissionStatement = connection.prepareStatement("""
+					SELECT event, project_id, submitted
+					FROM submissions
+					WHERE id = ?
+				""");
+				var modrinthSubmissionTypeStatement = connection.prepareStatement("""
+					SELECT modrinth_id, version_id
+					FROM submission_type_modrinth
+					WHERE submission_id = ?
+				""")
+		) {
+			submissionStatement.setString(1, submissionId);
+			ResultSet submissionResult = submissionStatement.executeQuery();
+			if (!submissionResult.isBeforeFirst()) {
+				return new HypertextResult<>(404, "Could not find submission '" + submissionId + "'");
+			}
+
+			modrinthSubmissionTypeStatement.setString(1, submissionId);
+			ResultSet modrinthSubmissionTypeResult = modrinthSubmissionTypeStatement.executeQuery();
+
+			Platform platform;
+			// TODO: Implement download URL submission type.
+			if (modrinthSubmissionTypeResult.isBeforeFirst()) {
+				platform = new ModrinthPlatform(
+						modrinthSubmissionTypeResult.getString("modrinth_id"),
+						modrinthSubmissionTypeResult.getString("version_id")
+				);
+			} else {
+				throw new RuntimeException("Submission does not have a valid 'platform'");
+			}
+
+			return new HypertextResult<>(new Submission(
+					submissionId,
+					submissionResult.getString("event"),
+					submissionResult.getLong("submitted"),
+					this.getProjectFromId(submissionResult.getString("project_id")),
+					platform
+			));
+		}
+	}
+
+	@Nullable
+	public String getSubmissionId(String projectId, String themeId) throws SQLException {
+		try (var submissionsStatement = this.getConnection().prepareStatement("""
+					SELECT id
+					FROM submissions
+					WHERE project_id = ? AND event = ?
+				""")) {
+			submissionsStatement.setString(1, projectId);
+			submissionsStatement.setString(2, themeId);
+			ResultSet resultSet = submissionsStatement.executeQuery();
+
+			if (!resultSet.isBeforeFirst()) {
+				return null;
+			}
+
+			return resultSet.getString("id");
+		}
+	}
+
+	// Themes
+
+	@Nullable
+	public String getThemeId(String eventSlug, String themeSlug) throws SQLException {
+		try (var eventStatement = this.getConnection().prepareStatement("""
+					SELECT id
+					FROM events
+					WHERE event_type_slug = ? AND slug = ?
+				""")) {
+			eventStatement.setString(1, eventSlug);
+			eventStatement.setString(2, themeSlug);
+			var eventResult = eventStatement.executeQuery();
+
+			if (!eventResult.isBeforeFirst()) {
+				return null;
+			}
+
+			return eventResult.getString("id");
+		}
+	}
+
+	@Override
+	public void close() throws Exception {
+		this.connection.ifPresent(Connection::close);
 	}
 }

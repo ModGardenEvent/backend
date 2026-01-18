@@ -4,6 +4,7 @@ import io.javalin.http.Context;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
+import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthorizedSubmissionEndpoint;
@@ -27,29 +28,13 @@ public class DeleteSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
 				Permission.EDIT_PROJECT)) return;
 
 		String submissionId = ctx.pathParam("submission_id");
-
-		try (
-				var connection = this.getDatabaseConnection();
-				var submissionsStatement = connection.prepareStatement("""
-					DELETE FROM submissions
-					WHERE id = ?
-				""");
-				var typeModrinthStatement = connection.prepareStatement("""
-					DELETE FROM submission_type_modrinth
-					WHERE submission_id = ?
-				""")
-		) {
-			submissionsStatement.setString(1, submissionId);
-			submissionsStatement.executeUpdate();
-
-			typeModrinthStatement.setString(1, submissionId);
-			typeModrinthStatement.executeUpdate();
-		}
+		DatabaseAccess db = DatabaseAccess.get();
+		db.deleteSubmission(submissionId);
 	}
 
 	@NotNull
 	@Override
 	protected String getProjectId(Context ctx) throws SQLException {
-		return this.getDatabaseAccess().getProjectIdFromSubmissionId(ctx.pathParam("submission_id"));
+		return DatabaseAccess.get().getProjectIdFromSubmissionId(ctx.pathParam("submission_id"));
 	}
 }

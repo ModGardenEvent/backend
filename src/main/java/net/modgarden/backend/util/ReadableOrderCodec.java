@@ -1,5 +1,7 @@
 package net.modgarden.backend.util;
 
+import static net.modgarden.backend.util.HandleFinder.findHandle;
+
 import com.mojang.datafixers.DSL;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.*;
@@ -31,23 +33,23 @@ import java.util.stream.Collectors;
 /// @param <E> The type parameter of the root codec.
 public class ReadableOrderCodec<E> implements Codec<E> {
 	private static final MethodHandle FIELD_DECODER_ELEMENT_CODEC =
-			find(lookup -> MethodHandles.privateLookupIn(FieldDecoder.class, lookup)
+			findHandle(lookup -> MethodHandles.privateLookupIn(FieldDecoder.class, lookup)
 					.findGetter(FieldDecoder.class, "elementCodec", Decoder.class)
 			).orElseThrow();
 	private static final MethodHandle KEY_DISPATCH_CODEC_DECODER =
-			find(lookup -> MethodHandles.privateLookupIn(KeyDispatchCodec.class, lookup)
+			findHandle(lookup -> MethodHandles.privateLookupIn(KeyDispatchCodec.class, lookup)
 					.findGetter(KeyDispatchCodec.class, "decoder", Function.class)
 			).orElseThrow();
 	private static final MethodHandle KEY_DISPATCH_CODEC_KEY_CODEC =
-			find(lookup -> MethodHandles.privateLookupIn(KeyDispatchCodec.class, lookup)
+			findHandle(lookup -> MethodHandles.privateLookupIn(KeyDispatchCodec.class, lookup)
 					.findGetter(KeyDispatchCodec.class, "keyCodec", Codec.class)
 			).orElseThrow();
 	private static final MethodHandle RECORD_CODEC_BUILDER_DECODER =
-			find(lookup -> MethodHandles.privateLookupIn(RecordCodecBuilder.class, lookup)
+			findHandle(lookup -> MethodHandles.privateLookupIn(RecordCodecBuilder.class, lookup)
 					.findGetter(RecordCodecBuilder.class, "decoder", MapDecoder.class)
 			).orElseThrow();
 	private static final MethodHandle RECURSIVE_CODEC_WRAPPED =
-			find(lookup -> MethodHandles.privateLookupIn(Codec.RecursiveCodec.class, lookup)
+			findHandle(lookup -> MethodHandles.privateLookupIn(Codec.RecursiveCodec.class, lookup)
 					.findGetter(Codec.RecursiveCodec.class, "wrapped", Supplier.class)
 			).orElseThrow();
 
@@ -370,7 +372,7 @@ public class ReadableOrderCodec<E> implements Codec<E> {
 		try {
 			Class<?> clazz = mapCodec.getClass();
 			Field field = clazz.getDeclaredField("val$builder");
-			Optional<MethodHandle> handle = find(lookup ->
+			Optional<MethodHandle> handle = findHandle(lookup ->
 					MethodHandles.privateLookupIn(clazz, lookup)
 							.unreflectGetter(field)
 			);
@@ -404,7 +406,7 @@ public class ReadableOrderCodec<E> implements Codec<E> {
 		try {
 			Class<?> clazz = mapCodec.getClass();
 			Field field = mapCodec.getClass().getDeclaredField("val$decoder");
-			Optional<MethodHandle> handle = find(lookup ->
+			Optional<MethodHandle> handle = findHandle(lookup ->
 					MethodHandles.privateLookupIn(clazz, lookup)
 							.unreflectGetter(field)
 			);
@@ -437,7 +439,7 @@ public class ReadableOrderCodec<E> implements Codec<E> {
 		Class<?> clazz = decoder.getClass();
 		try {
 			for (Field field : clazz.getDeclaredFields()) {
-				Object object = find(lookup -> MethodHandles.privateLookupIn(clazz, lookup).unreflectGetter(field))
+				Object object = findHandle(lookup -> MethodHandles.privateLookupIn(clazz, lookup).unreflectGetter(field))
 						.orElseThrow()
 						.invoke(decoder);
 				if (object instanceof MapDecoder<?> innerDecoder) {
@@ -473,18 +475,5 @@ public class ReadableOrderCodec<E> implements Codec<E> {
 			}
 		} catch (Throwable ignored) {}
 		throw new UnsupportedOperationException("Could not obtain either 'keyCodec' or 'decoder' field within KeyDispatchCodec.");
-	}
-
-
-	private interface Finder {
-		MethodHandle find(MethodHandles.Lookup lookup) throws NoSuchMethodException, NoSuchFieldException, IllegalAccessException;
-	}
-
-	private static Optional<MethodHandle> find(Finder finder) {
-		try {
-			return Optional.of(finder.find(MethodHandles.lookup()));
-		} catch (NoSuchMethodException | NoSuchFieldException | NullPointerException | IllegalAccessException e) {
-			return Optional.empty();
-		}
 	}
 }

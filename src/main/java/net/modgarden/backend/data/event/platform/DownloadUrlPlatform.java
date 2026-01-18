@@ -4,6 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.modgarden.backend.data.Platform;
+import net.modgarden.backend.database.DatabaseAccess;
 
 import java.sql.Connection;
 
@@ -35,7 +36,7 @@ public record DownloadUrlPlatform(String downloadUrl) implements Platform {
 	}
 
 	@Override
-	public void addToDatabase(Connection connection, String gardenProjectId, String submissionId) throws Exception {
+	public void addToDatabase(DatabaseAccess db, String gardenProjectId, String submissionId) throws Exception {
 		throw new UnsupportedOperationException("DownloadUrlPlatform#addToDatabase not implemented");
 	}
 }

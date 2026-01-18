@@ -4,13 +4,13 @@ import io.javalin.http.Context;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
+import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthEndpoint;
-import net.modgarden.backend.util.UuidUtils;
 import org.jetbrains.annotations.NotNull;
 
-import java.sql.ResultSet;
+import java.util.Optional;
 import java.util.UUID;
 
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.DELETE;
@@ -30,31 +30,24 @@ public final class DeleteKeyEndpoint extends AuthEndpoint {
 	) throws Exception {
 		if (this.requireAllPermissions(ctx, scopePermissions, Permission.MODIFY_API_KEY)) return;
 
+		DatabaseAccess db = DatabaseAccess.get();
 		UUID uuid = UUID.fromString(ctx.pathParam("uuid"));
 
-		try (
-				var connection = this.getDatabaseConnection();
-				var apiKeyScopeStatement = connection.prepareStatement("SELECT scope, project_id FROM api_key_scopes WHERE uuid = ?");
-				var deleteApiKeyStatement = connection.prepareStatement("DELETE FROM api_keys WHERE uuid = ?")
-		) {
-			apiKeyScopeStatement.setBytes(1, UuidUtils.toBytes(uuid));
-			ResultSet apiKeyScopeResult = apiKeyScopeStatement.executeQuery();
-			if (!apiKeyScopeResult.isBeforeFirst()) {
-				return;
-			}
-
-			String projectId = apiKeyScopeResult.getString("project_id");
-			PermissionScope permissionScope = PermissionScope.fromString(apiKeyScopeResult.getString("scope"));
-
-			if (permissionScope == PermissionScope.PROJECT) {
-				Permissions permissions = this.getDatabaseAccess()
-						.getProjectPermissions(userId, projectId)
-						.unwrap(ctx);
-				if (this.requireAllPermissions(ctx, permissions, Permission.MODIFY_API_KEY)) return;
-			}
-
-			deleteApiKeyStatement.setBytes(1, UuidUtils.toBytes(uuid));
-			deleteApiKeyStatement.execute();
+		Optional<DatabaseAccess.ApiKeyScope> optionalApiKeyScope = db.getApiKeyScope(uuid);
+		if (optionalApiKeyScope.isEmpty()) {
+			return;
 		}
+
+		DatabaseAccess.ApiKeyScope apiKeyScope = optionalApiKeyScope.get();
+		String projectId = apiKeyScope.projectId();
+		PermissionScope permissionScope = apiKeyScope.scope();
+
+		if (permissionScope == PermissionScope.PROJECT) {
+			Permissions permissions = db.getProjectMemberPermissions(userId, projectId)
+					.unwrap(ctx);
+			if (this.requireAllPermissions(ctx, permissions, Permission.MODIFY_API_KEY)) return;
+		}
+
+		db.deleteApiKey(uuid);
 	}
 }

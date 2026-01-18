@@ -3,6 +3,7 @@ package net.modgarden.backend.endpoint.v2.project;
 import io.javalin.http.Context;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.Permissions;
+import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthorizedProjectEndpoint;
@@ -24,38 +25,8 @@ public class DeleteProjectEndpoint extends AuthorizedProjectEndpoint {
 				Permission.EDIT_PROJECT)) return;
 
 		String projectId = this.getProjectId(ctx);
-
-		try (
-				var connection = this.getDatabaseConnection();
-				var projectStatement = connection.prepareStatement("""
-					DELETE FROM projects
-					WHERE id = ?
-				""");
-				var projectDraftMetadataStatement = connection.prepareStatement("""
-					DELETE FROM project_draft_metadata
-					WHERE project_id = ?
-				""");
-				var projectModMetadataStatement = connection.prepareStatement("""
-					DELETE FROM project_mod_metadata
-					WHERE project_id = ?
-				""");
-				var projectRolesStatement = connection.prepareStatement("""
-					DELETE FROM project_roles
-					WHERE project_id = ?
-				""")
-		) {
-			projectStatement.setString(1, projectId);
-			projectStatement.executeUpdate();
-
-			projectDraftMetadataStatement.setString(1, projectId);
-			projectDraftMetadataStatement.executeUpdate();
-
-			projectModMetadataStatement.setString(1, projectId);
-			projectModMetadataStatement.executeUpdate();
-
-			projectRolesStatement.setString(1, projectId);
-			projectRolesStatement.executeUpdate();
-		}
+		DatabaseAccess db = DatabaseAccess.get();
+		db.deleteProject(projectId);
 	}
 
 	@NotNull

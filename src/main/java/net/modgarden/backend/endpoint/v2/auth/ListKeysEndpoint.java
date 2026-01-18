@@ -6,16 +6,20 @@ import io.javalin.http.Context;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
+import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthEndpoint;
 import net.modgarden.backend.util.ExtraCodecs;
+import net.modgarden.backend.util.FallibleFunction;
 import net.modgarden.backend.util.UuidUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -35,42 +39,32 @@ public final class ListKeysEndpoint extends AuthEndpoint {
 			String userId,
 			Permissions scopePermissions
 	) throws Exception {
+		DatabaseAccess db = DatabaseAccess.get();
 		String projectId = ctx.queryParam("project_id");
-		String query;
+		FallibleFunction<UUID, Optional<DatabaseAccess.ApiKeyScope>, SQLException> query;
 		if (projectId == null) {
-			query = "SELECT scope, project_id, permissions FROM api_key_scopes WHERE uuid = ?";
+			query = db::getApiKeyScope;
 		} else {
-			query = "SELECT scope, project_id, permissions FROM api_key_scopes WHERE uuid = ? AND project_id = ?";
+			query = (uuid) -> db.getApiKeyScope(uuid, projectId);
 		}
 
 		List<ApiKey> apiKeys = new ArrayList<>();
-		try (
-				var connection = this.getDatabaseConnection();
-				var apiKeyStatement = connection.prepareStatement("SELECT uuid, expires, name FROM api_keys WHERE user_id = ?");
-				var apiKeyScopeStatement = connection.prepareStatement(query)
-		) {
-			apiKeyStatement.setString(1, userId);
-			ResultSet resultSet = apiKeyStatement.executeQuery();
-			while (resultSet.next()) {
-				UUID uuid = UuidUtils.fromBytes(resultSet.getBytes("uuid"));
-				apiKeyScopeStatement.setBytes(1, resultSet.getBytes("uuid"));
-				if (projectId != null) {
-					apiKeyScopeStatement.setString(2, projectId);
-				}
-				ResultSet scopeResult = apiKeyScopeStatement.executeQuery();
-				if (!scopeResult.isBeforeFirst()) {
-					continue;
-				}
-
-				apiKeys.add(new ApiKey(
-						uuid,
-						new Permissions(scopeResult.getLong("permissions")),
-						Instant.ofEpochMilli(resultSet.getLong("expires")),
-						PermissionScope.fromString(scopeResult.getString("scope")),
-						Optional.ofNullable(scopeResult.getString("project_id")),
-						resultSet.getString("name")
-				));
+		Collection<DatabaseAccess.ApiKey> resultSet = db.getApiKeys(userId);
+		for (DatabaseAccess.ApiKey apiKey : resultSet) {
+			Optional<DatabaseAccess.ApiKeyScope> optionalApiKeyScope = query.apply(apiKey.uuid());
+			if (optionalApiKeyScope.isEmpty()) {
+				continue;
 			}
+
+			DatabaseAccess.ApiKeyScope apiKeyScope = optionalApiKeyScope.get();
+			apiKeys.add(new ApiKey(
+					apiKey.uuid(),
+					apiKeyScope.permissions(),
+					apiKey.expires(),
+					apiKeyScope.scope(),
+					Optional.ofNullable(apiKeyScope.projectId()),
+					apiKey.name()
+			));
 		}
 
 		ctx.json(new Response(apiKeys));

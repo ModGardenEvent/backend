@@ -6,6 +6,7 @@ import net.modgarden.backend.data.NaturalId;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
+import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthorizedProjectEndpoint;
@@ -26,41 +27,16 @@ public class CreateProjectEndpoint extends AuthorizedProjectEndpoint {
 		if (this.requireAnyPermissions(ctx, scopePermissions,
 				Permission.PARTICIPATE)) return;
 
-		String generatedProjectId = NaturalId.generate("projects", "id", null, 5);
 		Request request = decodeBody(ctx, Request.CODEC)
 				.unwrap(ctx);
 
 		if (request == null) return;
 
-		try (
-				var connection = this.getDatabaseConnection();
-				var projectStatement = connection.prepareStatement("""
-					INSERT INTO projects (id)
-					VALUES (?)
-				""");
-				var projectDraftMetadataStatement = connection.prepareStatement("""
-					INSERT INTO project_draft_metadata (project_id, name)
-					VALUES (?, ?)
-				""");
-				var projectRolesStatement = connection.prepareStatement("""
-					INSERT OR IGNORE INTO project_roles (project_id, user_id, permissions)
-					VALUES (?, ?, 1)
-				""")
-		) {
-			projectStatement.setString(1, generatedProjectId);
-			projectStatement.executeUpdate();
+		DatabaseAccess db = DatabaseAccess.get();
+		String projectId = db.createProject(userId, request.name());
 
-			projectDraftMetadataStatement.setString(1, generatedProjectId);
-			projectDraftMetadataStatement.setString(2, request.name());
-			projectDraftMetadataStatement.executeUpdate();
-
-			projectRolesStatement.setString(1, generatedProjectId);
-			projectRolesStatement.setString(2, userId);
-			projectRolesStatement.executeUpdate();
-
-			ctx.status(201);
-			ctx.header("Location", "/v2/project/" + generatedProjectId);
-		}
+		ctx.status(201);
+		ctx.header("Location", "/v2/project/" + projectId);
 	}
 
 	@NotNull

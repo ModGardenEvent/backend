@@ -19,10 +19,11 @@ import java.sql.SQLException;
 // witnesses would be *real* nice here. *sigh*
 @EndpointPath("/")
 public abstract class Endpoint implements Handler {
-	public static final String SAFE_URL_REGEX = "[a-zA-Z0-9!@$()`.+,_\"-]+";
+	// *Please* don't touch this. In fact, don't use Regex without using https://regex101.com
+	// and manually testing your change.
+	public static final String SAFE_URL_REGEX = "^[a-zA-Z0-9!@$()`.+,_\"-]*$";
 
 	private final String path;
-	private final DatabaseAccess databaseAccess = new DatabaseAccess();
 
 	public Endpoint(int version, String path) {
 		this.path = "/v" + version + "/" + path;
@@ -35,6 +36,8 @@ public abstract class Endpoint implements Handler {
 
 	@Override
 	public final void handle(@NotNull Context ctx) throws Exception {
+		ScopedValue.Carrier carrier = DatabaseAccess.bind();
+
 		// validate all path params
 		for (String pathParam : ctx.pathParamMap().values()) {
 			if (!pathParam.matches(SAFE_URL_REGEX)) {
@@ -45,8 +48,12 @@ public abstract class Endpoint implements Handler {
 		}
 
 		try {
-			this.onRequest(ctx);
-		} catch (NotFoundException npe) {
+			carrier.<Void, Exception>call(() -> {
+				this.onRequest(ctx);
+				DatabaseAccess.get().close();
+				return null;
+			});
+		} catch (NullPointerException npe) {
 			ctx.status(404);
 			ctx.result(npe.getMessage());
 		}
@@ -56,14 +63,6 @@ public abstract class Endpoint implements Handler {
 
 	public String getPath() {
 		return path;
-	}
-
-	protected DatabaseAccess getDatabaseAccess() {
-		return databaseAccess;
-	}
-
-	protected Connection getDatabaseConnection() throws SQLException {
-		return this.getDatabaseAccess().getDatabaseConnection();
 	}
 
 	protected void invalidBody(Context ctx, String message) {

@@ -31,7 +31,7 @@ public record Submission(String id,
 
 	public static final Codec<Submission> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Submission::id),
-            Event.ID_CODEC.fieldOf("event").forGetter(Submission::event),
+            Theme.ID_CODEC.fieldOf("event").forGetter(Submission::event),
 			Codec.LONG.fieldOf("time_submitted").forGetter(Submission::timeSubmitted),
 			Project.DIRECT_CODEC.fieldOf("project").forGetter(Submission::project),
 			PLATFORM_CODEC.fieldOf("platform").forGetter(Submission::platform)

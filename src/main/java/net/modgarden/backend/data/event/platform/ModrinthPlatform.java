@@ -1,14 +1,23 @@
 package net.modgarden.backend.data.event.platform;
 
+import static net.modgarden.backend.util.HandleFinder.findHandle;
+
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.modgarden.backend.data.Metadata;
 import net.modgarden.backend.data.Platform;
 import net.modgarden.backend.data.event.metadata.ModMetadata;
+import net.modgarden.backend.database.DatabaseAccess;
+import net.modgarden.backend.util.LazyValue;
 import net.modgarden.backend.util.MetadataUtils;
+import net.modgarden.backend.util.ReadableOrderCodec;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.sql.Connection;
+import java.util.Optional;
 
 /// A platform for Modrinth releases, linking to a specific version as part of a Modrinth project.
 ///
@@ -29,6 +38,10 @@ public record ModrinthPlatform(String projectId, String versionId) implements Pl
 			Codec.STRING.fieldOf("project_id").forGetter(ModrinthPlatform::projectId),
 			Codec.STRING.fieldOf("version_id").forGetter(ModrinthPlatform::versionId)
 	).apply(inst, ModrinthPlatform::new));
+	private static final MethodHandle GET_CONNECTION =
+			findHandle(lookup -> MethodHandles.privateLookupIn(DatabaseAccess.class, lookup)
+					.findVirtual(DatabaseAccess.class, "getConnection", MethodType.methodType(Connection.class)))
+					.orElseThrow();
 
 	@Override
 	public String typeName() {
@@ -41,7 +54,16 @@ public record ModrinthPlatform(String projectId, String versionId) implements Pl
 	}
 
 	@Override
-	public void addToDatabase(Connection connection, String gardenProjectId, String submissionId) throws Exception {
+	public void addToDatabase(DatabaseAccess db, String gardenProjectId, String submissionId) throws Exception {
+		// TODO: migrate to DatabaseAccess
+		Connection connection;
+
+		try {
+			connection = (Connection) GET_CONNECTION.invokeExact();
+		} catch (Throwable e) {
+			throw new RuntimeException(e);
+		}
+
 		try (
 				var submissionTypeModrinthStatement = connection.prepareStatement("""
 					INSERT INTO submission_type_modrinth (submission_id, modrinth_id, version_id)
@@ -56,7 +78,6 @@ public record ModrinthPlatform(String projectId, String versionId) implements Pl
 			submissionTypeModrinthStatement.setString(2, projectId);
 			submissionTypeModrinthStatement.setString(3, versionId);
 			submissionTypeModrinthStatement.executeUpdate();
-
 
 			Metadata metadata = MetadataUtils.getMetadataFromModrinth(projectId, versionId);
 			if (metadata instanceof ModMetadata(String modId, String name, String description, String sourceUrl)) {

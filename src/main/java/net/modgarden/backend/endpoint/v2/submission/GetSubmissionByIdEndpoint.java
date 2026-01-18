@@ -21,27 +21,13 @@ public class GetSubmissionByIdEndpoint extends GetSubmissionEndpoint {
 	@Override
 	public void onRequest(@NotNull Context ctx) throws Exception {
 		String submissionId = ctx.pathParam("submission_id").toLowerCase(Locale.ROOT);
+		DatabaseAccess db = DatabaseAccess.get();
+		Submission submission = db.getSubmission(submissionId)
+				.unwrap(ctx);
 
-		try (
-				var connection = this.getDatabaseConnection();
-				var submissionsStatement = connection.prepareStatement("""
-					SELECT 1
-					FROM submissions
-					WHERE id = ?
-				""")
-		) {
-			submissionsStatement.setString(1, submissionId);
-			var submissionsResult = submissionsStatement.executeQuery();
+		if (submission == null) return;
 
-			if (!submissionsResult.getBoolean(1)) {
-				ctx.result("Could not find submission '" + submissionId + "'");
-				ctx.status(404);
-				return;
-			}
-
-			Submission submission = this.getDatabaseAccess().getSubmissionFromId(submissionId);
-			ctx.json(submission);
-			ctx.status(200);
-		}
+		ctx.json(submission);
+		ctx.status(200);
 	}
 }

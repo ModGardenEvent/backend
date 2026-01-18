@@ -5,6 +5,7 @@ import io.javalin.http.Context;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.data.user.User;
+import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthorizedProjectEndpoint;
@@ -15,10 +16,10 @@ import java.sql.ResultSet;
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.DELETE;
 
 @EndpointMethod(DELETE)
-@EndpointPath("/v2/project/{project_id}/remove_member")
+@EndpointPath("/v2/project/{project_id}/{user_id}")
 public class RemoveMemberEndpoint extends AuthorizedProjectEndpoint {
 	public RemoveMemberEndpoint() {
-		super("{project_id}/remove_member", true);
+		super("{project_id}/{user_id}", true);
 	}
 
 	@Override
@@ -26,55 +27,35 @@ public class RemoveMemberEndpoint extends AuthorizedProjectEndpoint {
 		//noinspection DuplicatedCode
 
 		String projectId = this.getProjectId(ctx);
-		Request request = decodeBody(ctx, Request.CODEC)
+		String memberId = ctx.pathParam("user_id");
+
+		if (!memberId.equals(userId) && this.requireAnyPermissions(
+				ctx, scopePermissions,
+				Permission.EDIT_PROJECT
+		)) return;
+
+		DatabaseAccess db = DatabaseAccess.get();
+		Permissions memberPermissions = db.getProjectMemberPermissions(memberId, projectId)
 				.unwrap(ctx);
 
-		if (request == null || !request.userId().equals(userId) && this.requireAnyPermissions(ctx, scopePermissions,
-				Permission.EDIT_PROJECT)) return;
+		if (memberPermissions == null) return;
 
-		try (
-				var connection = this.getDatabaseConnection();
-				var memberPermissionsStatement = connection.prepareStatement("""
-					SELECT permissions
-					FROM project_roles
-					WHERE project_id = ? AND user_id = ?
-				""");
-				var permissionCountStatement = connection.prepareStatement("""
-					SELECT COUNT(*)
-					FROM project_roles
-					WHERE project_id = ? AND has_permissions(permissions, 1)
-				""");
-				var deleteStatement = connection.prepareStatement("""
-					DELETE FROM project_roles
-					WHERE project_id = ? AND user_id = ?
-				""")
-		) {
-			memberPermissionsStatement.setString(1, projectId);
-			memberPermissionsStatement.setString(2, request.userId());
-			ResultSet memberPermissionsResult = memberPermissionsStatement.executeQuery();
-			Permissions memberPermissions = new Permissions(memberPermissionsResult.getLong(1));
+		// If a non-administrator attempts to remove an administrator, return.
+		if (userCannotModifyMember(ctx, projectId, memberId, scopePermissions)) return;
 
-			// If a non-administrator attempts to remove an administrator, return.
-			if (requireUserCanModifyMember(ctx, connection, projectId, request.userId(), scopePermissions)) return;
+		boolean memberIsAdmin = memberPermissions.hasPermissions(Permission.ADMINISTRATOR);
 
-			boolean memberIsAdmin = memberPermissions.hasPermissions(Permission.ADMINISTRATOR);
-
-			// If the member can edit the project, check if there are any other project editors left within the project to avoid a situation where nobody is able to edit the project.
-			// check if admin can edit admin and other admin exist, and we are admin this scope
-			if (memberIsAdmin && scopePermissions.hasPermissions(Permission.ADMINISTRATOR)) {
-				permissionCountStatement.setString(1, projectId);
-				ResultSet permissionCountResult = permissionCountStatement.executeQuery();
-				if (permissionCountResult.getInt(1) < 2) {
-					ctx.status(400);
-					ctx.result("A project must have at least one administrator");
-					return;
-				}
+		// If the member can edit the project, check if there are any other project editors left within the project to avoid a situation where nobody is able to edit the project.
+		// check if admin can edit admin and other admin exist, and we are admin this scope
+		if (memberIsAdmin && scopePermissions.hasPermissions(Permission.ADMINISTRATOR)) {
+			if (db.getProjectAdministratorCount(projectId) < 2) {
+				ctx.status(400);
+				ctx.result("A project must have at least one administrator");
+				return;
 			}
-
-			deleteStatement.setString(1, projectId);
-			deleteStatement.setString(2, request.userId());
-			deleteStatement.executeUpdate();
 		}
+
+		db.removeProjectMember(projectId, memberId);
 	}
 
 	@NotNull

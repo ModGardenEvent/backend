@@ -83,15 +83,22 @@ public class V5ToV6 extends DatabaseFix {
 		statement.addBatch("""
 		CREATE TRIGGER user_role_trigger_insert INSERT ON user_roles BEGIN
 			UPDATE users SET permissions = permissions | role_permissions FROM (
-				SELECT permissions AS role_permissions FROM user_role_definitions WHERE id = new.role_id
-			) WHERE id == new.user_id;
+				SELECT permissions AS role_permissions FROM user_role_definitions WHERE id = NEW.role_id
+			) WHERE id == NEW.user_id;
 		END
 		""");
 		statement.addBatch("""
 		CREATE TRIGGER user_role_trigger_delete DELETE ON user_roles BEGIN
 			UPDATE users SET permissions = permissions & ~role_permissions FROM (
-				SELECT permissions AS role_permissions FROM user_role_definitions WHERE id = old.role_id
-			) WHERE id == old.user_id;
+				SELECT permissions AS role_permissions FROM user_role_definitions WHERE id = OLD.role_id
+			) WHERE id == OLD.user_id;
+
+			-- Recalculate entire set of roles to ensure the permissions we removed aren't present elsewhere
+			UPDATE users SET permissions = permissions | role_permissions FROM (
+				SELECT permissions AS role_permissions FROM user_role_definitions
+					INNER JOIN user_roles ON user_roles.role_id == user_role_definitions.id
+				WHERE role_id != OLD.role_id AND user_id == OLD.user_id
+			) WHERE id = OLD.user_id;
 		END
 		""");
 
@@ -138,10 +145,10 @@ public class V5ToV6 extends DatabaseFix {
 		ALTER TABLE events RENAME TO events_old
 		""");
 		statement.addBatch("""
-		CREATE TABLE IF NOT EXISTS events (
+		CREATE TABLE IF NOT EXISTS themes (
 			id TEXT UNIQUE NOT NULL,
-			slug TEXT UNIQUE NOT NULL,
-			event_type_slug TEXT NOT NULL,
+			theme_slug TEXT UNIQUE NOT NULL,
+			event_slug TEXT NOT NULL,
 			display_name TEXT NOT NULL,
 			minecraft_version TEXT NOT NULL,
 			loader TEXT NOT NULL,
@@ -154,7 +161,7 @@ public class V5ToV6 extends DatabaseFix {
 		)
 		""");
 		statement.addBatch("""
-		INSERT INTO events (id, slug, event_type_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time)
+		INSERT INTO themes (id, theme_slug, event_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time)
 		SELECT id, slug, event_type_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time from events_old
 		""");
 
@@ -196,11 +203,11 @@ public class V5ToV6 extends DatabaseFix {
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS submissions (
 			id TEXT UNIQUE NOT NULL,
-			event TEXT NOT NULL,
+			theme_id TEXT NOT NULL,
 			project_id TEXT NOT NULL,
 			submitted INTEGER NOT NULL,
 			FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
-			FOREIGN KEY (event) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			FOREIGN KEY (theme_id) REFERENCES themes(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			PRIMARY KEY(id)
 		)
 		""");
@@ -210,7 +217,7 @@ public class V5ToV6 extends DatabaseFix {
 		SET id = generate_natural_id('submissions', 'id', NULL, 5)
 		""");
 		statement.addBatch("""
-		INSERT INTO submissions (id, event, project_id, submitted)
+		INSERT INTO submissions (id, theme_id, project_id, submitted)
 		SELECT id, event, project_id, submitted from submissions_old
 		""");
 
@@ -307,7 +314,7 @@ public class V5ToV6 extends DatabaseFix {
 		CREATE TABLE IF NOT EXISTS event_integration_discord (
 			id TEXT UNIQUE NOT NULL,
 			role_id TEXT NOT NULL,
-			FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			FOREIGN KEY (id) REFERENCES themes(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			PRIMARY KEY (id)
 		)
 		""");
@@ -444,12 +451,12 @@ public class V5ToV6 extends DatabaseFix {
 		""");
 
 		statement.addBatch("""
-		UPDATE events
-		SET id = generate_natural_id('events', 'id', NULL, 5)
+		UPDATE themes
+		SET id = generate_natural_id('themes', 'id', NULL, 5)
 		""");
 		statement.addBatch("""
-		UPDATE events
-		SET slug = clean_slug_mg(slug)
+		UPDATE themes
+		SET theme_slug = clean_slug_mg(theme_slug)
 		""");
 
 

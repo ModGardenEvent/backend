@@ -5,6 +5,7 @@ import io.javalin.http.Context;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.data.user.User;
+import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthorizedProjectEndpoint;
@@ -27,35 +28,24 @@ public class SetPermissionsEndpoint extends AuthorizedProjectEndpoint {
 		if (this.requireAnyPermissions(ctx, scopePermissions,
 				Permission.EDIT_PROJECT)) return;
 
-		String projectId = ctx.pathParam("project_id");
+		String projectId = this.getProjectId(ctx);
 
 		Request request = decodeBody(ctx, Request.CODEC)
 				.unwrap(ctx);
 
 		if (request == null) return;
 
-		try (
-				var connection = this.getDatabaseConnection();
-				var updateStatement = connection.prepareStatement("""
-					UPDATE project_roles
-					SET permissions = ?
-					WHERE project_id = ? AND user_id = ?
-				""")
-		) {
-			for (Map.Entry<String, Permissions> usersToPermissions : request.usersToPermissions().entrySet()) {
-				if (requireUserCanModifyMember(
-						ctx,
-						connection,
-						projectId,
-						usersToPermissions.getKey(),
-						scopePermissions
-				)) return;
+		DatabaseAccess db = DatabaseAccess.get();
 
-				updateStatement.setLong(1, usersToPermissions.getValue().bits());
-				updateStatement.setString(2, projectId);
-				updateStatement.setString(3, usersToPermissions.getKey());
-				updateStatement.executeUpdate();
-			}
+		for (Map.Entry<String, Permissions> usersToPermissions : request.usersToPermissions().entrySet()) {
+			if (userCannotModifyMember(
+					ctx,
+					projectId,
+					usersToPermissions.getKey(),
+					scopePermissions
+			)) return;
+
+			db.setProjectMemberPermissions(usersToPermissions.getValue(), projectId, usersToPermissions.getKey());
 		}
 	}
 

@@ -13,74 +13,46 @@ import java.util.Locale;
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.GET;
 
 @EndpointMethod(GET)
-@EndpointPath("/v2/event/{event_type_slug}/{event_slug}/mod_id/{mod_id}")
+@EndpointPath("/v2/event/{event_slug}/{theme_slug}/mod_id/{mod_id}")
 public class GetSubmissionByModIdEndpoint extends GetSubmissionEndpoint {
 	public GetSubmissionByModIdEndpoint() {
-		super("event/{event_type_slug}/{event_slug}/mod_id/{mod_id}");
+		super("event/{event_slug}/{theme_slug}/mod_id/{mod_id}");
 	}
 
 	@SuppressWarnings("DuplicatedCode")
 	@Override
 	public void onRequest(@NotNull Context ctx) throws Exception {
-		String eventTypeSlug = ctx.pathParam("event_type_slug").toLowerCase(Locale.ROOT);
+		DatabaseAccess db = DatabaseAccess.get();
 		String eventSlug = ctx.pathParam("event_slug").toLowerCase(Locale.ROOT);
+		String themeSlug = ctx.pathParam("theme_slug").toLowerCase(Locale.ROOT);
 		String modId = ctx.pathParam("mod_id").toLowerCase(Locale.ROOT);
 
-		try (
-				var connection = this.getDatabaseConnection();
-				var eventStatement = connection.prepareStatement("""
-					SELECT id
-					FROM events
-					WHERE event_type_slug = ? AND slug = ?
-				""");
-				var projectModMetadataStatement = connection.prepareStatement("""
-					SELECT project_id
-					FROM project_mod_metadata
-					WHERE mod_id = ?
-				""");
-				var submissionsStatement = connection.prepareStatement("""
-					SELECT id
-					FROM submissions
-					WHERE project_id = ? AND event = ?
-				""")
-		) {
-			eventStatement.setString(1, eventTypeSlug);
-			eventStatement.setString(2, eventSlug);
-			var eventResult = eventStatement.executeQuery();
+		String themeId = db.getThemeId(eventSlug, themeSlug);
 
-			if (!eventResult.isBeforeFirst()) {
-				ctx.result("Could not find event '" + eventSlug + "' for event type '" + eventTypeSlug + "'");
-				ctx.status(404);
-				return;
-			}
-
-			projectModMetadataStatement.setString(1, modId);
-			var projectMetadataResult = projectModMetadataStatement.executeQuery();
-
-			if (!projectMetadataResult.isBeforeFirst()) {
-				ctx.result("Could not find mod with id '" + modId + "'");
-				ctx.status(404);
-				return;
-			}
-
-			String projectId = projectMetadataResult.getString("project_id");
-			String event = eventResult.getString("id");
-
-			submissionsStatement.setString(1, projectId);
-			submissionsStatement.setString(2, event);
-			var submissionsResult = submissionsStatement.executeQuery();
-
-			String submissionId = submissionsResult.getString("id");
-
-			if (submissionId == null) {
-				ctx.result("Could not find submission for mod with ID '" + modId + "' for event '" + eventSlug + "' for event type '" + eventTypeSlug + "'");
-				ctx.status(404);
-				return;
-			}
-
-			Submission submission = this.getDatabaseAccess().getSubmissionFromId(submissionId);
-			ctx.json(submission);
-			ctx.status(200);
+		if (themeId == null) {
+			ctx.result("Could not find theme '" + themeSlug + "' for event '" + eventSlug + "'");
+			ctx.status(404);
+			return;
 		}
+
+		String projectId = db.getProjectIdFromModId(modId);
+
+		if (projectId == null) {
+			ctx.result("Could not find mod with ID '" + modId + "'");
+			ctx.status(404);
+			return;
+		}
+
+		String submissionId = db.getSubmissionId(projectId, themeId);
+
+		if (submissionId == null) {
+			ctx.result("Could not find submission for mod with ID '" + modId + "' for theme '" + themeSlug + "' of event '" + eventSlug + "'");
+			ctx.status(404);
+			return;
+		}
+
+		Submission submission = db.getSubmission(submissionId).getObject();
+		ctx.json(submission);
+		ctx.status(200);
 	}
 }

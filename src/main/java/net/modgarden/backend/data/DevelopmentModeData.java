@@ -136,46 +136,41 @@ public class DevelopmentModeData {
 				projectStatement.execute();
 
 				var submissionStatement = connection.prepareStatement(
-						"INSERT OR IGNORE INTO submissions(id, event, project_id, modrinth_version_id, submitted) VALUES (?, ?, ?, ?, ?)");
+						"INSERT OR IGNORE INTO submissions(id, theme_id, project_id, submitted) VALUES (?, ?, ?, ?)");
 
 				long glowBannersSubmissionId = RANDOM.nextLong(Long.MAX_VALUE);
 				submissionStatement.setString(1, Long.toString(glowBannersSubmissionId));
 				submissionStatement.setString(2, Long.toString(mojankId));
 				submissionStatement.setString(3, Long.toString(glowBannersId));
-				submissionStatement.setString(4, "c2VxpX2M");
-				submissionStatement.setLong(5, System.currentTimeMillis() - (86400000 * 3));
+				submissionStatement.setLong(4, System.currentTimeMillis() - (86400000 * 3));
 				submissionStatement.execute();
 
 				long smeltingTouchSubmissionId = RANDOM.nextLong(Long.MAX_VALUE);
 				submissionStatement.setString(1, Long.toString(smeltingTouchSubmissionId));
 				submissionStatement.setString(2, Long.toString(exampleGardenId));
 				submissionStatement.setString(3, Long.toString(smeltingTouchId));
-				submissionStatement.setString(4, "ubrXE4aR");
-				submissionStatement.setLong(5, System.currentTimeMillis() - (86400000));
+				submissionStatement.setLong(4, System.currentTimeMillis() - (86400000));
 				submissionStatement.execute();
 
 				long bovinesMojankSubmissionId = RANDOM.nextLong(Long.MAX_VALUE);
 				submissionStatement.setString(1, Long.toString(bovinesMojankSubmissionId));
 				submissionStatement.setString(2, Long.toString(mojankId));
 				submissionStatement.setString(3, Long.toString(bovinesId));
-				submissionStatement.setString(4, "j7WIi30J");
-				submissionStatement.setLong(5, System.currentTimeMillis() - (86400000 * 4));
+				submissionStatement.setLong(4, System.currentTimeMillis() - (86400000 * 4));
 				submissionStatement.execute();
 
 				long bovinesFestivalSubmissionId = RANDOM.nextLong(Long.MAX_VALUE);
 				submissionStatement.setString(1, Long.toString(bovinesFestivalSubmissionId));
 				submissionStatement.setString(2, Long.toString(festivalId));
 				submissionStatement.setString(3, Long.toString(bovinesId));
-				submissionStatement.setString(4, "j7WIi30J");
-				submissionStatement.setLong(5, System.currentTimeMillis() - (86400000 * 4));
+				submissionStatement.setLong(4, System.currentTimeMillis() - (86400000 * 4));
 				submissionStatement.execute();
 
 				long rapscallionsSubmissionId = RANDOM.nextLong(Long.MAX_VALUE);
 				submissionStatement.setString(1, Long.toString(rapscallionsSubmissionId));
 				submissionStatement.setString(2, Long.toString(exampleGardenId));
 				submissionStatement.setString(3, Long.toString(rapscallionsId));
-				submissionStatement.setString(4, "HOekJDf0");
-				submissionStatement.setLong(5, System.currentTimeMillis() - (86400000 * 2));
+				submissionStatement.setLong(4, System.currentTimeMillis() - (86400000 * 2));
 				submissionStatement.execute();
 
 				var projectAuthorsStatement = connection.prepareStatement(

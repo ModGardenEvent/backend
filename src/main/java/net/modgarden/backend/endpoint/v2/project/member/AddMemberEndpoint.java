@@ -5,6 +5,7 @@ import io.javalin.http.Context;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.data.user.User;
+import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthorizedProjectEndpoint;
@@ -14,10 +15,10 @@ import org.jetbrains.annotations.Nullable;
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.PUT;
 
 @EndpointMethod(PUT)
-@EndpointPath("/v2/project/{project_id}/add_member")
+@EndpointPath("/v2/project/{project_id}/{user_id}")
 public class AddMemberEndpoint extends AuthorizedProjectEndpoint {
 	public AddMemberEndpoint() {
-		super("{project_id}/add_member", true);
+		super("{project_id}/{user_id}", true);
 	}
 
 	@Override
@@ -27,22 +28,9 @@ public class AddMemberEndpoint extends AuthorizedProjectEndpoint {
 				Permission.EDIT_PROJECT)) return;
 
 		String projectId = this.getProjectId(ctx);
-		Request request = decodeBody(ctx, Request.CODEC)
-				.unwrap(ctx);
-
-		if (request == null) return;
-
-		try (
-				var connection = this.getDatabaseConnection();
-				var insertStatement = connection.prepareStatement("""
-					INSERT OR IGNORE INTO project_roles (project_id, user_id)
-					VALUES (?, ?)
-				""")
-		) {
-			insertStatement.setString(1, projectId);
-			insertStatement.setString(2, request.userId());
-			insertStatement.executeUpdate();
-		}
+		String memberId = ctx.pathParam("user_id");
+		DatabaseAccess db = DatabaseAccess.get();
+		db.addProjectMember(projectId, memberId);
 	}
 
 	@NotNull

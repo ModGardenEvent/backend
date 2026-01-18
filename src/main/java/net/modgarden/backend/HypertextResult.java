@@ -35,7 +35,7 @@ public final class HypertextResult<T> {
 	}
 
 	public T getObject() {
-		if (!success) throw new IllegalStateException("result failed");
+		if (!success) throw new IllegalStateException("result failed: " + this.message);
 		return object;
 	}
 

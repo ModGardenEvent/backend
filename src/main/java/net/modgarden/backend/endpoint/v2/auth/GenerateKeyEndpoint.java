@@ -7,6 +7,7 @@ import io.javalin.http.Context;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
+import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthEndpoint;
@@ -14,7 +15,6 @@ import net.modgarden.backend.util.ExtraCodecs;
 import net.modgarden.backend.util.UuidUtils;
 import org.jetbrains.annotations.NotNull;
 
-import java.sql.ResultSet;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
@@ -56,66 +56,26 @@ public final class GenerateKeyEndpoint extends AuthEndpoint {
 			projectId = request.projectId().get();
 		}
 
+		DatabaseAccess db = DatabaseAccess.get();
+
 		if (projectId != null) {
-			try (
-					var connection = this.getDatabaseConnection();
-					var projectStatement = connection.prepareStatement("SELECT id FROM projects WHERE id = ?")
-			) {
-				projectStatement.setString(1, projectId);
-				ResultSet resultSet = projectStatement.executeQuery();
-				if (!resultSet.isBeforeFirst()) {
-					ctx.status(404);
-					ctx.result("Project with ID " + projectId + " does not exist");
-					return;
-				}
-			}
+			db.assertProjectExists(projectId).unwrap(ctx);
 		}
 
 		switch (request.scope().id()) {
 			case "project" -> {
-				try (
-						var connection = this.getDatabaseConnection();
-						var permissionStatement = connection.prepareStatement("SELECT permissions FROM project_roles WHERE user_id = ? AND project_id = ?")
-				) {
-					permissionStatement.setString(1, userId);
-					permissionStatement.setString(2, projectId);
-					ResultSet resultSet = permissionStatement.executeQuery();
-					Permissions projectPermissions = new Permissions(resultSet.getLong("permissions"));
-					requestedPermissions = requestedPermissions.restrict(projectPermissions.bits());
-					if (this.requireAllPermissions(ctx, projectPermissions, Permission.MODIFY_API_KEY)) return;
-				}
+				Permissions projectPermissions = db.getProjectMemberPermissions(userId, projectId)
+						.unwrap(ctx);
+				if (projectPermissions == null) return;
+				requestedPermissions = requestedPermissions.restrict(projectPermissions.bits());
+				if (this.requireAllPermissions(ctx, projectPermissions, Permission.MODIFY_API_KEY)) return;
 			}
 			case "user" -> requestedPermissions = requestedPermissions.restrict(
 					Permission.DEFAULT_USER_PERMISSIONS.bits() | scopePermissions.bits());
 		}
 
-		try (
-				var connection = this.getDatabaseConnection();
-				var apiKeyStatement = connection.prepareStatement("INSERT INTO api_keys(uuid, user_id, hash, expires, name) VALUES (?, ?, ?, ?, ?)")
-		) {
-			apiKeyStatement.setBytes(1, uuid);
-			apiKeyStatement.setString(2, userId);
-			apiKeyStatement.setString(3, hash);
-			apiKeyStatement.setLong(4, request.expires().toEpochMilli());
-			apiKeyStatement.setString(5, request.name());
-			apiKeyStatement.execute();
-		}
-
-		try (
-				var connection = this.getDatabaseConnection();
-				var apiKeyScopeStatement = connection.prepareStatement("INSERT INTO api_key_scopes(uuid, scope, project_id, permissions) VALUES (?, ?, ?, ?)")
-		) {
-			apiKeyScopeStatement.setBytes(1, uuid);
-			apiKeyScopeStatement.setString(2, request.scope().id());
-			if (projectId != null) {
-				apiKeyScopeStatement.setString(3, projectId);
-			} else {
-				// actually what the hell lmao. what is this second integer?
-				apiKeyScopeStatement.setNull(3, 0);
-			}
-			apiKeyScopeStatement.setLong(4, requestedPermissions.bits());
-			apiKeyScopeStatement.execute();
-		}
+		db.createApiKey(uuid, userId, hash, request.expires(), request.name());
+		db.createApiKeyScope(uuid, request.scope().id(), projectId, requestedPermissions);
 
 		ctx.json(new Response(apiKey, UuidUtils.fromBytes(uuid)));
 		ctx.status(200);
