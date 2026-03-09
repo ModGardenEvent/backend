@@ -257,10 +257,10 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 		if (!scopePermissions.hasAnyPermissions(permissions)) {
 			ctx.status(403);
 			ctx.result("User lacks permission; required any of " + permissions);
-			return false;
+			return true;
 		}
 
-		return true;
+		return false;
 	}
 
 	protected boolean requireAllPermissions(Context ctx, Permissions scopePermissions, Permission... permissions) {
