@@ -28,7 +28,7 @@ public class GetProjectEndpoint extends Endpoint {
 
 		switch (queryKey) {
 		case MOD_ID -> {
-			projectId = db.getProjectIdFromModId(id);
+			projectId = db.getLatestProjectIdFromModId(id);
 
 			if (projectId == null) {
 				ctx.result("Could not find project from mod ID '" + id + "'");

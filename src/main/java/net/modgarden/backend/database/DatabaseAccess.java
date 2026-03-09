@@ -371,6 +371,7 @@ public final class DatabaseAccess implements AutoCloseable {
 					SELECT id
 					FROM submissions
 					WHERE project_id = ?
+					ORDER BY ROWID
 				""")
 		) {
 			projectModMetadataStatement.setString(1, projectId);
@@ -492,18 +493,18 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	@Nullable
-	public String getProjectIdFromModId(String modId) throws SQLException {
+	public String getLatestProjectIdFromModId(String modId) throws SQLException, HypertextException {
 		try (var projectModMetadataStatement = this.getConnection().prepareStatement("""
 					SELECT project_id
 					FROM project_mod_metadata
 					WHERE mod_id = ?
+					ORDER BY -ROWID
 				""")) {
 			projectModMetadataStatement.setString(1, modId);
 			ResultSet projectMetadataResult = projectModMetadataStatement.executeQuery();
 
 			if (!projectMetadataResult.isBeforeFirst()) {
-				return null;
+				throw new NotFoundException("Project with mod ID " + modId + " does not exist");
 			}
 
 			return projectMetadataResult.getString("project_id");
@@ -511,6 +512,11 @@ public final class DatabaseAccess implements AutoCloseable {
 	}
 
 	// Submissions
+
+	public String getLatestSubmissionIdFromModId(String modId) throws SQLException, HypertextException {
+		Project project = this.getProjectFromId(this.getLatestProjectIdFromModId(modId));
+		return project.submissions().getLast();
+	}
 
 	public String createEmptySubmission(String eventId, String projectId) throws SQLException {
 		try (var submissionsStatement = this.getConnection().prepareStatement("""
