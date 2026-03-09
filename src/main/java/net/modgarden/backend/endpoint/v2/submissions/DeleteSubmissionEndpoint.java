@@ -10,6 +10,7 @@ import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.exception.HypertextException;
 import org.jetbrains.annotations.NotNull;
 
 @EndpointMethod(DELETE)
@@ -32,7 +33,7 @@ public class DeleteSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
 
 	@NotNull
 	@Override
-	protected String getProjectId(Context ctx) throws SQLException {
+	protected String getProjectId(Context ctx) throws SQLException, HypertextException {
 		return DatabaseAccess.get().getProjectIdFromSubmissionId(ctx.pathParam("submission_id"));
 	}
 }

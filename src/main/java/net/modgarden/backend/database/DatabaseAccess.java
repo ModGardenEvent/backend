@@ -29,6 +29,7 @@ import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.event.metadata.DraftMetadata;
 import net.modgarden.backend.data.event.metadata.ModMetadata;
 import net.modgarden.backend.data.event.platform.ModrinthPlatform;
+import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.exception.NotFoundException;
 import net.modgarden.backend.util.FallibleSupplier;
 import net.modgarden.backend.util.LazyValue;
@@ -344,7 +345,7 @@ public final class DatabaseAccess implements AutoCloseable {
 
 	public Project getProjectFromId(
 			@NotNull String projectId
-	) throws Exception {
+	) throws SQLException, HypertextException {
 		Connection connection = this.getConnection();
 		Map<String, String> team = new HashMap<>();
 		Map<String, Long> permissions = new HashMap<>();
@@ -614,7 +615,7 @@ public final class DatabaseAccess implements AutoCloseable {
 
 	// Events
 
-	public Genre getGenreById(String id) throws SQLException {
+	public Genre getGenreById(String id) throws SQLException, HypertextException {
 		if (!"modgr".equals(id)) {
 			throw new NotFoundException("Genre with ID '" + id + "' does not exist");
 		}
@@ -622,7 +623,7 @@ public final class DatabaseAccess implements AutoCloseable {
 		return this.getGenres().getFirst();
 	}
 
-	public Genre getGenreBySlug(String slug) throws SQLException {
+	public Genre getGenreBySlug(String slug) throws SQLException, HypertextException {
 		if (!"mod-garden".equals(slug)) {
 			throw new NotFoundException("Genre with slug '" + slug + "' does not exist");
 		}
@@ -644,11 +645,11 @@ public final class DatabaseAccess implements AutoCloseable {
 
 	public List<Event> getEvents() throws SQLException {
 		try (var eventStatement = this.getConnection().prepareStatement("""
-				SELECT (id, event_slug, theme_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time)
+				SELECT id, theme_slug, event_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time
 				FROM themes
 			""");
 			var discordIntegrationStatement = this.getConnection().prepareStatement("""
-				SELECT (id, role_id)
+				SELECT id, role_id
 				FROM event_integration_discord
 			""")) {
 			ResultSet discordIntegrationResultSet = discordIntegrationStatement.executeQuery();
@@ -718,8 +719,25 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	@Nullable
-	public String getEventId(String genreSlug, String eventSlug) throws SQLException {
+	public String getEventSlug(String genreSlug, String eventId) throws SQLException, HypertextException {
+		try (var eventStatement = this.getConnection().prepareStatement("""
+					SELECT theme_slug
+					FROM themes
+					WHERE event_slug = ? AND id = ?
+				""")) {
+			eventStatement.setString(1, genreSlug);
+			eventStatement.setString(2, eventId);
+			var eventResult = eventStatement.executeQuery();
+
+			if (!eventResult.isBeforeFirst()) {
+				throw new NotFoundException("Event with ID '" + eventId + "' does not exist");
+			}
+
+			return eventResult.getString("theme_slug");
+		}
+	}
+
+	public String getEventId(String genreSlug, String eventSlug) throws SQLException, HypertextException {
 		try (var eventStatement = this.getConnection().prepareStatement("""
 					SELECT id
 					FROM themes
@@ -730,10 +748,126 @@ public final class DatabaseAccess implements AutoCloseable {
 			var eventResult = eventStatement.executeQuery();
 
 			if (!eventResult.isBeforeFirst()) {
-				return null;
+				throw new NotFoundException("Event '" + genreSlug + "/" + eventSlug + " does not exist");
 			}
 
 			return eventResult.getString("id");
+		}
+	}
+
+	public Event getEventFromSlug(String genreSlug, String eventSlug) throws SQLException, HypertextException {
+		try (var eventStatement = this.getConnection().prepareStatement("""
+				SELECT id, theme_slug, event_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time
+				FROM themes
+				WHERE event_slug = ? AND theme_slug = ?
+			""");
+			var discordIntegrationStatement = this.getConnection().prepareStatement("""
+				SELECT id, role_id
+				FROM event_integration_discord
+				WHERE id = ?
+			""")) {
+			eventStatement.setString(1, genreSlug);
+			eventStatement.setString(2, eventSlug);
+			var resultSet = eventStatement.executeQuery();
+			discordIntegrationStatement.setString(1, resultSet.getString("id"));
+			var discordIntegrationResultSet = discordIntegrationStatement.executeQuery();
+			String discordRoleId = null;
+
+			if (!resultSet.isBeforeFirst()) {
+				throw new NotFoundException("Event '" + genreSlug + "/" + eventSlug + "' does not exist");
+			}
+
+			if (discordIntegrationResultSet.isBeforeFirst()) {
+				discordRoleId = discordIntegrationResultSet.getString("role_id");
+			}
+
+			return new Event(
+					resultSet.getString("id"),
+					resultSet.getString("theme_slug"),
+					resultSet.getString("event_slug"),
+					resultSet.getString("display_name"),
+					Optional.ofNullable(discordRoleId),
+					resultSet.getString("minecraft_version"),
+					resultSet.getString("loader"),
+					Instant.ofEpochMilli(resultSet.getLong("registration_open_time")),
+					Instant.ofEpochMilli(resultSet.getLong("registration_close_time")),
+					Instant.ofEpochMilli(resultSet.getLong("start_time")),
+					Instant.ofEpochMilli(resultSet.getLong("end_time")),
+					Instant.ofEpochMilli(resultSet.getLong("freeze_time"))
+			);
+		}
+	}
+
+	public List<Submission> getEventSubmissions(String eventId) throws SQLException, HypertextException {
+		try (
+				var submissionStatement = this.getConnection().prepareStatement("""
+					SELECT id, project_id, submitted
+					FROM submissions
+					WHERE theme_id = ?
+				""");
+				var modrinthSubmissionTypeStatement = this.getConnection().prepareStatement("""
+					SELECT modrinth_id, version_id
+					FROM submission_type_modrinth
+					WHERE submission_id = ?
+				""")
+		) {
+			submissionStatement.setString(1, eventId);
+			ResultSet submissionResult = submissionStatement.executeQuery();
+			if (!submissionResult.isBeforeFirst()) {
+				throw new NotFoundException("Could not find submission for event ID '" + eventId + "'");
+			}
+
+			List<Submission> submissions = new ArrayList<>();
+
+			while (submissionResult.next()) {
+				modrinthSubmissionTypeStatement.setString(1, submissionResult.getString("id"));
+				ResultSet modrinthSubmissionTypeResult = modrinthSubmissionTypeStatement.executeQuery();
+
+				Platform platform;
+				// TODO: Implement download URL submission type.
+				if (modrinthSubmissionTypeResult.isBeforeFirst()) {
+					platform = new ModrinthPlatform(
+							modrinthSubmissionTypeResult.getString("modrinth_id"),
+							modrinthSubmissionTypeResult.getString("version_id")
+					);
+				} else {
+					throw new HypertextException(400, "Submission does not have a valid 'platform'");
+				}
+
+				submissions.add(new Submission(
+						submissionResult.getString("id"),
+						eventId,
+						submissionResult.getLong("submitted"),
+						this.getProjectFromId(submissionResult.getString("project_id")),
+						platform
+				));
+			}
+
+			return submissions;
+		}
+	}
+
+	public List<String> getEventSubmissionIds(String eventId) throws SQLException, HypertextException {
+		try (
+				var submissionStatement = this.getConnection().prepareStatement("""
+					SELECT id
+					FROM submissions
+					WHERE theme_id = ?
+				""")
+		) {
+			submissionStatement.setString(1, eventId);
+			ResultSet submissionResult = submissionStatement.executeQuery();
+			if (!submissionResult.isBeforeFirst()) {
+				throw new NotFoundException("Could not find submission for event ID '" + eventId + "'");
+			}
+
+			List<String> submissionIds = new ArrayList<>();
+
+			while (submissionResult.next()) {
+				submissionIds.add(submissionResult.getString("id"));
+			}
+
+			return submissionIds;
 		}
 	}
 

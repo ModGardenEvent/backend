@@ -15,6 +15,7 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.util.Converter;
 import net.modgarden.backend.util.ExtraCodecs;
 
 public record Event(String id,
@@ -44,33 +45,31 @@ public record Event(String id,
 			ExtraCodecs.INSTANT_CODEC.fieldOf("freeze_time").forGetter(Event::freezeTime)
     ).apply(inst, Event::new)));
 	// TODO: make ApiFormat and Event identical so the former is unnecessary
-	public static final Codec<Event> CODEC = Codec.lazyInitialized(() -> ApiFormat.CODEC.xmap(
-			apiFormat -> new Event(
-					apiFormat.id(),
-					apiFormat.slug(),
-					"mod-garden",
-					apiFormat.metadata().name(),
-					Optional.empty(),
-					((ApiFormat.MinecraftPlatform) apiFormat.platform()).gameVersion(),
-					((ApiFormat.MinecraftPlatform) apiFormat.platform()).modLoader(),
-					apiFormat.registrationOpenTime(),
-					apiFormat.registrationCloseTime(),
-					apiFormat.startTime(),
-					apiFormat.endTime(),
-					apiFormat.freezeTime()
-			),
-			event -> new ApiFormat(
-					event.id(),
-					event.eventSlug(),
-					new Metadata(event.displayName(), "To-do"),
-					event.registrationOpenTime(),
-					event.registrationCloseTime(),
-					event.startTime(),
-					event.endTime(),
-					event.freezeTime(),
-					new ApiFormat.MinecraftPlatform(event.loader(), event.minecraftVersion())
-			)
-	));
+	public static final Converter<Event, ApiFormat> COMAP = event -> new ApiFormat(
+			event.id(),
+			event.eventSlug(),
+			new Metadata(event.displayName(), "To-do"),
+			event.registrationOpenTime(),
+			event.registrationCloseTime(),
+			event.startTime(),
+			event.endTime(),
+			event.freezeTime(),
+			new ApiFormat.MinecraftPlatform(event.loader(), event.minecraftVersion())
+	);
+	public static final Converter<ApiFormat, Event> MAP = apiFormat -> new Event(
+			apiFormat.id(),
+			apiFormat.slug(),
+			"mod-garden",
+			apiFormat.metadata().name(),
+			Optional.empty(),
+			((ApiFormat.MinecraftPlatform) apiFormat.platform()).gameVersion(),
+			((ApiFormat.MinecraftPlatform) apiFormat.platform()).modLoader(),
+			apiFormat.registrationOpenTime(),
+			apiFormat.registrationCloseTime(),
+			apiFormat.startTime(),
+			apiFormat.endTime(),
+			apiFormat.freezeTime()
+	);
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(Event::validate);
 
     private static DataResult<String> validate(String id) {

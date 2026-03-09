@@ -1,5 +1,7 @@
 package net.modgarden.backend.endpoint.v2.projects;
 
+import java.sql.SQLException;
+
 import io.javalin.http.Context;
 import net.modgarden.backend.HypertextResult;
 import net.modgarden.backend.data.PermissionScope;
@@ -7,6 +9,7 @@ import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.AuthorizedEndpoint;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.exception.HypertextException;
 import org.jetbrains.annotations.NotNull;
 
 @EndpointPath("/v2/projects")
@@ -16,11 +19,11 @@ public abstract class AuthorizedProjectEndpoint extends AuthorizedEndpoint {
 	}
 
 	protected AuthorizedProjectEndpoint(String path, PermissionScope scope, boolean hasBody) {
-		super(2, "projects/" + path, scope, hasBody);
+		super(2, "projects/" + path, scope);
 	}
 
 	protected AuthorizedProjectEndpoint(PermissionScope scope, boolean hasBody) {
-		super(2, "projects", scope, hasBody);
+		super(2, "projects", scope);
 	}
 
 	@Override
@@ -28,7 +31,7 @@ public abstract class AuthorizedProjectEndpoint extends AuthorizedEndpoint {
 
 	@NotNull
 	@Override
-	protected abstract String getProjectId(Context ctx);
+	protected abstract String getProjectId(Context ctx) throws SQLException, HypertextException;
 
 	protected static boolean userCannotModifyMember(
 			Context ctx,

@@ -18,6 +18,7 @@ import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.database.DatabaseAccess;
+import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.v2.auth.api_key.GenerateKeyEndpoint;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -28,19 +29,16 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 	private static final Argon2Advanced ARGON =
 			Argon2Factory.createAdvanced(Argon2Factory.Argon2Types.ARGON2id);
 	private final PermissionScope permissionScope;
-	private final boolean hasBody;
 	private final static String characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_+=[]{}|/?;:,.<>~";
 
-	public AuthorizedEndpoint(int version, String path, PermissionScope permissionScope, boolean hasBody) {
+	public AuthorizedEndpoint(int version, String path, PermissionScope permissionScope) {
 		super(version, path);
 		this.permissionScope = permissionScope;
-		this.hasBody = hasBody;
 	}
 
-	AuthorizedEndpoint(String path, PermissionScope permissionScope, boolean hasBody) {
+	AuthorizedEndpoint(String path, PermissionScope permissionScope) {
 		super(path);
 		this.permissionScope = permissionScope;
-		this.hasBody = hasBody;
 	}
 
 	public static String generateRandomToken() {
@@ -90,7 +88,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 		this.onRequest(ctx, validationResult.userId(), validationResult.scopePermissions());
 	}
 
-	protected @Nullable String getProjectId(Context ctx) throws SQLException {
+	protected @Nullable String getProjectId(Context ctx) throws SQLException, HypertextException {
 		return null;
 	}
 
@@ -136,7 +134,12 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 			return new ValidationResult(true, "grbot", scopePermissions);
 		}
 
-		String projectId = this.getProjectId(ctx);
+		String projectId;
+		try {
+			projectId = this.getProjectId(ctx);
+		} catch (HypertextException e) {
+			throw new RuntimeException(e);
+		}
 
 		String idSecretPair = authorization.split(" ")[1];
 		String[] idSecretPairSplit = idSecretPair.split(":");

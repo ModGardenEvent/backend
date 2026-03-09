@@ -10,7 +10,7 @@ import org.jetbrains.annotations.NotNull;
 @EndpointPath("/v2/auth")
 public abstract class AuthEndpoint extends AuthorizedEndpoint {
 	public AuthEndpoint(String path, PermissionScope permissionScope, boolean hasBody) {
-		super(2, "auth/" + path, permissionScope, hasBody);
+		super(2, "auth/" + path, permissionScope);
 	}
 
 	@Override

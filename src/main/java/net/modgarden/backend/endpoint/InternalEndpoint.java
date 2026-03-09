@@ -16,6 +16,6 @@ public abstract class InternalEndpoint extends AuthorizedEndpoint {
 			String path,
 			boolean hasBody
 	) {
-		super("/internal/" + path, PermissionScope.USER, hasBody);
+		super("/internal/" + path, PermissionScope.USER);
 	}
 }

@@ -18,6 +18,8 @@ import java.util.Properties;
 import java.util.function.Supplier;
 
 import ch.qos.logback.classic.Level;
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -45,6 +47,9 @@ import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.endpoint.v2.auth.api_key.DeleteKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.api_key.GenerateKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.api_key.ListKeysEndpoint;
+import net.modgarden.backend.endpoint.v2.events.GetEventEndpoint;
+import net.modgarden.backend.endpoint.v2.events.GetEventSubmissionsEndpoint;
+import net.modgarden.backend.endpoint.v2.events.ListEventsEndpoint;
 import net.modgarden.backend.endpoint.v2.genres.GetGenreEndpoint;
 import net.modgarden.backend.endpoint.v2.genres.ListGenresEndpoint;
 import net.modgarden.backend.endpoint.v2.projects.CreateProjectEndpoint;
@@ -56,6 +61,7 @@ import net.modgarden.backend.endpoint.v2.submissions.CreateSubmissionEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.DeleteSubmissionEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.GetSubmissionEndpoint;
 import net.modgarden.backend.util.AuthUtil;
+import net.modgarden.backend.util.Converter;
 import net.modgarden.backend.util.ReadableOrderCodec;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -67,6 +73,9 @@ public class ModGardenBackend {
 	public static final String URL = "development".equals(DOTENV.get("env")) ? "http://localhost:7070" : "https://api.modgarden.net";
 	public static final Logger LOG = LoggerFactory.getLogger(ModGardenBackend.class);
 
+	private static final Map<Type, Converter<?, ?>> COERCION_COMAP_REGISTRY = new HashMap<>();
+	private static final Map<Type, Converter<?, ?>> COERCION_MAP_REGISTRY = new HashMap<>();
+	private static final BiMap<Type, Type> COERCION_REGISTRY = HashBiMap.create();
 	private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
 
 	public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
@@ -79,7 +88,7 @@ public class ModGardenBackend {
 		this.app = app;
 	}
 
-	public static void main(String[] args) {
+	public static void main() {
 		if ("development".equals(DOTENV.get("env")))
 			((ch.qos.logback.classic.Logger)LOG).setLevel(Level.DEBUG);
 
@@ -104,7 +113,9 @@ public class ModGardenBackend {
 		registerCodec(Landing.class, Landing.CODEC);
 		registerCodec(BackendError.class, BackendError.CODEC);
 		registerCodec(Award.class, Award.DIRECT_CODEC);
-		registerCodec(Event.class, Event.CODEC);
+		registerCodec(Event.class, Event.DIRECT_CODEC);
+		registerCodec(Event.ApiFormat.class, Event.ApiFormat.CODEC);
+		registerCoercion(Event.class, Event.ApiFormat.class, Event.COMAP, Event.MAP);
 		registerCodec(Genre.class, Genre.DIRECT_CODEC);
 		registerCodec(Project.class, Project.DIRECT_CODEC);
 		registerCodec(Submission.class, Submission.DIRECT_CODEC);
@@ -145,6 +156,10 @@ public class ModGardenBackend {
 
 		get(GetGenreEndpoint::new);
 		get(ListGenresEndpoint::new);
+
+		get(GetEventEndpoint::new);
+		get(GetEventSubmissionsEndpoint::new);
+		get(ListEventsEndpoint::new);
 
 		post(CreateSubmissionEndpoint::new);
 		delete(DeleteSubmissionEndpoint::new);
@@ -481,7 +496,20 @@ public class ModGardenBackend {
 		LOG.debug("Updated database schema version.");
 	}
 
-	private static void registerCodec(Type type, Codec<?> codec) {
+	/// Converts a type into another type automatically at the encode/decode stage.
+	///
+	/// @param from the type to convert from during encoding.
+	/// @param into the type to convert from during decoding.
+	/// @param comap the conversion used during encoding.
+	/// @param map the conversion used during decoding.
+	/// @see #createDFUMapper()
+	private static <A, B> void registerCoercion(Class<A> from, Class<B> into, Converter<A, B> comap, Converter<B, A> map) {
+		COERCION_REGISTRY.put(from, into);
+		COERCION_COMAP_REGISTRY.put(from, comap);
+		COERCION_MAP_REGISTRY.put(into, map);
+	}
+
+	private static <T> void registerCodec(Class<T> type, Codec<T> codec) {
 		CODEC_REGISTRY.put(type, new ReadableOrderCodec<>(codec));
 	}
 
@@ -492,7 +520,6 @@ public class ModGardenBackend {
 		return new JsonMapper() {
 			private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-			@SuppressWarnings("unchecked")
 			@Override
 			public @NotNull String toJsonString(@NotNull Object obj, @NotNull Type type) {
 				if (obj instanceof JsonElement)
@@ -520,8 +547,19 @@ public class ModGardenBackend {
 					}
 				}
 
+				if (COERCION_COMAP_REGISTRY.containsKey(type)) {
+					Type into = COERCION_REGISTRY.get(type);
+					//noinspection unchecked
+					return ((Codec<Object>) CODEC_REGISTRY.get(into))
+							.xmap((Converter<Object, Object>) COERCION_MAP_REGISTRY.get(into), (Converter<Object, Object>) COERCION_COMAP_REGISTRY.get(type))
+							.encodeStart(JsonOps.INSTANCE, obj)
+							.getOrThrow()
+							.toString();
+				}
+
 				if (!CODEC_REGISTRY.containsKey(type))
 					throw new UnsupportedOperationException("Cannot encode object type " + type);
+				//noinspection unchecked
 				return ((Codec<Object>)CODEC_REGISTRY.get(type))
 						.encodeStart(JsonOps.INSTANCE, obj)
 						.getOrThrow()

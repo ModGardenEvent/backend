@@ -47,8 +47,9 @@ public class CreateSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
 		HypertextResult<Request> result = decodeBody(ctx, Request.CODEC);
 		Request request = result.unwrap(ctx);
 
-		if (request == null)
+		if (request == null) {
 			throw new IllegalStateException(result.getMessage());
+		}
 
 		return request.projectId();
 	}
