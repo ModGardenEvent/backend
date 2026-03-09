@@ -1,4 +1,4 @@
-package net.modgarden.backend.endpoint.v2;
+package net.modgarden.backend.endpoint.v2.projects;
 
 import io.javalin.http.Context;
 import net.modgarden.backend.HypertextResult;
