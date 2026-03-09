@@ -1,4 +1,4 @@
-package net.modgarden.backend.endpoint.v2.submission;
+package net.modgarden.backend.endpoint.v2.submissions;
 
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.DELETE;
 
