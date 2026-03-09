@@ -262,7 +262,7 @@ public final class DatabaseAccess implements AutoCloseable {
 				var projectStatement = connection.prepareStatement("""
 					DELETE FROM projects
 					WHERE id = ?
-				""");
+				""")
 		) {
 			projectStatement.setString(1, projectId);
 			projectStatement.executeUpdate();
@@ -578,7 +578,7 @@ public final class DatabaseAccess implements AutoCloseable {
 						modrinthSubmissionTypeResult.getString("version_id")
 				);
 			} else {
-				throw new RuntimeException("Submission does not have a valid 'platform'");
+				return new HypertextResult<>(400, "Submission does not have a valid 'platform'");
 			}
 
 			return new HypertextResult<>(new Submission(
