@@ -22,6 +22,8 @@ import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.data.Platform;
+import net.modgarden.backend.data.event.Event;
+import net.modgarden.backend.data.event.Genre;
 import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.event.metadata.DraftMetadata;
@@ -610,10 +612,114 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	// Themes
+	// Events
+
+	public Genre getGenreById(String id) throws SQLException {
+		if (!"modgr".equals(id)) {
+			throw new NotFoundException("Genre with ID '" + id + "' does not exist");
+		}
+
+		return this.getGenres().getFirst();
+	}
+
+	public Genre getGenreBySlug(String slug) throws SQLException {
+		if (!"mod-garden".equals(slug)) {
+			throw new NotFoundException("Genre with slug '" + slug + "' does not exist");
+		}
+
+		return this.getGenres().getFirst();
+	}
+
+	public List<Genre> getGenres() throws SQLException {
+		return List.of(Genre.getModGarden(getEventIdsFromGenreSlug("mod-garden")));
+	}
+
+	public List<String> getGenreIds() throws SQLException {
+		return List.of("modgr");
+	}
+
+	public List<String> getGenreSlugs() throws SQLException {
+		return List.of("mod-garden");
+	}
+
+	public List<Event> getEvents() throws SQLException {
+		try (var eventStatement = this.getConnection().prepareStatement("""
+				SELECT (id, event_slug, theme_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time)
+				FROM themes
+			""");
+			var discordIntegrationStatement = this.getConnection().prepareStatement("""
+				SELECT (id, role_id)
+				FROM event_integration_discord
+			""")) {
+			ResultSet discordIntegrationResultSet = discordIntegrationStatement.executeQuery();
+			Map<String, String> roleIds = new HashMap<>();
+
+			while (discordIntegrationResultSet.next()) {
+				roleIds.put(discordIntegrationResultSet.getString("id"), discordIntegrationResultSet.getString("role_id"));
+			}
+
+			ResultSet resultSet = eventStatement.executeQuery();
+			List<Event> events = new ArrayList<>();
+
+			while (resultSet.next()) {
+				events.add(new Event(
+						resultSet.getString("id"),
+						resultSet.getString("theme_slug"),
+						resultSet.getString("event_slug"),
+						resultSet.getString("display_name"),
+						Optional.ofNullable(roleIds.getOrDefault(resultSet.getString("id"), null)),
+						resultSet.getString("minecraft_version"),
+						resultSet.getString("loader"),
+						Instant.ofEpochMilli(resultSet.getLong("registration_open_time")),
+						Instant.ofEpochMilli(resultSet.getLong("registration_close_time")),
+						Instant.ofEpochMilli(resultSet.getLong("start_time")),
+						Instant.ofEpochMilli(resultSet.getLong("end_time")),
+						Instant.ofEpochMilli(resultSet.getLong("freeze_time"))
+				));
+			}
+
+			return events;
+		}
+	}
+
+	public List<String> getEventIdsFromGenreSlug(String genreSlug) throws SQLException {
+		try (var eventStatement = this.getConnection().prepareStatement("""
+				SELECT id
+				FROM themes
+				WHERE event_slug = ?
+			""")) {
+			eventStatement.setString(1, genreSlug);
+			ResultSet eventResult = eventStatement.executeQuery();
+			List<String> ids = new ArrayList<>();
+
+			while (eventResult.next()) {
+				ids.add(eventResult.getString("id"));
+			}
+
+			return ids;
+		}
+	}
+
+	public List<String> getEventSlugs(String genreSlug) throws SQLException {
+		try (var eventStatement = this.getConnection().prepareStatement("""
+				SELECT theme_slug
+				FROM themes
+				WHERE event_slug = ?
+			""")) {
+			eventStatement.setString(1, genreSlug);
+			ResultSet eventResult = eventStatement.executeQuery();
+			List<String> slugs = new ArrayList<>();
+
+			while (eventResult.next()) {
+				slugs.add(eventResult.getString("theme_slug"));
+			}
+
+			return slugs;
+		}
+	}
 
 	@Nullable
-	public String getThemeId(String genreSlug, String eventSlug) throws SQLException {
+	public String getEventId(String genreSlug, String eventSlug) throws SQLException {
 		try (var eventStatement = this.getConnection().prepareStatement("""
 					SELECT id
 					FROM themes

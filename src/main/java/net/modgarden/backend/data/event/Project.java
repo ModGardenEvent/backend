@@ -51,6 +51,6 @@ public record Project(String id,
 		} catch (SQLException ex) {
 			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
 		}
-		return DataResult.error(() -> "Failed to get project with id '" + id + "'.");
+		return DataResult.error(() -> "Failed to get project with id '" + id + "'");
 	}
 }

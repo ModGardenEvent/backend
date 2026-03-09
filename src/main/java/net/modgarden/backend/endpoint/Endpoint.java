@@ -56,6 +56,7 @@ public abstract class Endpoint implements Handler {
 		}
 	}
 
+	// TODO: Version of onRequest that allows returning Object and throwing HypertextException
 	public abstract void onRequest(@NotNull Context ctx) throws Exception;
 
 	public String getPath() {

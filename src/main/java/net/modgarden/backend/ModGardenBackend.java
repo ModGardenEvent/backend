@@ -33,6 +33,7 @@ import net.modgarden.backend.data.Landing;
 import net.modgarden.backend.data.award.Award;
 import net.modgarden.backend.data.award.AwardInstance;
 import net.modgarden.backend.data.event.Event;
+import net.modgarden.backend.data.event.Genre;
 import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.fixer.DatabaseFixer;
@@ -44,6 +45,8 @@ import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.endpoint.v2.auth.api_key.DeleteKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.api_key.GenerateKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.api_key.ListKeysEndpoint;
+import net.modgarden.backend.endpoint.v2.genres.GetGenreEndpoint;
+import net.modgarden.backend.endpoint.v2.genres.ListGenresEndpoint;
 import net.modgarden.backend.endpoint.v2.projects.CreateProjectEndpoint;
 import net.modgarden.backend.endpoint.v2.projects.DeleteProjectEndpoint;
 import net.modgarden.backend.endpoint.v2.projects.GetProjectEndpoint;
@@ -101,7 +104,8 @@ public class ModGardenBackend {
 		registerCodec(Landing.class, Landing.CODEC);
 		registerCodec(BackendError.class, BackendError.CODEC);
 		registerCodec(Award.class, Award.DIRECT_CODEC);
-		registerCodec(Event.class, Event.DIRECT_CODEC);
+		registerCodec(Event.class, Event.CODEC);
+		registerCodec(Genre.class, Genre.DIRECT_CODEC);
 		registerCodec(Project.class, Project.DIRECT_CODEC);
 		registerCodec(Submission.class, Submission.DIRECT_CODEC);
 		registerCodec(User.class, User.DIRECT_CODEC);
@@ -138,6 +142,9 @@ public class ModGardenBackend {
 		patch(SetPermissionsEndpoint::new);
 		delete(DeleteProjectEndpoint::new);
 		get(GetProjectEndpoint::new);
+
+		get(GetGenreEndpoint::new);
+		get(ListGenresEndpoint::new);
 
 		post(CreateSubmissionEndpoint::new);
 		delete(DeleteSubmissionEndpoint::new);

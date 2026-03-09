@@ -1,11 +1,14 @@
 package net.modgarden.backend.endpoint.v2.query;
 
+import java.util.Locale;
+
 import io.javalin.http.Context;
 
 /// An enum representing what type of value to return from a query.
 public enum QueryValue {
 	VALUE,
 	ID,
+	SLUG,
 	UNDEFINED;
 
 	public static QueryValue fromQuery(Context ctx, QueryValue defaultValue) {
@@ -25,6 +28,6 @@ public enum QueryValue {
 			return UNDEFINED;
 		}
 
-		return QueryValue.valueOf(QueryValue.class, param);
+		return QueryValue.valueOf(QueryValue.class, param.toUpperCase(Locale.ROOT));
 	}
 }

@@ -9,6 +9,7 @@ public enum QueryKey {
 	MOD_ID,
 	PROJECT_ID,
 	SUBMISSION_ID,
+	ID,
 	SLUG,
 	USERNAME,
 	UNDEFINED;

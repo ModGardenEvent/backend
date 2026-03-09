@@ -57,7 +57,7 @@ public record LinkCode(String code, String accountId, Service service, long expi
                 if (service.serializedName().equals(string))
                     return DataResult.success(service);
             }
-            return DataResult.error(() -> "Invalid service provided. Must be one of [" + Arrays.stream(Service.values()).map(Service::serializedName).collect(Collectors.joining(", ")) + "].");
+            return DataResult.error(() -> "Invalid service provided. Must be one of [" + Arrays.stream(Service.values()).map(Service::serializedName).collect(Collectors.joining(", ")) + "]");
         }, service -> DataResult.success(service.serializedName()));
     }
 }

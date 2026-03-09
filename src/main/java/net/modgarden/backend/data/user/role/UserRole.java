@@ -38,6 +38,6 @@ public record UserRole(
 		} catch (SQLException ex) {
 			ModGardenBackend.LOG.error("Exception in SQL query.", ex);
 		}
-		return DataResult.error(() -> "Failed to get user role with id '" + id + "'.");
+		return DataResult.error(() -> "Failed to get user role with id '" + id + "'");
 	}
 }

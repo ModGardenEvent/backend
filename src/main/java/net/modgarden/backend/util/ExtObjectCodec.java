@@ -20,7 +20,7 @@ public class ExtObjectCodec implements Codec<Object> {
 		if (result != null) {
 			return DataResult.success(Pair.of(result, input));
 		}
-		return DataResult.error(() -> "Failed to find a compatible data type to decode input " + input + " with.");
+		return DataResult.error(() -> "Failed to find a compatible data type to decode input " + input + " with");
 	}
 
 	@Override
@@ -29,7 +29,7 @@ public class ExtObjectCodec implements Codec<Object> {
 		if (result != null) {
 			return DataResult.success(result);
 		}
-		return DataResult.error(() -> "Failed to find a compatible data type to encode input " + input + " with.");
+		return DataResult.error(() -> "Failed to find a compatible data type to encode input " + input + " with");
 	}
 
 	private static <T> Object decodeResult(DynamicOps<T> ops, T input) {
