@@ -1,11 +1,5 @@
 package net.modgarden.backend.util;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
-import io.javalin.http.Context;
-import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.oauth.OAuthService;
-
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URI;
@@ -13,6 +7,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
+import io.javalin.http.Context;
+import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.oauth.OAuthService;
 
 public class DiscordAuthTokenUtil {
     // TODO: Use this for web signups.

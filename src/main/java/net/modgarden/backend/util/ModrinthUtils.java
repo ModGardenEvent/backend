@@ -1,14 +1,14 @@
 package net.modgarden.backend.util;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.http.HttpResponse;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.modgarden.backend.oauth.client.ModrinthOAuthClient;
 import org.jetbrains.annotations.NotNull;
-
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.http.HttpResponse;
 
 public class ModrinthUtils {
 	public static MetadataUtils.ExternalData getModrinthExternalData(@NotNull ModrinthOAuthClient authClient,

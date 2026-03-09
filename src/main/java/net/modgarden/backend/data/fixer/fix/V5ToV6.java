@@ -1,14 +1,14 @@
 package net.modgarden.backend.data.fixer.fix;
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.function.Consumer;
+
 import net.modgarden.backend.data.event.metadata.ModMetadata;
 import net.modgarden.backend.data.fixer.DatabaseFix;
 import net.modgarden.backend.util.MetadataUtils;
 import org.jetbrains.annotations.Nullable;
 import org.sqlite.Function;
-
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.util.function.Consumer;
 
 public class V5ToV6 extends DatabaseFix {
 	public V5ToV6() {
@@ -123,7 +123,7 @@ public class V5ToV6 extends DatabaseFix {
 		)
 		""");
 		statement.addBatch("""
-		CREATE UNIQUE INDEX idx_user_id_field_name ON user_bio_fields(field_name, field_value)
+		CREATE UNIQUE INDEX idx_user_id_field_name ON user_bio_fields(user_id, field_name)
 		""");
 
 		statement.addBatch("""

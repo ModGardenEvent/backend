@@ -10,11 +10,8 @@ import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import net.modgarden.backend.HypertextResult;
 import net.modgarden.backend.database.DatabaseAccess;
-import net.modgarden.backend.endpoint.exception.NotFoundException;
+import net.modgarden.backend.endpoint.v2.query.QueryParameterType;
 import org.jetbrains.annotations.NotNull;
-
-import java.sql.Connection;
-import java.sql.SQLException;
 
 // witnesses would be *real* nice here. *sigh*
 @EndpointPath("/")
@@ -68,6 +65,17 @@ public abstract class Endpoint implements Handler {
 	protected void invalidBody(Context ctx, String message) {
 		ctx.status(400);
 		ctx.result("Invalid body: " + message);
+	}
+
+	protected void invalidQuery(Context ctx, QueryParameterType queryParameterType) {
+		ctx.status(400);
+		String value = ctx.queryParam(queryParameterType.toString());
+
+		if (value != null) {
+			ctx.result("Invalid query parameter ('" + queryParameterType + "'): " + value);
+		} else {
+			ctx.result("Missing query parameter '" + queryParameterType + "'");
+		}
 	}
 
 	protected <T> HypertextResult<T> decodeBody(Context ctx, Codec<T> codec) {

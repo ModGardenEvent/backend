@@ -9,14 +9,18 @@ import net.modgarden.backend.endpoint.AuthorizedEndpoint;
 import net.modgarden.backend.endpoint.EndpointPath;
 import org.jetbrains.annotations.NotNull;
 
-@EndpointPath("/v2/project")
+@EndpointPath("/v2/projects")
 public abstract class AuthorizedProjectEndpoint extends AuthorizedEndpoint {
-	public AuthorizedProjectEndpoint(String path, boolean hasBody) {
+	protected AuthorizedProjectEndpoint(String path, boolean hasBody) {
 		this(path, PermissionScope.PROJECT, hasBody);
 	}
 
 	protected AuthorizedProjectEndpoint(String path, PermissionScope scope, boolean hasBody) {
-		super(2, "project/" + path, scope, hasBody);
+		super(2, "projects/" + path, scope, hasBody);
+	}
+
+	protected AuthorizedProjectEndpoint(PermissionScope scope, boolean hasBody) {
+		super(2, "projects", scope, hasBody);
 	}
 
 	@Override

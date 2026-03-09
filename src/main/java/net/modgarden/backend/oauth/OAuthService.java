@@ -1,11 +1,5 @@
 package net.modgarden.backend.oauth;
 
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
-import net.modgarden.backend.oauth.client.*;
-import net.modgarden.backend.util.KeyUtils;
-import org.jetbrains.annotations.NotNull;
-
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -14,6 +8,18 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Date;
+
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import net.modgarden.backend.oauth.client.BunnyCdnOAuthClient;
+import net.modgarden.backend.oauth.client.DiscordOAuthClient;
+import net.modgarden.backend.oauth.client.GithubOAuthClient;
+import net.modgarden.backend.oauth.client.MinecraftServicesOAuthClient;
+import net.modgarden.backend.oauth.client.ModrinthOAuthClient;
+import net.modgarden.backend.oauth.client.OAuthClient;
+import net.modgarden.backend.oauth.client.OAuthClientSupplier;
+import net.modgarden.backend.util.KeyUtils;
+import org.jetbrains.annotations.NotNull;
 
 public enum OAuthService {
     DISCORD("1305609404837527612", OAuthService::authenticateDiscord),

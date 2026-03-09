@@ -1,9 +1,5 @@
 package net.modgarden.backend.data.fixer;
 
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.data.fixer.fix.*;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -11,6 +7,14 @@ import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
+
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.data.fixer.fix.V1ToV2;
+import net.modgarden.backend.data.fixer.fix.V2ToV3;
+import net.modgarden.backend.data.fixer.fix.V3ToV4;
+import net.modgarden.backend.data.fixer.fix.V4ToV5;
+import net.modgarden.backend.data.fixer.fix.V5ToV6;
 
 public class DatabaseFixer {
 	private static final List<DatabaseFix> FIXES = new ObjectArrayList<>();

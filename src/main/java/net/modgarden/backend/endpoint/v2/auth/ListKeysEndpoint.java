@@ -1,5 +1,15 @@
 package net.modgarden.backend.endpoint.v2.auth;
 
+import static net.modgarden.backend.endpoint.EndpointMethod.Method.GET;
+
+import java.sql.SQLException;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
@@ -12,19 +22,7 @@ import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthEndpoint;
 import net.modgarden.backend.util.ExtraCodecs;
 import net.modgarden.backend.util.FallibleFunction;
-import net.modgarden.backend.util.UuidUtils;
 import org.jetbrains.annotations.NotNull;
-
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-
-import static net.modgarden.backend.endpoint.EndpointMethod.Method.GET;
 
 @EndpointMethod(GET)
 @EndpointPath("/v2/auth/api_key")

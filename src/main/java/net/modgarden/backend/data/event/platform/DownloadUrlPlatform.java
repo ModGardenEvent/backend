@@ -6,8 +6,6 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.modgarden.backend.data.Platform;
 import net.modgarden.backend.database.DatabaseAccess;
 
-import java.sql.Connection;
-
 /// A platform for download URLs, useful for Git Releases without depending on a specific Git host.
 ///
 /// An example based on Variant Lib would be as follows.

@@ -1,10 +1,5 @@
 package net.modgarden.backend.data;
 
-import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.oauth.OAuthService;
-import net.modgarden.backend.oauth.client.BunnyCdnOAuthClient;
-import org.jetbrains.annotations.NotNull;
-
 import java.net.http.HttpResponse;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -12,6 +7,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.random.RandomGenerator;
 import java.util.regex.Pattern;
+
+import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.oauth.OAuthService;
+import net.modgarden.backend.oauth.client.BunnyCdnOAuthClient;
+import org.jetbrains.annotations.NotNull;
 
 public final class NaturalId {
 	private static final Pattern PATTERN = Pattern.compile("^[a-z]{5}$");

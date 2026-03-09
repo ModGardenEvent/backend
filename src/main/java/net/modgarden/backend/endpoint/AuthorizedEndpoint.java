@@ -1,5 +1,14 @@
 package net.modgarden.backend.endpoint;
 
+import java.security.SecureRandom;
+import java.sql.SQLException;
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
 import de.mkammerer.argon2.Argon2Advanced;
 import de.mkammerer.argon2.Argon2Factory;
 import io.javalin.http.Context;
@@ -12,15 +21,6 @@ import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.v2.auth.GenerateKeyEndpoint;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.security.SecureRandom;
-import java.sql.SQLException;
-import java.time.Instant;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 public abstract class AuthorizedEndpoint extends Endpoint {
 	private static final SecureRandom SECURE_RANDOM = new SecureRandom();

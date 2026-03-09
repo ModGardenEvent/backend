@@ -1,9 +1,9 @@
 package net.modgarden.backend.database.function;
 
+import java.sql.SQLException;
+
 import net.modgarden.backend.data.NaturalId;
 import net.modgarden.backend.database.DatabaseFunction;
-
-import java.sql.SQLException;
 
 public class GenerateNaturalIdFunction extends DatabaseFunction {
 	public static final GenerateNaturalIdFunction INSTANCE = new GenerateNaturalIdFunction();

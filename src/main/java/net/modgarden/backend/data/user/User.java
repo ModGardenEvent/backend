@@ -1,20 +1,7 @@
 package net.modgarden.backend.data.user;
 
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.DataResult;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.modgarden.backend.data.Integration;
-import net.modgarden.backend.data.Permission;
-import net.modgarden.backend.data.Permissions;
-import net.modgarden.backend.data.award.Award;
-import net.modgarden.backend.data.event.Theme;
-import net.modgarden.backend.data.event.Project;
-import net.modgarden.backend.data.user.integration.DiscordIntegration;
-import net.modgarden.backend.data.user.integration.MinecraftIntegration;
-import net.modgarden.backend.data.user.integration.ModrinthIntegration;
-import net.modgarden.backend.data.user.role.UserRole;
-import net.modgarden.backend.database.DatabaseAccess;
-import net.modgarden.backend.util.ExtraCodecs;
+import static java.util.Map.entry;
+import static net.modgarden.backend.data.Integration.fromCodec;
 
 import java.time.Instant;
 import java.util.HashSet;
@@ -22,8 +9,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static java.util.Map.entry;
-import static net.modgarden.backend.data.Integration.fromCodec;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.modgarden.backend.data.Integration;
+import net.modgarden.backend.data.Permission;
+import net.modgarden.backend.data.Permissions;
+import net.modgarden.backend.data.award.Award;
+import net.modgarden.backend.data.event.Event;
+import net.modgarden.backend.data.event.Project;
+import net.modgarden.backend.data.user.integration.DiscordIntegration;
+import net.modgarden.backend.data.user.integration.MinecraftIntegration;
+import net.modgarden.backend.data.user.integration.ModrinthIntegration;
+import net.modgarden.backend.data.user.role.UserRole;
+import net.modgarden.backend.database.DatabaseAccess;
+import net.modgarden.backend.util.ExtraCodecs;
 
 public record User(
 		String id,
@@ -52,7 +52,7 @@ public record User(
 				    .xmap(list -> (Set<String>) new HashSet<>(list), set -> List.of(set.toArray(String[]::new)))
 				    .fieldOf("projects")
 				    .forGetter(User::projects),
-		    Theme.ID_CODEC.listOf()
+		    Event.ID_CODEC.listOf()
 				    .xmap(list -> (Set<String>) new HashSet<>(list), set -> List.of(set.toArray(String[]::new)))
 				    .fieldOf("events")
 				    .forGetter(User::events),

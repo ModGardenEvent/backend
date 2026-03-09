@@ -1,10 +1,10 @@
 package net.modgarden.backend.data.fixer;
 
-import org.jetbrains.annotations.Nullable;
-
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.function.Consumer;
+
+import org.jetbrains.annotations.Nullable;
 
 public abstract class DatabaseFix {
 	private final int versionToFixFrom;

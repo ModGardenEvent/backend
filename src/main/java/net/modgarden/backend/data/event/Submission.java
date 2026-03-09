@@ -1,5 +1,14 @@
 package net.modgarden.backend.data.event;
 
+import static java.util.Map.entry;
+import static net.modgarden.backend.data.Platform.fromMapCodec;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Map;
+
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
@@ -8,15 +17,6 @@ import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.Platform;
 import net.modgarden.backend.data.event.platform.DownloadUrlPlatform;
 import net.modgarden.backend.data.event.platform.ModrinthPlatform;
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.Map;
-
-import static java.util.Map.entry;
-import static net.modgarden.backend.data.Platform.fromMapCodec;
 
 public record Submission(String id,
                          String event,
@@ -31,7 +31,7 @@ public record Submission(String id,
 
 	public static final Codec<Submission> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Submission::id),
-            Theme.ID_CODEC.fieldOf("event").forGetter(Submission::event),
+            Event.ID_CODEC.fieldOf("event_id").forGetter(Submission::event),
 			Codec.LONG.fieldOf("time_submitted").forGetter(Submission::timeSubmitted),
 			Project.DIRECT_CODEC.fieldOf("project").forGetter(Submission::project),
 			PLATFORM_CODEC.fieldOf("platform").forGetter(Submission::platform)

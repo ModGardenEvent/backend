@@ -2,6 +2,11 @@ package net.modgarden.backend.data.event.platform;
 
 import static net.modgarden.backend.util.HandleFinder.findHandle;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
+import java.sql.Connection;
+
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -9,15 +14,7 @@ import net.modgarden.backend.data.Metadata;
 import net.modgarden.backend.data.Platform;
 import net.modgarden.backend.data.event.metadata.ModMetadata;
 import net.modgarden.backend.database.DatabaseAccess;
-import net.modgarden.backend.util.LazyValue;
 import net.modgarden.backend.util.MetadataUtils;
-import net.modgarden.backend.util.ReadableOrderCodec;
-
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.sql.Connection;
-import java.util.Optional;
 
 /// A platform for Modrinth releases, linking to a specific version as part of a Modrinth project.
 ///

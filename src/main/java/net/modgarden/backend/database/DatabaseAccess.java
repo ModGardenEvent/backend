@@ -1,5 +1,19 @@
 package net.modgarden.backend.database;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
 import net.modgarden.backend.HypertextResult;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.Metadata;
@@ -19,20 +33,6 @@ import net.modgarden.backend.util.LazyValue;
 import net.modgarden.backend.util.UuidUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Types;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
 
 /// Centralized access to database operations.
 public final class DatabaseAccess implements AutoCloseable {
@@ -263,30 +263,9 @@ public final class DatabaseAccess implements AutoCloseable {
 					DELETE FROM projects
 					WHERE id = ?
 				""");
-				var projectDraftMetadataStatement = connection.prepareStatement("""
-					DELETE FROM project_draft_metadata
-					WHERE project_id = ?
-				""");
-				var projectModMetadataStatement = connection.prepareStatement("""
-					DELETE FROM project_mod_metadata
-					WHERE project_id = ?
-				""");
-				var projectRolesStatement = connection.prepareStatement("""
-					DELETE FROM project_roles
-					WHERE project_id = ?
-				""")
 		) {
 			projectStatement.setString(1, projectId);
 			projectStatement.executeUpdate();
-
-			projectDraftMetadataStatement.setString(1, projectId);
-			projectDraftMetadataStatement.executeUpdate();
-
-			projectModMetadataStatement.setString(1, projectId);
-			projectModMetadataStatement.executeUpdate();
-
-			projectRolesStatement.setString(1, projectId);
-			projectRolesStatement.executeUpdate();
 		}
 	}
 
@@ -530,14 +509,14 @@ public final class DatabaseAccess implements AutoCloseable {
 
 	// Submissions
 
-	public String createEmptySubmission(String themeId, String projectId) throws SQLException {
+	public String createEmptySubmission(String eventId, String projectId) throws SQLException {
 		try (var submissionsStatement = this.getConnection().prepareStatement("""
 					INSERT INTO submissions (id, theme_id, project_id, submitted)
 					VALUES (?, ?, ?, ?)
 				""")) {
 			String submissionId = NaturalId.generate("submissions", "id", null, 5);
 			submissionsStatement.setString(1, submissionId);
-			submissionsStatement.setString(2, themeId);
+			submissionsStatement.setString(2, eventId);
 			submissionsStatement.setString(3, projectId);
 			submissionsStatement.setLong(4, System.currentTimeMillis());
 			return submissionId;
@@ -572,7 +551,7 @@ public final class DatabaseAccess implements AutoCloseable {
 
 		try (
 				var submissionStatement = connection.prepareStatement("""
-					SELECT event, project_id, submitted
+					SELECT theme_id, project_id, submitted
 					FROM submissions
 					WHERE id = ?
 				""");
@@ -604,7 +583,7 @@ public final class DatabaseAccess implements AutoCloseable {
 
 			return new HypertextResult<>(new Submission(
 					submissionId,
-					submissionResult.getString("event"),
+					submissionResult.getString("theme_id"),
 					submissionResult.getLong("submitted"),
 					this.getProjectFromId(submissionResult.getString("project_id")),
 					platform
@@ -613,14 +592,14 @@ public final class DatabaseAccess implements AutoCloseable {
 	}
 
 	@Nullable
-	public String getSubmissionId(String projectId, String themeId) throws SQLException {
+	public String getSubmissionId(String projectId, String eventId) throws SQLException {
 		try (var submissionsStatement = this.getConnection().prepareStatement("""
 					SELECT id
 					FROM submissions
-					WHERE project_id = ? AND event = ?
+					WHERE project_id = ? AND theme_id = ?
 				""")) {
 			submissionsStatement.setString(1, projectId);
-			submissionsStatement.setString(2, themeId);
+			submissionsStatement.setString(2, eventId);
 			ResultSet resultSet = submissionsStatement.executeQuery();
 
 			if (!resultSet.isBeforeFirst()) {
@@ -634,14 +613,14 @@ public final class DatabaseAccess implements AutoCloseable {
 	// Themes
 
 	@Nullable
-	public String getThemeId(String eventSlug, String themeSlug) throws SQLException {
+	public String getThemeId(String genreSlug, String eventSlug) throws SQLException {
 		try (var eventStatement = this.getConnection().prepareStatement("""
 					SELECT id
-					FROM events
-					WHERE event_type_slug = ? AND slug = ?
+					FROM themes
+					WHERE event_slug = ? AND theme_slug = ?
 				""")) {
-			eventStatement.setString(1, eventSlug);
-			eventStatement.setString(2, themeSlug);
+			eventStatement.setString(1, genreSlug);
+			eventStatement.setString(2, eventSlug);
 			var eventResult = eventStatement.executeQuery();
 
 			if (!eventResult.isBeforeFirst()) {

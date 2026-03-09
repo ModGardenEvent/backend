@@ -1,0 +1,57 @@
+package net.modgarden.backend.endpoint.v2.projects;
+
+import static net.modgarden.backend.endpoint.EndpointMethod.Method.GET;
+
+import io.javalin.http.Context;
+import net.modgarden.backend.database.DatabaseAccess;
+import net.modgarden.backend.endpoint.Endpoint;
+import net.modgarden.backend.endpoint.EndpointMethod;
+import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.v2.query.QueryKey;
+import net.modgarden.backend.endpoint.v2.query.QueryParameterType;
+import org.jetbrains.annotations.NotNull;
+
+// TODO: Require view project permissions or being a member of the project to view draft projects.
+@EndpointMethod(GET)
+@EndpointPath("/v2/projects/{id}")
+public class GetProjectEndpoint extends Endpoint {
+	public GetProjectEndpoint() {
+		super(2, "projects/{id}");
+	}
+
+	@Override
+	public void onRequest(@NotNull Context ctx) throws Exception {
+		QueryKey queryKey = QueryKey.fromQuery(ctx, QueryKey.PROJECT_ID);
+		String id = ctx.pathParam("id");
+		String projectId;
+		DatabaseAccess db = DatabaseAccess.get();
+
+		switch (queryKey) {
+		case MOD_ID -> {
+			projectId = db.getProjectIdFromModId(id);
+
+			if (projectId == null) {
+				ctx.result("Could not find project from mod ID '" + id + "'");
+				ctx.status(404);
+				return;
+			}
+		}
+		case PROJECT_ID -> {
+			projectId = id;
+
+			if (!db.projectExists(id)) {
+				ctx.result("Could not find project from id '" + id + "'");
+				ctx.status(404);
+				return;
+			}
+		}
+		default -> {
+			this.invalidQuery(ctx, QueryParameterType.get(QueryKey.class));
+			return;
+		}
+		}
+
+		ctx.json(db.getProjectFromId(projectId));
+		ctx.status(200);
+	}
+}

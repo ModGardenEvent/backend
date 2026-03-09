@@ -1,14 +1,34 @@
 package net.modgarden.backend.endpoint.v2.submission;
 
+import static net.modgarden.backend.endpoint.EndpointMethod.Method.GET;
+
+import java.util.Locale;
+
 import io.javalin.http.Context;
+import net.modgarden.backend.data.event.Submission;
+import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.Endpoint;
+import net.modgarden.backend.endpoint.EndpointMethod;
+import net.modgarden.backend.endpoint.EndpointPath;
 import org.jetbrains.annotations.NotNull;
 
-public abstract class GetSubmissionEndpoint extends Endpoint {
-	public GetSubmissionEndpoint(String path) {
-		super(2, path);
+@EndpointMethod(GET)
+@EndpointPath("/v2/submissions/{submission_id}")
+public class GetSubmissionEndpoint extends Endpoint {
+	public GetSubmissionEndpoint() {
+		super(2, "submissions/{submission_id}");
 	}
 
 	@Override
-	public abstract void onRequest(@NotNull Context ctx) throws Exception;
+	public void onRequest(@NotNull Context ctx) throws Exception {
+		String submissionId = ctx.pathParam("submission_id").toLowerCase(Locale.ROOT);
+		DatabaseAccess db = DatabaseAccess.get();
+		Submission submission = db.getSubmission(submissionId)
+				.unwrap(ctx);
+
+		if (submission == null) return;
+
+		ctx.json(submission);
+		ctx.status(200);
+	}
 }

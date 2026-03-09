@@ -1,9 +1,9 @@
 package net.modgarden.backend.database.function;
 
+import java.sql.SQLException;
+
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.database.DatabaseFunction;
-
-import java.sql.SQLException;
 
 public class HasPermissionsFunction extends DatabaseFunction {
 	public static final HasPermissionsFunction INSTANCE = new HasPermissionsFunction();

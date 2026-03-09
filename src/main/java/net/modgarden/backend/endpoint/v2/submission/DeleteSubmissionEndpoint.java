@@ -1,8 +1,11 @@
 package net.modgarden.backend.endpoint.v2.submission;
 
+import static net.modgarden.backend.endpoint.EndpointMethod.Method.DELETE;
+
+import java.sql.SQLException;
+
 import io.javalin.http.Context;
 import net.modgarden.backend.data.Permission;
-import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
@@ -10,12 +13,8 @@ import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthorizedSubmissionEndpoint;
 import org.jetbrains.annotations.NotNull;
 
-import java.sql.SQLException;
-
-import static net.modgarden.backend.endpoint.EndpointMethod.Method.DELETE;
-
 @EndpointMethod(DELETE)
-@EndpointPath("/v2/submission/{submission_id}")
+@EndpointPath("/v2/submissions/{submission_id}")
 public class DeleteSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
 	public DeleteSubmissionEndpoint() {
 		super("{submission_id}", false);

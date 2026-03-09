@@ -1,12 +1,12 @@
 package net.modgarden.backend.oauth.client;
 
-import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.data.Landing;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+
+import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.data.Landing;
 
 public record ModrinthOAuthClient() implements OAuthClient {
 	public static final String API_URL = "https://api.modrinth.com/";

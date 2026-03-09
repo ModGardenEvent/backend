@@ -1,14 +1,5 @@
 package net.modgarden.backend.util;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.data.NaturalId;
-import net.modgarden.backend.oauth.OAuthService;
-import net.modgarden.backend.oauth.client.BunnyCdnOAuthClient;
-import org.jetbrains.annotations.Nullable;
-
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.URI;
@@ -17,6 +8,15 @@ import java.net.http.HttpResponse;
 import java.util.function.Supplier;
 import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
+
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.data.NaturalId;
+import net.modgarden.backend.oauth.OAuthService;
+import net.modgarden.backend.oauth.client.BunnyCdnOAuthClient;
+import org.jetbrains.annotations.Nullable;
 
 public class BunnyCdnUtils {
 	@Nullable

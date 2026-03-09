@@ -3,8 +3,6 @@ package net.modgarden.backend.data;
 import com.mojang.serialization.MapCodec;
 import net.modgarden.backend.database.DatabaseAccess;
 
-import java.sql.Connection;
-
 public interface Platform {
 	String typeName();
 	MapCodec<? extends Platform> getCodec();

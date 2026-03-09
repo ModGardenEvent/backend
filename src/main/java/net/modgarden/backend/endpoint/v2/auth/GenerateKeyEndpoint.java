@@ -1,5 +1,14 @@
 package net.modgarden.backend.endpoint.v2.auth;
 
+import static java.util.Map.entry;
+import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -14,15 +23,6 @@ import net.modgarden.backend.endpoint.v2.AuthEndpoint;
 import net.modgarden.backend.util.ExtraCodecs;
 import net.modgarden.backend.util.UuidUtils;
 import org.jetbrains.annotations.NotNull;
-
-import java.time.Duration;
-import java.time.Instant;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
-
-import static java.util.Map.entry;
-import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
 
 @EndpointMethod(POST)
 @EndpointPath("/v2/auth/api_key")

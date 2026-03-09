@@ -1,12 +1,12 @@
 package net.modgarden.backend.data.fixer.fix;
 
-import net.modgarden.backend.data.fixer.DatabaseFix;
-import org.jetbrains.annotations.Nullable;
-
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.function.Consumer;
+
+import net.modgarden.backend.data.fixer.DatabaseFix;
+import org.jetbrains.annotations.Nullable;
 
 public class V1ToV2 extends DatabaseFix {
 	public V1ToV2() {

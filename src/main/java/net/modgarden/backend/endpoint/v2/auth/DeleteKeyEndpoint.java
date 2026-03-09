@@ -1,5 +1,10 @@
 package net.modgarden.backend.endpoint.v2.auth;
 
+import static net.modgarden.backend.endpoint.EndpointMethod.Method.DELETE;
+
+import java.util.Optional;
+import java.util.UUID;
+
 import io.javalin.http.Context;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.PermissionScope;
@@ -9,11 +14,6 @@ import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthEndpoint;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.Optional;
-import java.util.UUID;
-
-import static net.modgarden.backend.endpoint.EndpointMethod.Method.DELETE;
 
 @EndpointMethod(DELETE)
 @EndpointPath("/v2/auth/api_key/{uuid}")

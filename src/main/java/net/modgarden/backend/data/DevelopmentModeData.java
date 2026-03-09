@@ -1,11 +1,11 @@
 package net.modgarden.backend.data;
 
-import net.modgarden.backend.ModGardenBackend;
-
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.util.Random;
+
+import net.modgarden.backend.ModGardenBackend;
 
 public class DevelopmentModeData {
 	private static final Random RANDOM = new Random(123);

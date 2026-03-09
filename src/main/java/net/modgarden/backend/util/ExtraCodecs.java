@@ -1,13 +1,13 @@
 package net.modgarden.backend.util;
 
-import com.mojang.serialization.Codec;
-
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.UUID;
+
+import com.mojang.serialization.Codec;
 
 public class ExtraCodecs {
     public static final Codec<UUID> UUID_CODEC = Codec.STRING.xmap(

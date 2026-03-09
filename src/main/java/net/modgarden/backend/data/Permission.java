@@ -1,12 +1,14 @@
 package net.modgarden.backend.data;
 
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.DataResult;
+import static net.modgarden.backend.data.PermissionScope.ALL;
+import static net.modgarden.backend.data.PermissionScope.PROJECT;
+import static net.modgarden.backend.data.PermissionScope.USER;
 
 import java.util.ArrayList;
 import java.util.List;
 
-import static net.modgarden.backend.data.PermissionScope.*;
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 
 // TODO: Add more user permissions for stuff.
 public enum Permission {

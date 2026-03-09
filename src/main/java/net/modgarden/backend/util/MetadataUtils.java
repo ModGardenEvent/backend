@@ -1,5 +1,15 @@
 package net.modgarden.backend.util;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.jar.JarFile;
+import java.util.zip.ZipEntry;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -11,16 +21,6 @@ import net.modgarden.backend.oauth.OAuthService;
 import net.modgarden.backend.oauth.client.ModrinthOAuthClient;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.*;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.jar.JarFile;
-import java.util.zip.ZipEntry;
 
 /// Imo, it's okay to hardcode this to Fabric for now.
 /// We can definitely implement resource/data-packs later.

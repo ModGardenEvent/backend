@@ -1,10 +1,5 @@
 package net.modgarden.backend.util;
 
-import io.javalin.http.Context;
-import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.data.LinkCode;
-import net.modgarden.backend.endpoint.AuthorizedEndpoint;
-
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -17,6 +12,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import io.javalin.http.Context;
+import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.data.LinkCode;
+import net.modgarden.backend.endpoint.AuthorizedEndpoint;
 
 public class AuthUtil {
 	private static final String RANDOM_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_/+=;!@#$%^&*()";

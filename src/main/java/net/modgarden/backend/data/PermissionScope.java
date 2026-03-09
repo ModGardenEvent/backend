@@ -1,8 +1,8 @@
 package net.modgarden.backend.data;
 
-import com.mojang.serialization.Codec;
-
 import java.util.Locale;
+
+import com.mojang.serialization.Codec;
 
 public enum PermissionScope {
 	ALL,

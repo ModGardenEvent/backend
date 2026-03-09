@@ -1,9 +1,9 @@
 package net.modgarden.backend.database;
 
-import org.sqlite.Function;
-
 import java.sql.Connection;
 import java.sql.SQLException;
+
+import org.sqlite.Function;
 
 public abstract class DatabaseFunction extends Function {
 	protected DatabaseFunction() {}

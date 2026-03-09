@@ -1,12 +1,12 @@
 package net.modgarden.backend.data.event.metadata;
 
+import java.util.Optional;
+
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.modgarden.backend.data.Metadata;
 import org.jetbrains.annotations.Nullable;
-
-import java.util.Optional;
 
 public record ModMetadata(String modId, String name, @Nullable String description, String sourceUrl) implements Metadata {
 	public static final MapCodec<ModMetadata> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(

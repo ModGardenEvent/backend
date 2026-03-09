@@ -1,5 +1,15 @@
 package net.modgarden.backend.data.event;
 
+import static java.util.Map.entry;
+import static net.modgarden.backend.data.Metadata.fromMapCodec;
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.List;
+import java.util.Map;
+
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
@@ -9,16 +19,6 @@ import net.modgarden.backend.data.Metadata;
 import net.modgarden.backend.data.event.metadata.DraftMetadata;
 import net.modgarden.backend.data.event.metadata.ModMetadata;
 import net.modgarden.backend.data.user.User;
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.util.List;
-import java.util.Map;
-
-import static java.util.Map.entry;
-import static net.modgarden.backend.data.Metadata.fromMapCodec;
 
 // TODO: Allow creating organisations, allow projects to be attributed to an organisation.
 public record Project(String id,

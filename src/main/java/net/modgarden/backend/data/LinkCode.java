@@ -1,11 +1,5 @@
 package net.modgarden.backend.data;
 
-import com.mojang.serialization.Codec;
-import com.mojang.serialization.DataResult;
-import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.modgarden.backend.ModGardenBackend;
-import org.jetbrains.annotations.Nullable;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -13,6 +7,12 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.stream.Collectors;
+
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.modgarden.backend.ModGardenBackend;
+import org.jetbrains.annotations.Nullable;
 
 public record LinkCode(String code, String accountId, Service service, long expires) {
     public static final Codec<LinkCode> CODEC = RecordCodecBuilder.create(inst -> inst.group(

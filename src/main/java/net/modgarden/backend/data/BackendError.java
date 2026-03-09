@@ -1,11 +1,11 @@
 package net.modgarden.backend.data;
 
+import java.util.Locale;
+import java.util.Objects;
+
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
-
-import java.util.Locale;
-import java.util.Objects;
 
 public record BackendError(String error, String description) {
     public static final Codec<BackendError> CODEC = RecordCodecBuilder.create(inst -> inst.group(

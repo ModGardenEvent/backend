@@ -1,5 +1,21 @@
 package net.modgarden.backend;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.reflect.Type;
+import java.net.http.HttpClient;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.function.Supplier;
+
 import ch.qos.logback.classic.Level;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -15,7 +31,7 @@ import net.modgarden.backend.data.DevelopmentModeData;
 import net.modgarden.backend.data.Landing;
 import net.modgarden.backend.data.award.Award;
 import net.modgarden.backend.data.award.AwardInstance;
-import net.modgarden.backend.data.event.Theme;
+import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.fixer.DatabaseFixer;
@@ -27,35 +43,19 @@ import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.endpoint.v2.auth.DeleteKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.GenerateKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.ListKeysEndpoint;
-import net.modgarden.backend.endpoint.v2.project.CreateProjectEndpoint;
-import net.modgarden.backend.endpoint.v2.project.DeleteProjectEndpoint;
+import net.modgarden.backend.endpoint.v2.projects.CreateProjectEndpoint;
+import net.modgarden.backend.endpoint.v2.projects.DeleteProjectEndpoint;
+import net.modgarden.backend.endpoint.v2.projects.GetProjectEndpoint;
+import net.modgarden.backend.endpoint.v2.projects.ModifyMembersEndpoint;
+import net.modgarden.backend.endpoint.v2.projects.SetPermissionsEndpoint;
 import net.modgarden.backend.endpoint.v2.submission.CreateSubmissionEndpoint;
-import net.modgarden.backend.endpoint.v2.submission.GetSubmissionByIdEndpoint;
-import net.modgarden.backend.endpoint.v2.event.GetSubmissionByModIdEndpoint;
-import net.modgarden.backend.endpoint.v2.project.GetProjectByIdEndpoint;
-import net.modgarden.backend.endpoint.v2.project.GetProjectByModIdEndpoint;
-import net.modgarden.backend.endpoint.v2.project.member.AddMemberEndpoint;
-import net.modgarden.backend.endpoint.v2.project.member.RemoveMemberEndpoint;
-import net.modgarden.backend.endpoint.v2.project.member.SetPermissionsEndpoint;
-import net.modgarden.backend.endpoint.v2.project.member.SetRoleEndpoint;
 import net.modgarden.backend.endpoint.v2.submission.DeleteSubmissionEndpoint;
+import net.modgarden.backend.endpoint.v2.submission.GetSubmissionEndpoint;
 import net.modgarden.backend.util.AuthUtil;
 import net.modgarden.backend.util.ReadableOrderCodec;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.lang.reflect.Type;
-import java.net.http.HttpClient;
-import java.sql.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
-import java.util.function.Supplier;
 
 public class ModGardenBackend {
 	public static final Dotenv DOTENV = Dotenv.load();
@@ -100,7 +100,7 @@ public class ModGardenBackend {
 		registerCodec(Landing.class, Landing.CODEC);
 		registerCodec(BackendError.class, BackendError.CODEC);
 		registerCodec(Award.class, Award.DIRECT_CODEC);
-		registerCodec(Theme.class, Theme.DIRECT_CODEC);
+		registerCodec(Event.class, Event.DIRECT_CODEC);
 		registerCodec(Project.class, Project.DIRECT_CODEC);
 		registerCodec(Submission.class, Submission.DIRECT_CODEC);
 		registerCodec(User.class, User.DIRECT_CODEC);
@@ -133,18 +133,14 @@ public class ModGardenBackend {
 		get(ListKeysEndpoint::new);
 
 		post(CreateProjectEndpoint::new);
-		put(AddMemberEndpoint::new);
-		put(SetPermissionsEndpoint::new);
-		put(SetRoleEndpoint::new);
+		patch(ModifyMembersEndpoint::new);
+		patch(SetPermissionsEndpoint::new);
 		delete(DeleteProjectEndpoint::new);
-		delete(RemoveMemberEndpoint::new);
-		get(GetProjectByIdEndpoint::new);
-		get(GetProjectByModIdEndpoint::new);
+		get(GetProjectEndpoint::new);
 
 		post(CreateSubmissionEndpoint::new);
 		delete(DeleteSubmissionEndpoint::new);
-		get(GetSubmissionByIdEndpoint::new);
-		get(GetSubmissionByModIdEndpoint::new);
+		get(GetSubmissionEndpoint::new);
 	}
 
 	private void get(Supplier<Endpoint> endpointSupplier) {
@@ -160,6 +156,11 @@ public class ModGardenBackend {
 	private void put(Supplier<Endpoint> endpointSupplier) {
 		Endpoint endpoint = endpointSupplier.get();
 		this.app.put(endpoint.getPath(), endpoint);
+	}
+
+	private void patch(Supplier<Endpoint> endpointSupplier) {
+		Endpoint endpoint = endpointSupplier.get();
+		this.app.patch(endpoint.getPath(), endpoint);
 	}
 
 	private void delete(Supplier<Endpoint> endpointSupplier) {
@@ -255,7 +256,7 @@ public class ModGardenBackend {
 			)
 			""");
 			statement.addBatch("""
-			CREATE UNIQUE INDEX idx_user_id_field_name ON user_bio_fields(field_name, field_value)
+			CREATE UNIQUE INDEX idx_user_id_field_name ON user_bio_fields(user_id, field_name)
 			""");
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS api_keys (

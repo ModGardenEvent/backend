@@ -1,4 +1,8 @@
-package net.modgarden.backend.endpoint.v2.project.member;
+package net.modgarden.backend.endpoint.v2.projects;
+
+import static net.modgarden.backend.endpoint.EndpointMethod.Method.PATCH;
+
+import java.util.Map;
 
 import com.mojang.serialization.Codec;
 import io.javalin.http.Context;
@@ -11,15 +15,11 @@ import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthorizedProjectEndpoint;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.Map;
-
-import static net.modgarden.backend.endpoint.EndpointMethod.Method.PUT;
-
-@EndpointMethod(PUT)
-@EndpointPath("/v2/project/{project_id}/set_role")
-public class SetRoleEndpoint extends AuthorizedProjectEndpoint {
-	public SetRoleEndpoint() {
-		super("{project_id}/set_role", true);
+@EndpointMethod(PATCH)
+@EndpointPath("/v2/projects/{project_id}/permissions")
+public class SetPermissionsEndpoint extends AuthorizedProjectEndpoint {
+	public SetPermissionsEndpoint() {
+		super("{project_id}/permissions", true);
 	}
 
 	@Override
@@ -37,10 +37,15 @@ public class SetRoleEndpoint extends AuthorizedProjectEndpoint {
 
 		DatabaseAccess db = DatabaseAccess.get();
 
-		for (Map.Entry<String, String> usersToRoleName : request.usersToRoleName().entrySet()) {
-			if (userCannotModifyMember(ctx, projectId, usersToRoleName.getKey(), scopePermissions)) return;
+		for (Map.Entry<String, Permissions> usersToPermissions : request.usersToPermissions().entrySet()) {
+			if (userCannotModifyMember(
+					ctx,
+					projectId,
+					usersToPermissions.getKey(),
+					scopePermissions
+			)) return;
 
-			db.setRoleName(projectId, userId, usersToRoleName.getValue());
+			db.setProjectMemberPermissions(usersToPermissions.getValue(), projectId, usersToPermissions.getKey());
 		}
 	}
 
@@ -50,8 +55,8 @@ public class SetRoleEndpoint extends AuthorizedProjectEndpoint {
 		return ctx.pathParam("project_id");
 	}
 
-	public record Request(Map<String, String> usersToRoleName) {
-		public static final Codec<Request> CODEC = Codec.unboundedMap(User.ID_CODEC, Codec.STRING)
-				.xmap(Request::new, Request::usersToRoleName);
+	public record Request(Map<String, Permissions> usersToPermissions) {
+		public static final Codec<Request> CODEC = Codec.unboundedMap(User.ID_CODEC, Permission.STRING_PERMISSIONS_CODEC)
+				.xmap(Request::new, Request::usersToPermissions);
 	}
 }

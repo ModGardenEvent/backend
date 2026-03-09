@@ -1,11 +1,11 @@
 package net.modgarden.backend.oauth.client;
 
-import net.modgarden.backend.ModGardenBackend;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+
+import net.modgarden.backend.ModGardenBackend;
 
 public record DiscordOAuthClient() implements OAuthClient {
 	public static final String API_URL = "https://discord.com/api/v10/";

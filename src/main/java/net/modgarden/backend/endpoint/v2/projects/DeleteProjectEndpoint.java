@@ -1,4 +1,6 @@
-package net.modgarden.backend.endpoint.v2.project;
+package net.modgarden.backend.endpoint.v2.projects;
+
+import static net.modgarden.backend.endpoint.EndpointMethod.Method.DELETE;
 
 import io.javalin.http.Context;
 import net.modgarden.backend.data.Permission;
@@ -9,10 +11,8 @@ import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthorizedProjectEndpoint;
 import org.jetbrains.annotations.NotNull;
 
-import static net.modgarden.backend.endpoint.EndpointMethod.Method.DELETE;
-
 @EndpointMethod(DELETE)
-@EndpointPath("/v2/project/{project_id}")
+@EndpointPath("/v2/projects/{project_id}")
 public class DeleteProjectEndpoint extends AuthorizedProjectEndpoint {
 	public DeleteProjectEndpoint() {
 		super("{project_id}", false);

@@ -1,8 +1,10 @@
-package net.modgarden.backend.endpoint.v2.project;
+package net.modgarden.backend.endpoint.v2.projects;
+
+import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
-import net.modgarden.backend.data.NaturalId;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
@@ -11,15 +13,12 @@ import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthorizedProjectEndpoint;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
 
 @EndpointMethod(POST)
-@EndpointPath("/v2/project/create")
+@EndpointPath("/v2/projects")
 public class CreateProjectEndpoint extends AuthorizedProjectEndpoint {
 	public CreateProjectEndpoint() {
-		super("create", PermissionScope.USER, true);
+		super(PermissionScope.USER, true);
 	}
 
 	@Override
@@ -36,7 +35,7 @@ public class CreateProjectEndpoint extends AuthorizedProjectEndpoint {
 		String projectId = db.createProject(userId, request.name());
 
 		ctx.status(201);
-		ctx.header("Location", "/v2/project/" + projectId);
+		ctx.header("Location", "/v2/projects/" + projectId);
 	}
 
 	@NotNull
@@ -47,6 +46,8 @@ public class CreateProjectEndpoint extends AuthorizedProjectEndpoint {
 	}
 
 	public record Request(String name) {
-		public static final Codec<Request> CODEC = Codec.STRING.xmap(Request::new, Request::name);
+		public static final Codec<Request> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+				Codec.STRING.fieldOf("name").forGetter(Request::name)
+		).apply(instance, Request::new));
 	}
 }

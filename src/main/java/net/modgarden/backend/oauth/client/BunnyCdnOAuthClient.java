@@ -1,11 +1,11 @@
 package net.modgarden.backend.oauth.client;
 
-import net.modgarden.backend.ModGardenBackend;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+
+import net.modgarden.backend.ModGardenBackend;
 
 @SuppressWarnings("UastIncorrectHttpHeaderInspection")
 public class BunnyCdnOAuthClient implements OAuthClient {

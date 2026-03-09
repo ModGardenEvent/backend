@@ -1,8 +1,8 @@
 package net.modgarden.backend.data;
 
-import org.jetbrains.annotations.NotNull;
-
 import java.util.List;
+
+import org.jetbrains.annotations.NotNull;
 
 /// A bitfield of permissions that uses the [Permission] system.
 ///
