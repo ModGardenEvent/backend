@@ -7,6 +7,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.Map;
 
 import com.mojang.serialization.Codec;
@@ -17,10 +18,11 @@ import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.Platform;
 import net.modgarden.backend.data.event.platform.DownloadUrlPlatform;
 import net.modgarden.backend.data.event.platform.ModrinthPlatform;
+import net.modgarden.backend.util.ExtraCodecs;
 
 public record Submission(String id,
                          String event,
-						 long timeSubmitted,
+						 Instant timeSubmitted,
 						 Project project,
 						 Platform platform) {
 	private static final Map<String, MapCodec<Platform>> PLATFORM_MAP_CODECS = Map.ofEntries(
@@ -32,7 +34,7 @@ public record Submission(String id,
 	public static final Codec<Submission> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Submission::id),
             Event.ID_CODEC.fieldOf("event_id").forGetter(Submission::event),
-			Codec.LONG.fieldOf("time_submitted").forGetter(Submission::timeSubmitted),
+			ExtraCodecs.INSTANT_CODEC.fieldOf("time_submitted").forGetter(Submission::timeSubmitted),
 			Project.DIRECT_CODEC.fieldOf("project").forGetter(Submission::project),
 			PLATFORM_CODEC.fieldOf("platform").forGetter(Submission::platform)
     ).apply(inst, Submission::new));

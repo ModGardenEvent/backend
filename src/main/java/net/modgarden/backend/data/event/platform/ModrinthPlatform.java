@@ -56,7 +56,7 @@ public record ModrinthPlatform(String projectId, String versionId) implements Pl
 		Connection connection;
 
 		try {
-			connection = (Connection) GET_CONNECTION.invokeExact();
+			connection = (Connection) GET_CONNECTION.invokeExact(db);
 		} catch (Throwable e) {
 			throw new RuntimeException(e);
 		}

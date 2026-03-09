@@ -52,7 +52,7 @@ public class CreateSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
 
 	public record Request(String projectId, String eventId, Platform platform) {
 		public static final Codec<Request> CODEC = RecordCodecBuilder.create(inst -> inst.group(
-				Project.ID_CODEC.fieldOf("project").forGetter(Request::projectId),
+				Project.ID_CODEC.fieldOf("project_id").forGetter(Request::projectId),
 				Event.ID_CODEC.fieldOf("event_id").forGetter(Request::eventId),
 				Submission.PLATFORM_CODEC.fieldOf("platform").forGetter(Request::platform)
 		).apply(inst, Request::new));

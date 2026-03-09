@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Locale;
 import java.util.stream.Collectors;
@@ -12,14 +13,15 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.util.ExtraCodecs;
 import org.jetbrains.annotations.Nullable;
 
-public record LinkCode(String code, String accountId, Service service, long expires) {
+public record LinkCode(String code, String accountId, Service service, Instant expires) {
     public static final Codec<LinkCode> CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("code").forGetter(LinkCode::code),
             Codec.STRING.fieldOf("account_id").forGetter(LinkCode::accountId),
             Service.CODEC.fieldOf("service").forGetter(LinkCode::service),
-            Codec.LONG.fieldOf("expires").forGetter(LinkCode::expires)
+            ExtraCodecs.INSTANT_CODEC.fieldOf("expires").forGetter(LinkCode::expires)
     ).apply(inst, LinkCode::new));
 
     @Nullable
@@ -36,7 +38,7 @@ public record LinkCode(String code, String accountId, Service service, long expi
 					result.getString("code"),
 					result.getString("account_id"),
 					service,
-					result.getLong("expires")
+					Instant.ofEpochMilli(result.getLong("expires"))
 			);
 		} catch (SQLException ex) {
             ModGardenBackend.LOG.error("Exception in SQL query.", ex);

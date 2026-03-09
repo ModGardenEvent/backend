@@ -348,7 +348,7 @@ public final class DatabaseAccess implements AutoCloseable {
 	) throws SQLException, HypertextException {
 		Connection connection = this.getConnection();
 		Map<String, String> team = new HashMap<>();
-		Map<String, Long> permissions = new HashMap<>();
+		Map<String, Permissions> permissions = new HashMap<>();
 		List<String> submissions = new ArrayList<>();
 
 		try (
@@ -401,7 +401,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			while (projectRolesResult.next()) {
 				String projectRoleUserId = projectRolesResult.getString("user_id");
 				team.put(projectRoleUserId, projectRolesResult.getString("role_name"));
-				permissions.put(projectRoleUserId, projectRolesResult.getLong("permissions"));
+				permissions.put(projectRoleUserId, new Permissions(projectRolesResult.getLong("permissions")));
 			}
 
 			submissionsStatement.setString(1, projectId);
@@ -522,6 +522,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			submissionsStatement.setString(2, eventId);
 			submissionsStatement.setString(3, projectId);
 			submissionsStatement.setLong(4, System.currentTimeMillis());
+			submissionsStatement.executeUpdate();
 			return submissionId;
 		}
 	}
@@ -587,7 +588,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			return new HypertextResult<>(new Submission(
 					submissionId,
 					submissionResult.getString("theme_id"),
-					submissionResult.getLong("submitted"),
+					Instant.ofEpochMilli(submissionResult.getLong("submitted")),
 					this.getProjectFromId(submissionResult.getString("project_id")),
 					platform
 			));
@@ -837,7 +838,7 @@ public final class DatabaseAccess implements AutoCloseable {
 				submissions.add(new Submission(
 						submissionResult.getString("id"),
 						eventId,
-						submissionResult.getLong("submitted"),
+						Instant.ofEpochMilli(submissionResult.getLong("submitted")),
 						this.getProjectFromId(submissionResult.getString("project_id")),
 						platform
 				));
