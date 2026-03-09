@@ -69,6 +69,7 @@ public record ModrinthPlatform(String projectId, String versionId) implements Pl
 				var projectModMetadataStatement = connection.prepareStatement("""
 					INSERT INTO project_mod_metadata (project_id, mod_id, name, description, source_url)
 					VALUES (?, ?, ?, ?, ?)
+					ON CONFLICT(project_id) DO UPDATE SET mod_id = excluded.mod_id, name = excluded.name, description = excluded.description, source_url = excluded.source_url
 				""")
 		) {
 			submissionTypeModrinthStatement.setString(1, submissionId);
