@@ -1,4 +1,4 @@
-package net.modgarden.backend.endpoint.v2.auth;
+package net.modgarden.backend.endpoint.v2.auth.api_key;
 
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.GET;
 

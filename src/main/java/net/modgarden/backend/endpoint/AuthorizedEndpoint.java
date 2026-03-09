@@ -18,7 +18,7 @@ import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.database.DatabaseAccess;
-import net.modgarden.backend.endpoint.v2.auth.GenerateKeyEndpoint;
+import net.modgarden.backend.endpoint.v2.auth.api_key.GenerateKeyEndpoint;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
