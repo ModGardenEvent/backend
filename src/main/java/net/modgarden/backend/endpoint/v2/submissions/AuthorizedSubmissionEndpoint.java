@@ -16,6 +16,10 @@ public abstract class AuthorizedSubmissionEndpoint extends AuthorizedEndpoint {
 		super(2, "submissions/" + path, PermissionScope.PROJECT);
 	}
 
+	public AuthorizedSubmissionEndpoint() {
+		super (2, "submissions", PermissionScope.PROJECT);
+	}
+
 	@NotNull
 	@Override
 	protected abstract String getProjectId(Context ctx) throws SQLException, HypertextException;

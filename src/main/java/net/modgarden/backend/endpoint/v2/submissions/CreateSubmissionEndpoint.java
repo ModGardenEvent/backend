@@ -20,10 +20,6 @@ import org.jetbrains.annotations.NotNull;
 @EndpointMethod(POST)
 @EndpointPath("/v2/submissions")
 public class CreateSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
-	public CreateSubmissionEndpoint() {
-		super("create", true);
-	}
-
 	@Override
 	public void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
 		if (this.requireAnyPermissions(ctx, scopePermissions,
