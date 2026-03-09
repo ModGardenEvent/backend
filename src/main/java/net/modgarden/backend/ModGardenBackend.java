@@ -11,6 +11,7 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -478,6 +479,9 @@ public class ModGardenBackend {
 	}
 
 	private static JsonMapper createDFUMapper() {
+		// Primitives
+		registerCodec(String.class, Codec.STRING);
+
 		return new JsonMapper() {
 			private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
@@ -486,9 +490,35 @@ public class ModGardenBackend {
 			public @NotNull String toJsonString(@NotNull Object obj, @NotNull Type type) {
 				if (obj instanceof JsonElement)
 					return GSON.toJson(obj);
+
+				if (obj instanceof Collection<?> collection) {
+					if (collection.isEmpty()) {
+						return "[]";
+					} else {
+						StringBuilder builder = new StringBuilder().append('[');
+
+						int i = 0;
+						for (Object inner : collection) {
+							if (i > 0) {
+								builder.append(',');
+							}
+
+							builder.append(this.toJsonString(inner, inner.getClass()));
+							i++;
+						}
+
+						builder.append(']');
+
+						return builder.toString();
+					}
+				}
+
 				if (!CODEC_REGISTRY.containsKey(type))
 					throw new UnsupportedOperationException("Cannot encode object type " + type);
-				return ((Codec<Object>)CODEC_REGISTRY.get(type)).encodeStart(JsonOps.INSTANCE, obj).getOrThrow().toString();
+				return ((Codec<Object>)CODEC_REGISTRY.get(type))
+						.encodeStart(JsonOps.INSTANCE, obj)
+						.getOrThrow()
+						.toString();
 			}
 
 			@SuppressWarnings("unchecked")
