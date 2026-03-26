@@ -74,7 +74,7 @@ public record Event(String id,
 
     private static DataResult<String> validate(String id) {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
-			 PreparedStatement prepared = connection.prepareStatement("SELECT 1 FROM themes WHERE id = ?")) {
+			 PreparedStatement prepared = connection.prepareStatement("SELECT 1 FROM events WHERE id = ?")) {
 			prepared.setString(1, id);
 			ResultSet result = prepared.executeQuery();
 			if (result != null && result.getBoolean(1))

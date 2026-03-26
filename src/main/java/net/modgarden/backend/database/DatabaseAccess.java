@@ -820,8 +820,8 @@ public final class DatabaseAccess implements AutoCloseable {
 
 	public List<Event> getEvents() throws SQLException {
 		try (var eventStatement = this.getConnection().prepareStatement("""
-				SELECT id, theme_slug, event_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time
-				FROM themes
+				SELECT id, event_slug, genre_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time
+				FROM events
 			""");
 			var discordIntegrationStatement = this.getConnection().prepareStatement("""
 				SELECT id, role_id
@@ -840,8 +840,8 @@ public final class DatabaseAccess implements AutoCloseable {
 			while (resultSet.next()) {
 				events.add(new Event(
 						resultSet.getString("id"),
-						resultSet.getString("theme_slug"),
 						resultSet.getString("event_slug"),
+						resultSet.getString("genre_slug"),
 						resultSet.getString("display_name"),
 						Optional.ofNullable(roleIds.getOrDefault(resultSet.getString("id"), null)),
 						resultSet.getString("minecraft_version"),
@@ -861,8 +861,8 @@ public final class DatabaseAccess implements AutoCloseable {
 	public List<String> getEventIdsFromGenreSlug(String genreSlug) throws SQLException {
 		try (var eventStatement = this.getConnection().prepareStatement("""
 				SELECT id
-				FROM themes
-				WHERE event_slug = ?
+				FROM events
+				WHERE genre_slug = ?
 			""")) {
 			eventStatement.setString(1, genreSlug);
 			ResultSet eventResult = eventStatement.executeQuery();
@@ -878,16 +878,16 @@ public final class DatabaseAccess implements AutoCloseable {
 
 	public List<String> getEventSlugs(String genreSlug) throws SQLException {
 		try (var eventStatement = this.getConnection().prepareStatement("""
-				SELECT theme_slug
-				FROM themes
-				WHERE event_slug = ?
+				SELECT event_slug
+				FROM events
+				WHERE genre_slug = ?
 			""")) {
 			eventStatement.setString(1, genreSlug);
 			ResultSet eventResult = eventStatement.executeQuery();
 			List<String> slugs = new ArrayList<>();
 
 			while (eventResult.next()) {
-				slugs.add(eventResult.getString("theme_slug"));
+				slugs.add(eventResult.getString("event_slug"));
 			}
 
 			return slugs;
@@ -896,9 +896,9 @@ public final class DatabaseAccess implements AutoCloseable {
 
 	public String getEventSlug(String genreSlug, String eventId) throws SQLException, HypertextException {
 		try (var eventStatement = this.getConnection().prepareStatement("""
-					SELECT theme_slug
-					FROM themes
-					WHERE event_slug = ? AND id = ?
+					SELECT event_slug
+					FROM events
+					WHERE genre_slug = ? AND id = ?
 				""")) {
 			eventStatement.setString(1, genreSlug);
 			eventStatement.setString(2, eventId);
@@ -908,15 +908,15 @@ public final class DatabaseAccess implements AutoCloseable {
 				throw new NotFoundException("Event with ID '" + eventId + "' does not exist");
 			}
 
-			return eventResult.getString("theme_slug");
+			return eventResult.getString("event_slug");
 		}
 	}
 
 	public String getEventId(String genreSlug, String eventSlug) throws SQLException, HypertextException {
 		try (var eventStatement = this.getConnection().prepareStatement("""
 					SELECT id
-					FROM themes
-					WHERE event_slug = ? AND theme_slug = ?
+					FROM events
+					WHERE genre_slug = ? AND event_slug = ?
 				""")) {
 			eventStatement.setString(1, genreSlug);
 			eventStatement.setString(2, eventSlug);
@@ -932,9 +932,9 @@ public final class DatabaseAccess implements AutoCloseable {
 
 	public Event getEventFromSlug(String genreSlug, String eventSlug) throws SQLException, HypertextException {
 		try (var eventStatement = this.getConnection().prepareStatement("""
-				SELECT id, theme_slug, event_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time
-				FROM themes
-				WHERE event_slug = ? AND theme_slug = ?
+				SELECT id, event_slug, genre_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time
+				FROM events
+				WHERE genre_slug = ? AND event_slug = ?
 			""");
 			var discordIntegrationStatement = this.getConnection().prepareStatement("""
 				SELECT id, role_id
@@ -958,8 +958,8 @@ public final class DatabaseAccess implements AutoCloseable {
 
 			return new Event(
 					resultSet.getString("id"),
-					resultSet.getString("theme_slug"),
 					resultSet.getString("event_slug"),
+					resultSet.getString("genre_slug"),
 					resultSet.getString("display_name"),
 					Optional.ofNullable(discordRoleId),
 					resultSet.getString("minecraft_version"),

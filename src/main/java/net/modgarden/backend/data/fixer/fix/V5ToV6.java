@@ -145,10 +145,10 @@ public class V5ToV6 extends DatabaseFix {
 		ALTER TABLE events RENAME TO events_old
 		""");
 		statement.addBatch("""
-		CREATE TABLE IF NOT EXISTS themes (
+		CREATE TABLE IF NOT EXISTS events (
 			id TEXT UNIQUE NOT NULL,
-			theme_slug TEXT UNIQUE NOT NULL,
-			event_slug TEXT NOT NULL,
+			event_slug TEXT UNIQUE NOT NULL,
+			genre_slug TEXT NOT NULL,
 			display_name TEXT NOT NULL,
 			minecraft_version TEXT NOT NULL,
 			loader TEXT NOT NULL,
@@ -161,7 +161,7 @@ public class V5ToV6 extends DatabaseFix {
 		)
 		""");
 		statement.addBatch("""
-		INSERT INTO themes (id, theme_slug, event_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time)
+		INSERT INTO events (id, event_slug, genre_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time)
 		SELECT id, slug, event_type_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time from events_old
 		""");
 
@@ -207,7 +207,7 @@ public class V5ToV6 extends DatabaseFix {
 			project_id TEXT NOT NULL,
 			submitted INTEGER NOT NULL,
 			FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
-			FOREIGN KEY (theme_id) REFERENCES themes(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			FOREIGN KEY (theme_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			PRIMARY KEY(id)
 		)
 		""");
@@ -314,7 +314,7 @@ public class V5ToV6 extends DatabaseFix {
 		CREATE TABLE IF NOT EXISTS event_integration_discord (
 			id TEXT UNIQUE NOT NULL,
 			role_id TEXT NOT NULL,
-			FOREIGN KEY (id) REFERENCES themes(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			PRIMARY KEY (id)
 		)
 		""");
@@ -451,12 +451,12 @@ public class V5ToV6 extends DatabaseFix {
 		""");
 
 		statement.addBatch("""
-		UPDATE themes
-		SET id = generate_natural_id('themes', 'id', NULL, 5)
+		UPDATE events
+		SET id = generate_natural_id('events', 'id', NULL, 5)
 		""");
 		statement.addBatch("""
-		UPDATE themes
-		SET theme_slug = clean_slug_mg(theme_slug)
+		UPDATE events
+		SET event_slug = clean_slug_mg(event_slug)
 		""");
 
 

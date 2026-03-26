@@ -357,10 +357,10 @@ public class ModGardenBackend {
 			)
 			""");
 			statement.addBatch("""
-			CREATE TABLE IF NOT EXISTS themes (
+			CREATE TABLE IF NOT EXISTS events (
 				id TEXT UNIQUE NOT NULL,
-				theme_slug TEXT UNIQUE NOT NULL,
-				event_slug TEXT NOT NULL,
+				event_slug TEXT UNIQUE NOT NULL,
+				genre_slug TEXT NOT NULL,
 				display_name TEXT NOT NULL,
 				minecraft_version TEXT NOT NULL,
 				loader TEXT NOT NULL,
@@ -376,7 +376,7 @@ public class ModGardenBackend {
 			CREATE TABLE IF NOT EXISTS event_integration_discord (
 				id TEXT UNIQUE NOT NULL,
 				role_id TEXT NOT NULL,
-				FOREIGN KEY (id) REFERENCES themes(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (id)
 			)
 			""");
@@ -426,7 +426,7 @@ public class ModGardenBackend {
 				project_id TEXT NOT NULL,
 				submitted INTEGER NOT NULL,
 				FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
-				FOREIGN KEY (theme_id) REFERENCES themes(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				FOREIGN KEY (theme_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY(id)
 			)
 			""");
