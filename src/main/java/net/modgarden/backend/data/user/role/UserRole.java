@@ -19,8 +19,8 @@ import net.modgarden.backend.data.Permissions;
 public record UserRole(
 		String id,
 		String name,
-		Instant created,
-		Permissions permissions
+		Permissions permissions,
+		Instant created
 ) {
 	public static final Codec<String> ID_CODEC = Codec.STRING.validate(UserRole::validate);
 	private static final Map<String, Codec<Integration>> INTEGRATION_CODECS = Map.ofEntries(
