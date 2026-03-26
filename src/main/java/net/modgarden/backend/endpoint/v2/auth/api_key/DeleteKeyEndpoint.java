@@ -43,8 +43,7 @@ public final class DeleteKeyEndpoint extends AuthEndpoint {
 		PermissionScope permissionScope = apiKeyScope.scope();
 
 		if (permissionScope == PermissionScope.PROJECT) {
-			Permissions permissions = db.getProjectMemberPermissions(userId, projectId)
-					.unwrap(ctx);
+			Permissions permissions = db.getProjectMemberPermissions(userId, projectId);
 			if (this.requireAllPermissions(ctx, permissions, Permission.MODIFY_API_KEY)) return;
 		}
 

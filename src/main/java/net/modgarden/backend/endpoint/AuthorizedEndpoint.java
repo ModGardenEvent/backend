@@ -202,24 +202,22 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 					// Disallow permissions the user doesn't already have
 					switch (scope) {
 						case USER -> {
-							Permissions userPermissions = db.getUserPermissions(userId)
-									.unwrap(ctx);
-							if (userPermissions == null) {
+							try {
+								scopePermissions = db.getUserPermissions(userId);
+								scopePermissions = scopePermissions.restrict(apiKeyPermissions.bits());
+							} catch (HypertextException e) {
 								this.setStatusUnauthorized(ctx);
 								return ValidationResult.no();
 							}
-							scopePermissions = userPermissions;
-							scopePermissions = scopePermissions.restrict(apiKeyPermissions.bits());
 						}
 						case PROJECT -> {
-							Permissions projectPermissions = db.getProjectMemberPermissions(userId, projectId)
-									.unwrap(ctx);
-							if (projectPermissions == null) {
+							try {
+								scopePermissions = db.getProjectMemberPermissions(userId, projectId);
+								scopePermissions = scopePermissions.restrict(apiKeyPermissions.bits());
+							} catch (HypertextException e) {
 								this.setStatusUnauthorized(ctx);
 								return ValidationResult.no();
 							}
-							scopePermissions = projectPermissions;
-							scopePermissions = scopePermissions.restrict(apiKeyPermissions.bits());
 						}
 					}
 				}

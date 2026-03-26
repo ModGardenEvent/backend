@@ -17,6 +17,8 @@ import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.Landing;
 import net.modgarden.backend.data.Metadata;
 import net.modgarden.backend.data.event.metadata.ModMetadata;
+import net.modgarden.backend.endpoint.exception.HypertextException;
+import net.modgarden.backend.endpoint.exception.NotFoundException;
 import net.modgarden.backend.oauth.OAuthService;
 import net.modgarden.backend.oauth.client.ModrinthOAuthClient;
 import org.jetbrains.annotations.NotNull;
@@ -71,7 +73,7 @@ public class MetadataUtils {
 				}
 			}
 
-			throw new UnsupportedOperationException("All mod-loaders associated with the specified version are not implemented.");
+			throw new HypertextException(422, "All mod-loaders associated with the specified version are unsupported.");
 		}
 	}
 
@@ -131,10 +133,10 @@ public class MetadataUtils {
 		if (entry != null) {
 			return file.getInputStream(entry);
 		}
-		throw new NullPointerException("The specified JAR is not a Fabric mod.");
+		throw new HypertextException(422, "The specified JAR is not a Fabric mod.");
 	}
 
-	private static String getFmjSourceUrl(JsonObject fmj, ExternalData data) {
+	private static String getFmjSourceUrl(JsonObject fmj, ExternalData data) throws NotFoundException {
 		if (data.externalSourceUrl() != null) {
 			return data.externalSourceUrl();
 		}
@@ -144,7 +146,7 @@ public class MetadataUtils {
 				return contact.getAsJsonObject().getAsJsonPrimitive("sources").getAsString();
 			}
 		}
-		throw new NullPointerException("Could not find source URL from either fabric.mod.json or external data.");
+		throw new NotFoundException("Could not find source URL from either fabric.mod.json or external data.");
 	}
 
 	public record ExternalData(@Nullable String externalSourceUrl) {}

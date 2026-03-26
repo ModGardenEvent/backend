@@ -3,10 +3,8 @@ package net.modgarden.backend.endpoint.v2.projects;
 import java.sql.SQLException;
 
 import io.javalin.http.Context;
-import net.modgarden.backend.HypertextResult;
 import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
-import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.AuthorizedEndpoint;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.exception.HypertextException;
@@ -32,16 +30,4 @@ public abstract class AuthorizedProjectEndpoint extends AuthorizedEndpoint {
 	@NotNull
 	@Override
 	protected abstract String getProjectId(Context ctx) throws SQLException, HypertextException;
-
-	protected static boolean userCannotModifyMember(
-			Context ctx,
-			String projectId,
-			String memberUserIdToModify,
-			Permissions selfPermissions
-	) throws Exception {
-		DatabaseAccess db = DatabaseAccess.get();
-		HypertextResult<Void> result = db.canUserModifyMember(projectId, memberUserIdToModify, selfPermissions);
-		result.unwrap(ctx);
-		return !result.isSuccess();
-	}
 }

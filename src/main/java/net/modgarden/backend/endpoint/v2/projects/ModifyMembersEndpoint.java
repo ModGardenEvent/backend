@@ -29,23 +29,17 @@ public class ModifyMembersEndpoint extends AuthorizedProjectEndpoint {
 
 		String projectId = this.getProjectId(ctx);
 		DatabaseAccess db = DatabaseAccess.get();
-		Request request = this.decodeBody(ctx, Request.CODEC)
-				.unwrap(ctx);
-
-		if (request == null) return;
+		Request request = this.decodeBody(ctx, Request.CODEC);
 
 		for (Map.Entry<String, String> entry : request.users().entrySet()) {
 			String memberId = entry.getKey();
 			String role = entry.getValue();
 
 			// If a non-administrator attempts to modify an administrator, return.
-			if (userCannotModifyMember(ctx, projectId, memberId, scopePermissions)) return;
+			db.assertUserCanModifyMember(projectId, memberId, scopePermissions);
 
 			if (role == null) {
-				Permissions memberPermissions = db.getProjectMemberPermissions(memberId, projectId)
-						.unwrap(ctx);
-
-				if (memberPermissions == null) return;
+				Permissions memberPermissions = db.getProjectMemberPermissions(memberId, projectId);
 
 				boolean memberIsAdmin = memberPermissions.hasPermissions(Permission.ADMINISTRATOR);
 
@@ -63,10 +57,7 @@ public class ModifyMembersEndpoint extends AuthorizedProjectEndpoint {
 				continue;
 			}
 
-			Permissions permissions = db.getProjectMemberPermissions(memberId, projectId)
-					.unwrap(ctx);
-
-			if (permissions == null) {
+			if (!db.hasProjectMemberPermissions(memberId, projectId)) {
 				db.addProjectMember(projectId, memberId);
 			}
 

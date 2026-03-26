@@ -29,21 +29,16 @@ public class SetPermissionsEndpoint extends AuthorizedProjectEndpoint {
 
 		String projectId = this.getProjectId(ctx);
 
-		Request request = decodeBody(ctx, Request.CODEC)
-				.unwrap(ctx);
-
-		if (request == null) return;
+		Request request = decodeBody(ctx, Request.CODEC);
 
 		DatabaseAccess db = DatabaseAccess.get();
 
+		// This is a separate loop to make sure that no actions are made if there is one error.
 		for (Map.Entry<String, Permissions> usersToPermissions : request.usersToPermissions().entrySet()) {
-			if (userCannotModifyMember(
-					ctx,
-					projectId,
-					usersToPermissions.getKey(),
-					scopePermissions
-			)) return;
+			db.assertUserCanModifyMember(projectId, usersToPermissions.getKey(), scopePermissions);
+		}
 
+		for (Map.Entry<String, Permissions> usersToPermissions : request.usersToPermissions().entrySet()) {
 			db.setProjectMemberPermissions(usersToPermissions.getValue(), projectId, usersToPermissions.getKey());
 		}
 	}

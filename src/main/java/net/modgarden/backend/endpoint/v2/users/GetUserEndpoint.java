@@ -31,8 +31,7 @@ public class GetUserEndpoint extends Endpoint {
 		switch (queryKey) {
 		case ID -> {
 		}
-		case USERNAME -> userId = db.getUserIdFromUsername(userId)
-				.unwrap(ctx);
+		case USERNAME -> userId = db.getUserIdFromUsername(userId);
 		default -> {
 			this.invalidQuery(ctx, QueryParameterType.get(QueryKey.class));
 			return;

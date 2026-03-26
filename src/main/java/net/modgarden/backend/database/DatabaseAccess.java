@@ -8,7 +8,6 @@ import java.sql.Types;
 import java.time.Instant;
 import java.util.*;
 
-import net.modgarden.backend.HypertextResult;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.*;
 import net.modgarden.backend.data.event.Event;
@@ -338,9 +337,9 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	public HypertextResult<String> getUserIdFromUsername(
+	public String getUserIdFromUsername(
 			@NotNull String username
-	) throws SQLException {
+	) throws SQLException, HypertextException {
 		try (PreparedStatement prepared = this.getConnection()
 			.prepareStatement("""
 						SELECT id
@@ -351,10 +350,10 @@ public final class DatabaseAccess implements AutoCloseable {
 			prepared.setString(1, username);
 			ResultSet result = prepared.executeQuery();
 			if (!result.isBeforeFirst()) {
-				return new HypertextResult<>(404, "Could not find user '" + username + "'");
+				throw new HypertextException(404, "Could not find user '" + username + "'");
 			}
 
-			return new HypertextResult<>(result.getString("id"));
+			return result.getString("id");
 		}
 	}
 
@@ -367,16 +366,16 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	public HypertextResult<Permissions> getUserPermissions(String userId) throws SQLException {
+	public Permissions getUserPermissions(String userId) throws SQLException, HypertextException {
 		try (var userStatement = this.getConnection()
 				.prepareStatement("SELECT permissions FROM users WHERE id = ?")) {
 			userStatement.setString(1, userId);
 			ResultSet resultSet = userStatement.executeQuery();
 			if (!resultSet.isBeforeFirst()) {
-				return new HypertextResult<>(404, "User does not exist.");
+				throw new NotFoundException("User does not exist.");
 			}
 
-			return new HypertextResult<>(new Permissions(resultSet.getLong("permissions")));
+			return new Permissions(resultSet.getLong("permissions"));
 		}
 	}
 
@@ -460,11 +459,11 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	public HypertextResult<Void> canUserModifyMember(
+	public void assertUserCanModifyMember(
 			String projectId,
 			String memberUserIdToModify,
 			Permissions selfPermissions
-	) throws SQLException {
+	) throws SQLException, HypertextException {
 		try (var memberPermissionsStatement = this.getConnection().prepareStatement("""
 					SELECT permissions
 					FROM project_roles
@@ -475,13 +474,11 @@ public final class DatabaseAccess implements AutoCloseable {
 			ResultSet memberPermissionsResult = memberPermissionsStatement.executeQuery();
 			Permissions memberPermissions = new Permissions(memberPermissionsResult.getLong(1));
 
-			// If a non-administrator attempts to edit the permissions of an administrator, return false.
+			// If a non-administrator attempts to edit the permissions of an administrator, throw.
 			if (memberPermissions.hasPermissions(Permission.ADMINISTRATOR) && !selfPermissions.hasPermissions(Permission.ADMINISTRATOR)) {
-				return new HypertextResult<>(403, "Non-administrators may not edit administrators' permissions on projects");
+				throw new HypertextException(403, "Non-administrators may not edit administrators' permissions on projects");
 			}
 		}
-
-		return new HypertextResult<>(null);
 	}
 
 	public void setProjectMemberPermissions(
@@ -579,7 +576,22 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	public HypertextResult<Permissions> getProjectMemberPermissions(String userId, String projectId) throws SQLException {
+	public boolean hasProjectMemberPermissions(String userId, String projectId) throws SQLException, HypertextException {
+		Connection connection = this.getConnection();
+
+		try (var userStatement = connection.prepareStatement("""
+					SELECT permissions
+					FROM project_roles
+					WHERE user_id = ? AND project_id = ?
+				""")) {
+			userStatement.setString(1, userId);
+			userStatement.setString(2, projectId);
+			ResultSet resultSet = userStatement.executeQuery();
+			return resultSet.isBeforeFirst();
+		}
+	}
+
+	public Permissions getProjectMemberPermissions(String userId, String projectId) throws SQLException, HypertextException {
 		Connection connection = this.getConnection();
 
 		try (var userStatement = connection.prepareStatement("""
@@ -591,10 +603,10 @@ public final class DatabaseAccess implements AutoCloseable {
 			userStatement.setString(2, projectId);
 			ResultSet resultSet = userStatement.executeQuery();
 			if (!resultSet.isBeforeFirst()) {
-				return new HypertextResult<>(404, "User does not have a role in the specified project.");
+				throw new NotFoundException("User does not have a role in the specified project.");
 			}
 
-			return new HypertextResult<>(new Permissions(resultSet.getLong("permissions")));
+			return new Permissions(resultSet.getLong("permissions"));
 		}
 	}
 
@@ -643,11 +655,9 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	public HypertextResult<Void> assertProjectExists(String projectId) throws SQLException {
+	public void assertProjectExists(String projectId) throws SQLException, HypertextException {
 		if (!this.projectExists(projectId)) {
-			return new HypertextResult<>(404, "Project with ID " + projectId + " does not exist");
-		} else {
-			return new HypertextResult<>(null);
+			throw new NotFoundException("Project with ID " + projectId + " does not exist");
 		}
 	}
 
@@ -712,7 +722,7 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	public HypertextResult<Submission> getSubmission(
+	public Submission getSubmission(
 			@NotNull String submissionId
 	) throws Exception {
 		Connection connection = this.getConnection();
@@ -732,7 +742,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			submissionStatement.setString(1, submissionId);
 			ResultSet submissionResult = submissionStatement.executeQuery();
 			if (!submissionResult.isBeforeFirst()) {
-				return new HypertextResult<>(404, "Could not find submission '" + submissionId + "'");
+				throw new NotFoundException("Could not find submission '" + submissionId + "'");
 			}
 
 			modrinthSubmissionTypeStatement.setString(1, submissionId);
@@ -746,16 +756,16 @@ public final class DatabaseAccess implements AutoCloseable {
 						modrinthSubmissionTypeResult.getString("version_id")
 				);
 			} else {
-				return new HypertextResult<>(400, "Submission does not have a valid 'platform'");
+				throw new HypertextException(400, "Submission does not have a valid 'platform'");
 			}
 
-			return new HypertextResult<>(new Submission(
+			return new Submission(
 					submissionId,
 					submissionResult.getString("theme_id"),
 					Instant.ofEpochMilli(submissionResult.getLong("submitted")),
 					this.getProjectFromId(submissionResult.getString("project_id")),
 					platform
-			));
+			);
 		}
 	}
 

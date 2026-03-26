@@ -5,7 +5,6 @@ import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
-import net.modgarden.backend.HypertextResult;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.data.Platform;
@@ -15,6 +14,7 @@ import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.exception.HypertextException;
 import org.jetbrains.annotations.NotNull;
 
 @EndpointMethod(POST)
@@ -25,8 +25,7 @@ public class CreateSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
 		if (this.requireAnyPermissions(ctx, scopePermissions,
 				Permission.EDIT_PROJECT)) return;
 
-		Request request = decodeBody(ctx, Request.CODEC)
-				.unwrap(ctx);
+		Request request = decodeBody(ctx, Request.CODEC);
 
 		if (request == null) return;
 
@@ -39,13 +38,8 @@ public class CreateSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
 
 	@NotNull
 	@Override
-	protected String getProjectId(Context ctx) {
-		HypertextResult<Request> result = decodeBody(ctx, Request.CODEC);
-		Request request = result.unwrap(ctx);
-
-		if (request == null) {
-			throw new IllegalStateException(result.getMessage());
-		}
+	protected String getProjectId(Context ctx) throws HypertextException {
+		Request request = decodeBody(ctx, Request.CODEC);
 
 		return request.projectId();
 	}

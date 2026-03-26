@@ -44,6 +44,7 @@ import net.modgarden.backend.database.function.GenerateNaturalIdFunction;
 import net.modgarden.backend.database.function.HasPermissionsFunction;
 import net.modgarden.backend.database.function.UnixMillisFunction;
 import net.modgarden.backend.endpoint.Endpoint;
+import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.v2.auth.api_key.DeleteKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.api_key.GenerateKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.api_key.ListKeysEndpoint;
@@ -132,12 +133,29 @@ public class ModGardenBackend {
 
 		backend.v2();
 
-		app.error(400, BackendError::handleError);
-		app.error(401, BackendError::handleError);
-		app.error(403, BackendError::handleError);
-		app.error(404, BackendError::handleError);
-		app.error(422, BackendError::handleError);
-		app.error(500, BackendError::handleError);
+		app.exception(HypertextException.class, (e, ctx) -> {
+			ctx.status(e.getStatus());
+			ctx.result(e.getMessage());
+			BackendError.handleError(ctx);
+		});
+		app.exception(NullPointerException.class, (e, ctx) -> {
+			ctx.status(404);
+			ctx.result(e.getMessage());
+			BackendError.handleError(ctx);
+		});
+		app.exception(SQLException.class, (e, ctx) -> {
+			ctx.status(500);
+			ctx.result("Internal Error");
+			LOG.error("", e);
+			BackendError.handleError(ctx);
+		});
+		app.exception(UnsupportedOperationException.class, (e, ctx) -> {
+			ctx.status(500);
+			ctx.result("Internal Error");
+			LOG.error("", e);
+			BackendError.handleError(ctx);
+		});
+
 		app.start(7070);
 
 		LOG.info("Mod Garden Backend Started!");

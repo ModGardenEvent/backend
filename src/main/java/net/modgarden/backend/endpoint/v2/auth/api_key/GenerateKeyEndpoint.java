@@ -35,9 +35,7 @@ public final class GenerateKeyEndpoint extends AuthEndpoint {
 	public void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
 		if (this.requireAllPermissions(ctx, scopePermissions, Permission.MODIFY_API_KEY)) return;
 
-		Request<?> request = this.decodeBody(ctx, Request.CODEC)
-				.unwrap(ctx);
-		if (request == null) return;
+		Request<?> request = this.decodeBody(ctx, Request.CODEC);
 
 		if (Duration.between(Instant.now(), request.expires()).toDays() > 365 || Duration.between(Instant.now(), request.expires()).isNegative()) {
 			ctx.status(400);
@@ -59,14 +57,12 @@ public final class GenerateKeyEndpoint extends AuthEndpoint {
 		DatabaseAccess db = DatabaseAccess.get();
 
 		if (projectId != null) {
-			db.assertProjectExists(projectId).unwrap(ctx);
+			db.assertProjectExists(projectId);
 		}
 
 		switch (request.scope().id()) {
 			case "project" -> {
-				Permissions projectPermissions = db.getProjectMemberPermissions(userId, projectId)
-						.unwrap(ctx);
-				if (projectPermissions == null) return;
+				Permissions projectPermissions = db.getProjectMemberPermissions(userId, projectId);
 				requestedPermissions = requestedPermissions.restrict(projectPermissions.bits());
 				if (this.requireAllPermissions(ctx, projectPermissions, Permission.MODIFY_API_KEY)) return;
 			}

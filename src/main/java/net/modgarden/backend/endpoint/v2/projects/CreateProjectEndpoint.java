@@ -25,10 +25,7 @@ public class CreateProjectEndpoint extends AuthorizedProjectEndpoint {
 		if (this.requireAnyPermissions(ctx, scopePermissions,
 				Permission.PARTICIPATE)) return;
 
-		Request request = decodeBody(ctx, Request.CODEC)
-				.unwrap(ctx);
-
-		if (request == null) return;
+		Request request = decodeBody(ctx, Request.CODEC);
 
 		DatabaseAccess db = DatabaseAccess.get();
 		String projectId = db.createProject(userId, request.name());

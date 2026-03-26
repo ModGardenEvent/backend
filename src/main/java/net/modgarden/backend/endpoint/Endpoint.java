@@ -8,8 +8,8 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
-import net.modgarden.backend.HypertextResult;
 import net.modgarden.backend.database.DatabaseAccess;
+import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.v2.query.QueryParameterType;
 import org.jetbrains.annotations.NotNull;
 
@@ -38,22 +38,15 @@ public abstract class Endpoint implements Handler {
 		// validate all path params
 		for (String pathParam : ctx.pathParamMap().values()) {
 			if (!pathParam.matches(SAFE_URL_REGEX)) {
-				ctx.result("Illegal characters in path '" + pathParam + "'.");
-				ctx.status(422);
-				return;
+				throw new HypertextException(422, "Illegal characters in path '" + pathParam + "'.");
 			}
 		}
 
-		try {
-			carrier.<Void, Exception>call(() -> {
-				this.onRequest(ctx);
-				DatabaseAccess.get().close();
-				return null;
-			});
-		} catch (NullPointerException npe) {
-			ctx.status(404);
-			ctx.result(npe.getMessage());
-		}
+		carrier.<Void, Exception>call(() -> {
+			this.onRequest(ctx);
+			DatabaseAccess.get().close();
+			return null;
+		});
 	}
 
 	// TODO: Version of onRequest that allows returning Object and throwing HypertextException
@@ -79,14 +72,14 @@ public abstract class Endpoint implements Handler {
 		}
 	}
 
-	protected <T> HypertextResult<T> decodeBody(Context ctx, Codec<T> codec) {
+	protected <T> T decodeBody(Context ctx, Codec<T> codec) throws HypertextException {
 		DataResult<Pair<T, JsonElement>> result = codec.decode(
 				JsonOps.INSTANCE, JsonParser.parseString(ctx.body()));
 
 		if (result.isError()) {
 			//noinspection OptionalGetWithoutIsPresent
 			this.invalidBody(ctx, result.error().get().message());
-			return new HypertextResult<>(ctx.statusCode(), ctx.result());
+			throw new HypertextException(ctx.statusCode(), ctx.result());
 		}
 
 		T bodyResult;
@@ -94,9 +87,9 @@ public abstract class Endpoint implements Handler {
 			bodyResult = result.getOrThrow().getFirst();
 		} catch (IllegalStateException e) {
 			this.invalidBody(ctx, e.getMessage());
-			return new HypertextResult<>(ctx.statusCode(), ctx.result());
+			throw new HypertextException(ctx.statusCode(), ctx.result());
 		}
 
-		return new HypertextResult<>(bodyResult);
+		return bodyResult;
 	}
 }

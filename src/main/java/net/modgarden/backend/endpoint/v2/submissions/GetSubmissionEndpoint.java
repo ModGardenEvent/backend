@@ -37,10 +37,7 @@ public class GetSubmissionEndpoint extends Endpoint {
 		}
 		}
 
-		Submission submission = db.getSubmission(submissionId)
-				.unwrap(ctx);
-
-		if (submission == null) return;
+		Submission submission = db.getSubmission(submissionId);
 
 		ctx.json(submission);
 		ctx.status(200);
