@@ -19,6 +19,9 @@ java {
 
 repositories {
     mavenCentral()
+	maven("https://libraries.minecraft.net") {
+		name = "Minecraft Libraries"
+	}
     maven("https://repo.glaremasters.me/repository/public/") {
         name = "GlareMasters"
     }
