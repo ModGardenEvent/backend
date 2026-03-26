@@ -60,6 +60,7 @@ import net.modgarden.backend.endpoint.v2.projects.SetPermissionsEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.CreateSubmissionEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.DeleteSubmissionEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.GetSubmissionEndpoint;
+import net.modgarden.backend.endpoint.v2.users.GetUserEndpoint;
 import net.modgarden.backend.util.AuthUtil;
 import net.modgarden.backend.util.Converter;
 import org.jetbrains.annotations.NotNull;
@@ -163,6 +164,8 @@ public class ModGardenBackend {
 		post(CreateSubmissionEndpoint::new);
 		delete(DeleteSubmissionEndpoint::new);
 		get(GetSubmissionEndpoint::new);
+
+		get(GetUserEndpoint::new);
 	}
 
 	private void get(Supplier<Endpoint> endpointSupplier) {

@@ -28,8 +28,9 @@ import net.modgarden.backend.util.ExtraCodecs;
 public record User(
 		String id,
 		String username,
-		Instant created,
+		Bio bio,
 		Permissions permissions,
+		Instant created,
 		Map<String, Integration> integrations,
 		Set<String> projects,
 		Set<String> events,
@@ -45,8 +46,9 @@ public record User(
     public static final Codec<User> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
             Codec.STRING.fieldOf("username").forGetter(User::username),
-		    ExtraCodecs.INSTANT_CODEC.fieldOf("created").forGetter(User::created),
+			Bio.DIRECT_CODEC.fieldOf("bio").forGetter(User::bio),
 			Permission.STRING_PERMISSIONS_CODEC.fieldOf("permissions").forGetter(User::permissions),
+			ExtraCodecs.INSTANT_CODEC.fieldOf("created").forGetter(User::created),
 		    Codec.dispatchedMap(Codec.STRING, INTEGRATION_CODECS::get).fieldOf("integrations").forGetter(User::integrations),
 		    Project.ID_CODEC.listOf()
 				    .xmap(list -> (Set<String>) new HashSet<>(list), set -> List.of(set.toArray(String[]::new)))

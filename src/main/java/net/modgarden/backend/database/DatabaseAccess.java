@@ -6,22 +6,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Types;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import net.modgarden.backend.HypertextResult;
 import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.data.Metadata;
-import net.modgarden.backend.data.NaturalId;
-import net.modgarden.backend.data.Permission;
-import net.modgarden.backend.data.PermissionScope;
-import net.modgarden.backend.data.Permissions;
-import net.modgarden.backend.data.Platform;
+import net.modgarden.backend.data.*;
 import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Genre;
 import net.modgarden.backend.data.event.Project;
@@ -29,6 +18,11 @@ import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.event.metadata.DraftMetadata;
 import net.modgarden.backend.data.event.metadata.ModMetadata;
 import net.modgarden.backend.data.event.platform.ModrinthPlatform;
+import net.modgarden.backend.data.user.User;
+import net.modgarden.backend.data.user.Bio;
+import net.modgarden.backend.data.user.integration.DiscordIntegration;
+import net.modgarden.backend.data.user.integration.MinecraftIntegration;
+import net.modgarden.backend.data.user.integration.ModrinthIntegration;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.exception.NotFoundException;
 import net.modgarden.backend.util.FallibleSupplier;
@@ -199,6 +193,170 @@ public final class DatabaseAccess implements AutoCloseable {
 	}
 
 	// Users
+
+	public User getUserFromId(
+			@NotNull String userId
+	) throws SQLException, HypertextException {
+		try (PreparedStatement usersStatement = this.getConnection()
+				.prepareStatement("""
+						SELECT username, created, permissions
+						FROM users
+						WHERE id = ?
+				""");
+			 PreparedStatement userBiosStatement = this.getConnection()
+			 	.prepareStatement("""
+						SELECT display_name, pronouns, description, avatar_url
+						FROM user_bios
+						WHERE user_id = ?
+				""");
+			 PreparedStatement userBioFieldsStatement = this.getConnection()
+			 	.prepareStatement("""
+						SELECT field_name, field_value
+						FROM user_bio_fields
+						WHERE user_id = ?
+						ORDER BY ROWID
+				""");
+			 PreparedStatement userIntegrationDiscordStatement = this.getConnection()
+				.prepareStatement("""
+						SELECT discord_id
+						FROM user_integration_discord
+						WHERE user_id = ?
+				""");
+			 PreparedStatement userIntegrationMinecraftStatement = this.getConnection()
+				.prepareStatement("""
+						SELECT uuid
+						FROM user_integration_minecraft
+						WHERE user_id = ?
+				""");
+			 PreparedStatement userIntegrationModrinthStatement = this.getConnection()
+				.prepareStatement("""
+						SELECT modrinth_id
+						FROM user_integration_modrinth
+						WHERE user_id = ?
+				""");
+			 PreparedStatement projectRolesStatement = this.getConnection()
+				.prepareStatement("""
+						SELECT project_id
+						FROM project_roles
+						WHERE user_id = ?
+				""")
+			 // TODO: Awards, Events and Roles at a later date.
+		) {
+			usersStatement.setString(1, userId);
+			ResultSet usersResult = usersStatement.executeQuery();
+
+			if (!usersResult.isBeforeFirst()) {
+				throw new NotFoundException("Could not find user '" + userId + "'");
+			}
+
+			String username = usersResult.getString("username");
+			Instant created = Instant.ofEpochMilli(usersResult.getLong("created"));
+			Permissions permissions = new Permissions(usersResult.getLong("permissions"));
+
+			userBiosStatement.setString(1, userId);
+			ResultSet userBiosResult = userBiosStatement.executeQuery();
+
+			if (!usersResult.isBeforeFirst()) {
+				throw new NotFoundException("Could not find bio for user '" + userId + "'");
+			}
+
+			String displayName = userBiosResult.getString("display_name");
+			String pronouns = userBiosResult.getString("pronouns");
+			String description = userBiosResult.getString("description");
+			String avatarUrl = userBiosResult.getString("avatar_url");
+			Map<String, String> fields = new LinkedHashMap<>();
+
+			userBioFieldsStatement.setString(1, userId);
+			ResultSet userBioFieldsResult = userBioFieldsStatement.executeQuery();
+			while (userBioFieldsResult.next()) {
+				fields.put(
+						userBioFieldsResult.getString("field_name"),
+						userBioFieldsResult.getString("field_value")
+				);
+			}
+
+			Bio bio = new Bio(
+					displayName,
+					pronouns,
+					description,
+					avatarUrl,
+					fields
+			);
+
+			Map<String, Integration> integrations = new LinkedHashMap<>();
+
+			userIntegrationDiscordStatement.setString(1, userId);
+			ResultSet usersIntegrationDiscordResult = userIntegrationDiscordStatement.executeQuery();
+
+			if (usersIntegrationDiscordResult.isBeforeFirst()) {
+				integrations.put("discord", new DiscordIntegration(usersIntegrationDiscordResult.getString("discord_id")));
+			}
+
+			userIntegrationMinecraftStatement.setString(1, userId);
+			ResultSet userIntegrationMinecraftResult = userIntegrationMinecraftStatement.executeQuery();
+
+			if (userIntegrationMinecraftResult.isBeforeFirst()) {
+				List<String> accounts = new ArrayList<>();
+				while (userIntegrationMinecraftResult.next()) {
+					accounts.add(userIntegrationMinecraftResult.getString("uuid"));
+				}
+				integrations.put("minecraft", new MinecraftIntegration(accounts));
+			}
+
+			userIntegrationModrinthStatement.setString(1, userId);
+			ResultSet userIntegrationModrinthResult = userIntegrationModrinthStatement.executeQuery();
+
+			if (userIntegrationModrinthResult.isBeforeFirst()) {
+				integrations.put("modrinth", new ModrinthIntegration(userIntegrationModrinthResult.getString("modrinth_id")));
+			}
+
+			Set<String> projects = new LinkedHashSet<>();
+
+			projectRolesStatement.setString(1, userId);
+			ResultSet projectRolesResult = projectRolesStatement.executeQuery();
+
+			while (projectRolesResult.next()) {
+				projects.add(projectRolesResult.getString("project_id"));
+			}
+
+			Set<String> awards = new LinkedHashSet<>();
+			Set<String> events = new LinkedHashSet<>();
+			Set<String> roles = new LinkedHashSet<>();
+
+			return new User(
+					userId,
+					username,
+					bio,
+					permissions,
+					created,
+					integrations,
+					projects,
+					awards,
+					events,
+					roles
+			);
+		}
+	}
+
+	public HypertextResult<String> getUserIdFromUsername(
+			@NotNull String username
+	) throws SQLException {
+		try (PreparedStatement prepared = this.getConnection()
+			.prepareStatement("""
+						SELECT id
+						FROM users
+						WHERE username = ?
+				""")
+		) {
+			prepared.setString(1, username);
+			ResultSet result = prepared.executeQuery();
+			if (!result.isBeforeFirst()) {
+				return new HypertextResult<>(404, "Could not find user '" + username + "'");
+			}
+
+			return new HypertextResult<>(result.getString("id"));
+		}
+	}
 
 	public boolean userExists(String id) throws SQLException {
 		try (PreparedStatement prepared = this.getConnection()
