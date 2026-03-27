@@ -36,7 +36,7 @@ public enum QueryKey {
 		try {
 			return QueryKey.valueOf(QueryKey.class, param.toUpperCase(Locale.ROOT));
 		} catch (IllegalArgumentException e) {
-			throw new NotFoundException("Query key context '" + param + "' does not exist");
+			throw new NotFoundException("Invalid query parameter ('" + QueryParameterType.BY_KEY + "'): " + param);
 		}
 	}
 }
