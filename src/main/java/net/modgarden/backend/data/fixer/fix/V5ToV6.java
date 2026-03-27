@@ -431,9 +431,8 @@ public class V5ToV6 extends DatabaseFix {
 		INSERT INTO users VALUES ('grbot', 'gardenbot', unix_millis(), 1)
 		""");
 		statement.addBatch("""
-		UPDATE user_bios
-		SET display_name = 'GardenBot', pronouns = 'it/its'
-		WHERE user_id = 'grbot'
+		INSERT INTO user_bios
+		VALUES ('grbot', 'GardenBot', 'it/its', NULL, NULL)
 		""");
 
 		statement.addBatch("""
