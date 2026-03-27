@@ -503,8 +503,8 @@ public final class DatabaseAccess implements AutoCloseable {
 			@NotNull String projectId
 	) throws SQLException, HypertextException {
 		Connection connection = this.getConnection();
-		Map<String, String> team = new HashMap<>();
-		Map<String, Permissions> permissions = new HashMap<>();
+		Map<String, String> team = new LinkedHashMap<>();
+		Map<String, Permissions> permissions = new LinkedHashMap<>();
 		List<String> submissions = new ArrayList<>();
 
 		try (
@@ -829,7 +829,7 @@ public final class DatabaseAccess implements AutoCloseable {
 				FROM event_integration_discord
 			""")) {
 			ResultSet discordIntegrationResultSet = discordIntegrationStatement.executeQuery();
-			Map<String, String> roleIds = new HashMap<>();
+			Map<String, String> roleIds = new LinkedHashMap<>();
 
 			while (discordIntegrationResultSet.next()) {
 				roleIds.put(discordIntegrationResultSet.getString("id"), discordIntegrationResultSet.getString("role_id"));
