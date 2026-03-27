@@ -4,7 +4,6 @@ import static net.modgarden.backend.endpoint.EndpointMethod.Method.GET;
 
 import io.javalin.http.Context;
 import net.modgarden.backend.database.DatabaseAccess;
-import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.query.QueryKey;
