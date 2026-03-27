@@ -14,7 +14,7 @@ import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Genre;
 import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
-import net.modgarden.backend.data.event.metadata.DraftMetadata;
+import net.modgarden.backend.data.event.metadata.NoneMetadata;
 import net.modgarden.backend.data.event.metadata.ModMetadata;
 import net.modgarden.backend.data.event.platform.ModrinthPlatform;
 import net.modgarden.backend.data.user.User;
@@ -609,7 +609,7 @@ public final class DatabaseAccess implements AutoCloseable {
 						projectModMetadataResult.getString("source_url")
 				);
 			} else if (projectDraftMetadataResult.isBeforeFirst()) {
-				metadata = new DraftMetadata(
+				metadata = new NoneMetadata(
 						projectDraftMetadataResult.getString("name")
 				);
 			} else {

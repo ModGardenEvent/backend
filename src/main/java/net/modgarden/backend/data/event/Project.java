@@ -18,10 +18,9 @@ import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.Metadata;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.Permissions;
-import net.modgarden.backend.data.event.metadata.DraftMetadata;
+import net.modgarden.backend.data.event.metadata.NoneMetadata;
 import net.modgarden.backend.data.event.metadata.ModMetadata;
 import net.modgarden.backend.data.user.User;
-import net.modgarden.backend.util.ExtraCodecs;
 
 // TODO: Allow creating organisations, allow projects to be attributed to an organisation.
 public record Project(String id,
@@ -30,7 +29,7 @@ public record Project(String id,
 					  Map<String, Permissions> permissions,
 					  List<String> submissions) {
 	private static final Map<String, MapCodec<Metadata>> METADATA_MAP_CODECS = Map.ofEntries(
-			entry("draft", fromMapCodec(DraftMetadata.CODEC)),
+			entry("none", fromMapCodec(NoneMetadata.CODEC)),
 			entry("mod", fromMapCodec(ModMetadata.CODEC))
 	);
 	private static final Codec<Metadata> METADATA_CODEC = Codec.STRING.dispatch(Metadata::typeName, METADATA_MAP_CODECS::get);
