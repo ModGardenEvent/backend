@@ -29,7 +29,13 @@ public record Submission(String id,
 			entry("modrinth", fromMapCodec(ModrinthPlatform.CODEC)),
 			entry("download_url", fromMapCodec(DownloadUrlPlatform.CODEC))
 	);
-	public static final Codec<Platform> PLATFORM_CODEC = Codec.STRING.dispatch(Platform::typeName, PLATFORM_MAP_CODECS::get);
+	private static final Codec<String> PLATFORM_KEY_CODEC = Codec.STRING.validate(key -> {
+		if (!PLATFORM_MAP_CODECS.containsKey(key)) {
+			return DataResult.error(() -> "Platform type '" + key + "' does not exist");
+		}
+		return DataResult.success(key);
+	});
+	public static final Codec<Platform> PLATFORM_CODEC = PLATFORM_KEY_CODEC.dispatch(Platform::typeName, PLATFORM_MAP_CODECS::get);
 
 	public static final Codec<Submission> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Submission::id),
