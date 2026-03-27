@@ -16,9 +16,9 @@ import java.util.Locale;
 
 @EndpointMethod(GET)
 @EndpointPath("/v2/users/{user_id}")
-public class GetUserEndpoint extends Endpoint {
+public class GetUserEndpoint extends UsersEndpoint {
 	public GetUserEndpoint() {
-		super(2, "users/{user_id}");
+		super("{user_id}");
 	}
 
 	@Override
@@ -50,7 +50,6 @@ public class GetUserEndpoint extends Endpoint {
 			return;
 		}
 		}
-
 
 		ctx.status(200);
 	}
