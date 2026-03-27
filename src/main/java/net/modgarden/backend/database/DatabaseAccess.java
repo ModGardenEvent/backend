@@ -438,6 +438,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			updateStatement.setString(1, roleName);
 			updateStatement.setString(2, projectId);
 			updateStatement.setString(3, userId);
+			updateStatement.executeUpdate();
 		}
 	}
 
