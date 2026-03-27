@@ -22,6 +22,8 @@ import net.modgarden.backend.data.user.Bio;
 import net.modgarden.backend.data.user.integration.DiscordIntegration;
 import net.modgarden.backend.data.user.integration.MinecraftIntegration;
 import net.modgarden.backend.data.user.integration.ModrinthIntegration;
+import net.modgarden.backend.data.user.role.RoleDiscordIntegration;
+import net.modgarden.backend.data.user.role.UserRole;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.exception.NotFoundException;
 import net.modgarden.backend.util.FallibleSupplier;
@@ -238,8 +240,13 @@ public final class DatabaseAccess implements AutoCloseable {
 						SELECT project_id
 						FROM project_roles
 						WHERE user_id = ?
+				""");
+			 PreparedStatement userRolesStatement = this.getConnection()
+				.prepareStatement("""
+						SELECT role_id
+						FROM user_roles
+						WHERE user_id = ?
 				""")
-			 // TODO: Awards, Events and Roles at a later date.
 		) {
 			usersStatement.setString(1, userId);
 			ResultSet usersResult = usersStatement.executeQuery();
@@ -249,8 +256,8 @@ public final class DatabaseAccess implements AutoCloseable {
 			}
 
 			String username = usersResult.getString("username");
-			Instant created = Instant.ofEpochMilli(usersResult.getLong("created"));
 			Permissions permissions = new Permissions(usersResult.getLong("permissions"));
+			Instant created = Instant.ofEpochMilli(usersResult.getLong("created"));
 
 			userBiosStatement.setString(1, userId);
 			ResultSet userBiosResult = userBiosStatement.executeQuery();
@@ -318,9 +325,18 @@ public final class DatabaseAccess implements AutoCloseable {
 				projects.add(projectRolesResult.getString("project_id"));
 			}
 
+			// TODO: Awards and Events at a later date.
 			Set<String> awards = new LinkedHashSet<>();
 			Set<String> events = new LinkedHashSet<>();
+
 			Set<String> roles = new LinkedHashSet<>();
+
+			userRolesStatement.setString(1, userId);
+			ResultSet userRolesResult = userRolesStatement.executeQuery();
+
+			while (userRolesResult.next()) {
+				roles.add(userRolesResult.getString("role_id"));
+			}
 
 			return new User(
 					userId,
@@ -372,10 +388,58 @@ public final class DatabaseAccess implements AutoCloseable {
 			userStatement.setString(1, userId);
 			ResultSet resultSet = userStatement.executeQuery();
 			if (!resultSet.isBeforeFirst()) {
-				throw new NotFoundException("User does not exist.");
+				throw new NotFoundException("User '" + userId + "' does not exist.");
 			}
 
 			return new Permissions(resultSet.getLong("permissions"));
+		}
+	}
+
+	public UserRole getUserRoleFromId(String roleId) throws SQLException, HypertextException {
+		try (var userRoleDefinitionStatement = this.getConnection()
+				.prepareStatement("""
+						SELECT name, permissions, created
+						FROM user_role_definitions
+						WHERE id = ?
+					""");
+		     var userRoleIntegrationDiscordStatement = this.getConnection()
+					 .prepareStatement("""
+							SELECT discord_id, permissions
+							FROM user_role_integration_discord
+							WHERE role_id = ?
+						""")
+		) {
+			userRoleDefinitionStatement.setString(1, roleId);
+			ResultSet resultSet = userRoleDefinitionStatement.executeQuery();
+			if (!resultSet.isBeforeFirst()) {
+				throw new NotFoundException("User role '" + roleId + "' does not exist.");
+			}
+
+			String name = resultSet.getString("name");
+			Permissions permissions = new Permissions(resultSet.getLong("permissions"));
+			Instant created = Instant.ofEpochMilli(resultSet.getLong("created"));
+
+			Map<String, Integration> integrations = new LinkedHashMap<>();
+
+			userRoleIntegrationDiscordStatement.setString(1, roleId);
+			ResultSet userRolesIntegrationDiscordResult = userRoleIntegrationDiscordStatement.executeQuery();
+
+			if (userRolesIntegrationDiscordResult.isBeforeFirst()) {
+				integrations.put("discord",
+						new RoleDiscordIntegration(
+								userRolesIntegrationDiscordResult.getString("discord_id"),
+								userRolesIntegrationDiscordResult.getString("permissions")
+						)
+				);
+			}
+
+			return new UserRole(
+					roleId,
+					name,
+					permissions,
+					created,
+					integrations
+			);
 		}
 	}
 

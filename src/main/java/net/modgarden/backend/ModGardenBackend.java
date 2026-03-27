@@ -40,6 +40,7 @@ import net.modgarden.backend.data.event.Project;
 import net.modgarden.backend.data.event.Submission;
 import net.modgarden.backend.data.fixer.DatabaseFixer;
 import net.modgarden.backend.data.user.User;
+import net.modgarden.backend.data.user.role.UserRole;
 import net.modgarden.backend.database.function.GenerateNaturalIdFunction;
 import net.modgarden.backend.database.function.HasPermissionsFunction;
 import net.modgarden.backend.database.function.UnixMillisFunction;
@@ -58,6 +59,7 @@ import net.modgarden.backend.endpoint.v2.projects.DeleteProjectEndpoint;
 import net.modgarden.backend.endpoint.v2.projects.GetProjectEndpoint;
 import net.modgarden.backend.endpoint.v2.projects.ModifyMembersEndpoint;
 import net.modgarden.backend.endpoint.v2.projects.SetPermissionsEndpoint;
+import net.modgarden.backend.endpoint.v2.roles.GetRoleEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.CreateSubmissionEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.DeleteSubmissionEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.GetSubmissionEndpoint;
@@ -121,6 +123,7 @@ public class ModGardenBackend {
 		registerCodec(Project.class, Project.DIRECT_CODEC);
 		registerCodec(Submission.class, Submission.DIRECT_CODEC);
 		registerCodec(User.class, User.DIRECT_CODEC);
+		registerCodec(UserRole.class, UserRole.DIRECT_CODEC);
 		registerCodec(AwardInstance.FullAwardData.class, AwardInstance.FullAwardData.CODEC);
 		registerCodec(GenerateKeyEndpoint.Response.class, GenerateKeyEndpoint.Response.CODEC);
 		registerCodec(ListKeysEndpoint.Response.class, ListKeysEndpoint.Response.CODEC);
@@ -184,6 +187,8 @@ public class ModGardenBackend {
 		get(GetSubmissionEndpoint::new);
 
 		get(GetUserEndpoint::new);
+
+		get(GetRoleEndpoint::new);
 	}
 
 	private void get(Supplier<Endpoint> endpointSupplier) {
