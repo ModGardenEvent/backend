@@ -11,7 +11,6 @@ import net.modgarden.backend.endpoint.v2.query.QueryKey;
 import net.modgarden.backend.endpoint.v2.query.QueryParameterType;
 import org.jetbrains.annotations.NotNull;
 
-// TODO: Require view project permissions or being a member of the project to view draft projects.
 @EndpointMethod(GET)
 @EndpointPath("/v2/projects/{id}")
 public class GetProjectEndpoint extends Endpoint {

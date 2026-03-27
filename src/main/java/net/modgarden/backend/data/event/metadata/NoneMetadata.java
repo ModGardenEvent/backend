@@ -12,7 +12,7 @@ public record NoneMetadata(String name) implements Metadata {
 
 	@Override
 	public String typeName() {
-		return "draft";
+		return "none";
 	}
 
 	@Override

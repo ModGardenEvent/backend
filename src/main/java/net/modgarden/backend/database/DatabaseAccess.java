@@ -451,8 +451,8 @@ public final class DatabaseAccess implements AutoCloseable {
 					INSERT INTO projects (id)
 					VALUES (?)
 				""");
-				var projectDraftMetadataStatement = this.getConnection().prepareStatement("""
-					INSERT INTO project_draft_metadata (project_id, name)
+				var projectNoneMetadataStatement = this.getConnection().prepareStatement("""
+					INSERT INTO project_none_metadata (project_id, name)
 					VALUES (?, ?)
 				""");
 				var projectRolesStatement = this.getConnection().prepareStatement("""
@@ -463,9 +463,9 @@ public final class DatabaseAccess implements AutoCloseable {
 			projectStatement.setString(1, projectId);
 			projectStatement.executeUpdate();
 
-			projectDraftMetadataStatement.setString(1, projectId);
-			projectDraftMetadataStatement.setString(2, name);
-			projectDraftMetadataStatement.executeUpdate();
+			projectNoneMetadataStatement.setString(1, projectId);
+			projectNoneMetadataStatement.setString(2, name);
+			projectNoneMetadataStatement.executeUpdate();
 
 			projectRolesStatement.setString(1, projectId);
 			projectRolesStatement.setString(2, ownerUserId);
@@ -577,9 +577,9 @@ public final class DatabaseAccess implements AutoCloseable {
 					FROM project_roles
 					WHERE project_id = ?
 				""");
-				var projectDraftMetadataStatement = connection.prepareStatement("""
+				var projectNoneMetadataStatement = connection.prepareStatement("""
 					SELECT name
-					FROM project_draft_metadata
+					FROM project_none_metadata
 					WHERE project_id = ?
 				""");
 				var projectModMetadataStatement = connection.prepareStatement("""
@@ -597,8 +597,8 @@ public final class DatabaseAccess implements AutoCloseable {
 			projectModMetadataStatement.setString(1, projectId);
 			ResultSet projectModMetadataResult = projectModMetadataStatement.executeQuery();
 
-			projectDraftMetadataStatement.setString(1, projectId);
-			ResultSet projectDraftMetadataResult = projectDraftMetadataStatement.executeQuery();
+			projectNoneMetadataStatement.setString(1, projectId);
+			ResultSet projectNoneMetadataResult = projectNoneMetadataStatement.executeQuery();
 
 			Metadata metadata;
 			if (projectModMetadataResult.isBeforeFirst()) {
@@ -608,9 +608,9 @@ public final class DatabaseAccess implements AutoCloseable {
 						projectModMetadataResult.getString("description"),
 						projectModMetadataResult.getString("source_url")
 				);
-			} else if (projectDraftMetadataResult.isBeforeFirst()) {
+			} else if (projectNoneMetadataResult.isBeforeFirst()) {
 				metadata = new NoneMetadata(
-						projectDraftMetadataResult.getString("name")
+						projectNoneMetadataResult.getString("name")
 				);
 			} else {
 				throw new NotFoundException("Could not find metadata for project '" + projectId + "'");

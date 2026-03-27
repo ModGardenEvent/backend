@@ -392,7 +392,7 @@ public class ModGardenBackend {
 			)
 			""");
 			statement.addBatch("""
-				CREATE TABLE IF NOT EXISTS project_draft_metadata (
+				CREATE TABLE IF NOT EXISTS project_none_metadata (
 					project_id TEXT UNIQUE NOT NULL,
 					name TEXT NOT NULL,
 					FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
