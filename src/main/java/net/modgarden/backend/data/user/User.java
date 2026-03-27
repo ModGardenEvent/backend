@@ -42,6 +42,12 @@ public record User(
 			entry("discord", fromCodec(DiscordIntegration.CODEC)),
 			entry("minecraft", fromCodec(MinecraftIntegration.CODEC))
 	);
+	private static final Codec<String> INTEGRATION_CODEC_KEY = Codec.STRING.validate(key -> {
+		if (!INTEGRATION_CODECS.containsKey(key)) {
+			return DataResult.error(() -> "Integration type '" + key + "' does not exist for users");
+		}
+		return DataResult.success(key);
+	});
 
     public static final Codec<User> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
@@ -49,7 +55,7 @@ public record User(
 			Bio.DIRECT_CODEC.fieldOf("bio").forGetter(User::bio),
 			Permission.STRING_PERMISSIONS_CODEC.fieldOf("permissions").forGetter(User::permissions),
 			ExtraCodecs.INSTANT_CODEC.fieldOf("created").forGetter(User::created),
-		    Codec.dispatchedMap(Codec.STRING, INTEGRATION_CODECS::get).fieldOf("integrations").forGetter(User::integrations),
+		    Codec.dispatchedMap(INTEGRATION_CODEC_KEY, INTEGRATION_CODECS::get).fieldOf("integrations").forGetter(User::integrations),
 		    Project.ID_CODEC.listOf()
 				    .xmap(list -> (Set<String>) new HashSet<>(list), set -> List.of(set.toArray(String[]::new)))
 				    .fieldOf("projects")
