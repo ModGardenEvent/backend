@@ -1,6 +1,11 @@
-package net.modgarden.backend.endpoint;
+package net.modgarden.backend.endpoint.internal;
 
+import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.PermissionScope;
+import net.modgarden.backend.endpoint.AuthorizedEndpoint;
+import net.modgarden.backend.endpoint.Endpoint;
+import net.modgarden.backend.endpoint.EndpointPath;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * A kind of {@link Endpoint} that is used only internally.
@@ -13,9 +18,16 @@ import net.modgarden.backend.data.PermissionScope;
 @EndpointPath("/internal")
 public abstract class InternalEndpoint extends AuthorizedEndpoint {
 	public InternalEndpoint(
-			String path,
-			boolean hasBody
+			String path
 	) {
 		super("/internal/" + path, PermissionScope.USER);
+	}
+
+	@Nullable
+	@Override
+	protected Permission[] requiredPermissions() {
+		return new Permission[] {
+				Permission.ADMINISTRATOR
+		};
 	}
 }

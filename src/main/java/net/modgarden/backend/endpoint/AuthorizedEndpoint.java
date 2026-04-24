@@ -36,7 +36,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 		this.permissionScope = permissionScope;
 	}
 
-	AuthorizedEndpoint(String path, PermissionScope permissionScope) {
+	protected AuthorizedEndpoint(String path, PermissionScope permissionScope) {
 		super(path);
 		this.permissionScope = permissionScope;
 	}
@@ -78,10 +78,19 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 
 	protected abstract void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception;
 
+	@Nullable
+	protected Permission[] requiredPermissions() {
+		return null;
+	}
+
 	@Override
 	public final void onRequest(@NotNull Context ctx) throws Exception {
 		ValidationResult validationResult = validateAuth(ctx);
 		if (!validationResult.authorized()) {
+			return;
+		}
+
+		if (this.requiredPermissions() != null && this.requireAllPermissions(ctx, validationResult.scopePermissions(), requiredPermissions())) {
 			return;
 		}
 
@@ -181,7 +190,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 				// validate permission scope matches
 				PermissionScope scope = apiKeyScope.scope();
 				if (scope != this.permissionScope && this.permissionScope != PermissionScope.ALL) {
-					ctx.result("Permission scope " + scope + " does not match the scope " + this.permissionScope + " for this endpoint .");
+					ctx.result("Permission scope " + scope + " does not match the scope " + this.permissionScope + " for this endpoint.");
 					ctx.status(403);
 					return ValidationResult.no();
 				}

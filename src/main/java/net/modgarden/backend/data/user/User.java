@@ -4,10 +4,7 @@ import static java.util.Map.entry;
 import static net.modgarden.backend.data.Integration.fromCodec;
 
 import java.time.Instant;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
@@ -49,6 +46,7 @@ public record User(
 		return DataResult.success(key);
 	});
 
+
     public static final Codec<User> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
             Codec.STRING.fieldOf("username").forGetter(User::username),
@@ -73,15 +71,28 @@ public record User(
 				    .fieldOf("roles")
 				    .forGetter(User::roles)
     ).apply(inst, User::new));
-    public static final Codec<String> ID_CODEC = Codec.STRING.validate(User::validate);
+    public static final Codec<String> ID_CODEC = Codec.STRING.validate(User::validateId);
+	public static final Codec<String> NEW_USERNAME_CODEC = Codec.STRING
+			.xmap(s -> s.toLowerCase(Locale.ROOT), s -> s)
+			.validate(User::validateMewUsername);
 
-	private static DataResult<String> validate(String id) {
+	private static DataResult<String> validateId(String id) {
 		DatabaseAccess db = DatabaseAccess.get();
 
-		if (db.logIfThrown(() -> db.userExists(id))) {
+		if (db.logIfThrown(() -> db.userIdExists(id))) {
 			return DataResult.success(id);
 		} else {
 			return DataResult.error(() -> "Failed to get user with id '" + id + "'.");
 		}
     }
+
+	private static DataResult<String> validateMewUsername(String username) {
+		DatabaseAccess db = DatabaseAccess.get();
+
+		if (db.logIfThrown(() -> !db.usernameExists(username))) {
+			return DataResult.success(username);
+		} else {
+			return DataResult.error(() -> "User with username '" + username + "' already exists.");
+		}
+	}
 }

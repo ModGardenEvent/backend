@@ -195,6 +195,46 @@ public final class DatabaseAccess implements AutoCloseable {
 
 	// Users
 
+	/**
+	 * @return The created user's ID.
+	 */
+	public String createUser(String username) throws SQLException, HypertextException {
+		try (
+				PreparedStatement insertUserStatement = this.getConnection()
+						.prepareStatement("""
+							INSERT INTO users (id, username, permissions, created)
+							VALUES (generate_natural_id('users', 'id', NULL, 5), ?, ?, unix_millis())
+						""");
+				PreparedStatement getUserIdStatement = this.getConnection()
+						.prepareStatement("""
+							SELECT id
+							FROM users
+							WHERE username = ?
+						""");
+				PreparedStatement userBiosStatement = this.getConnection()
+						.prepareStatement("""
+							INSERT INTO user_bios (user_id, display_name, pronouns, description, avatar_url)
+							VALUES (?, NULL, NULL, NULL, NULL)
+						""")
+		) {
+			insertUserStatement.setString(1, username);
+			insertUserStatement.setLong(2, 0);
+			insertUserStatement.execute();
+
+			getUserIdStatement.setString(1, username);
+			ResultSet resultSet = getUserIdStatement.executeQuery();
+			if (!resultSet.isBeforeFirst()) {
+				throw new HypertextException(500, "Could not obtain user id after creation");
+			}
+			String id = resultSet.getString("id");
+
+			userBiosStatement.setString(1, id);
+			userBiosStatement.execute();
+
+			return id;
+		}
+	}
+
 	public User getUserFromId(
 			@NotNull String userId
 	) throws SQLException, HypertextException {
@@ -262,7 +302,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			userBiosStatement.setString(1, userId);
 			ResultSet userBiosResult = userBiosStatement.executeQuery();
 
-			if (!usersResult.isBeforeFirst()) {
+			if (!userBiosResult.isBeforeFirst()) {
 				throw new NotFoundException("Could not find bio for user '" + userId + "'");
 			}
 
@@ -373,9 +413,18 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	public boolean userExists(String id) throws SQLException {
+	public boolean userIdExists(String id) throws SQLException {
 		try (PreparedStatement prepared = this.getConnection()
 				.prepareStatement("SELECT 1 FROM users WHERE id = ?")) {
+			prepared.setString(1, id);
+			ResultSet result = prepared.executeQuery();
+			return result != null && result.getBoolean(1);
+		}
+	}
+
+	public boolean usernameExists(String id) throws SQLException {
+		try (PreparedStatement prepared = this.getConnection()
+				.prepareStatement("SELECT 1 FROM users WHERE username = ?")) {
 			prepared.setString(1, id);
 			ResultSet result = prepared.executeQuery();
 			return result != null && result.getBoolean(1);
@@ -461,15 +510,15 @@ public final class DatabaseAccess implements AutoCloseable {
 				""")
 		) {
 			projectStatement.setString(1, projectId);
-			projectStatement.executeUpdate();
+			projectStatement.execute();
 
 			projectNoneMetadataStatement.setString(1, projectId);
 			projectNoneMetadataStatement.setString(2, name);
-			projectNoneMetadataStatement.executeUpdate();
+			projectNoneMetadataStatement.execute();
 
 			projectRolesStatement.setString(1, projectId);
 			projectRolesStatement.setString(2, ownerUserId);
-			projectRolesStatement.executeUpdate();
+			projectRolesStatement.execute();
 		}
 	}
 

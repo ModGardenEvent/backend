@@ -46,6 +46,7 @@ import net.modgarden.backend.database.function.HasPermissionsFunction;
 import net.modgarden.backend.database.function.UnixMillisFunction;
 import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.endpoint.exception.HypertextException;
+import net.modgarden.backend.endpoint.internal.user.CreateUserEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.api_key.DeleteKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.api_key.GenerateKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.api_key.ListKeysEndpoint;
@@ -135,6 +136,7 @@ public class ModGardenBackend {
 		backend = new ModGardenBackend(app);
 
 		backend.v2();
+		backend.internal();
 
 		app.exception(HypertextException.class, (e, ctx) -> {
 			ctx.status(e.getStatus());
@@ -189,6 +191,10 @@ public class ModGardenBackend {
 		get(GetUserEndpoint::new);
 
 		get(GetRoleEndpoint::new);
+	}
+
+	public void internal() {
+		post(CreateUserEndpoint::new);
 	}
 
 	private void get(Supplier<Endpoint> endpointSupplier) {
@@ -287,7 +293,7 @@ public class ModGardenBackend {
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS user_bios (
 				user_id TEXT UNIQUE NOT NULL,
-				display_name TEXT NOT NULL,
+				display_name TEXT,
 				pronouns TEXT,
 				description TEXT,
 				avatar_url TEXT,

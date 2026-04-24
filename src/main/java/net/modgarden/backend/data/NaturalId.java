@@ -12,6 +12,7 @@ import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.oauth.OAuthService;
 import net.modgarden.backend.oauth.client.BunnyCdnOAuthClient;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public final class NaturalId {
 	private static final Pattern PATTERN = Pattern.compile("^[a-z]{5}$");
@@ -44,7 +45,9 @@ public final class NaturalId {
 	}
 
 	@NotNull
-	public static String generate(String table, String key, String key2,
+	public static String generate(String table,
+								  String key,
+								  @Nullable String key2,
 								  int length) throws SQLException {
 		String id = null;
 		try (Connection connection1 = ModGardenBackend.createDatabaseConnection()) {

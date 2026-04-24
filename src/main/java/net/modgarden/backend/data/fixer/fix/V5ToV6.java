@@ -106,7 +106,7 @@ public class V5ToV6 extends DatabaseFix {
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS user_bios (
 			user_id TEXT UNIQUE NOT NULL,
-			display_name TEXT NOT NULL,
+			display_name TEXT,
 			pronouns TEXT,
 			description TEXT,
 			avatar_url TEXT,
