@@ -11,17 +11,17 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
 
-public record Landing(String homepage,
-                      String discord,
-                      String name,
-                      String version) {
-    public static final Codec<Landing> CODEC = RecordCodecBuilder.create(inst -> inst.group(
-            Codec.STRING.fieldOf("homepage").forGetter(Landing::homepage),
-            Codec.STRING.fieldOf("discord").forGetter(Landing::discord),
-            Codec.STRING.fieldOf("name").forGetter(Landing::name),
-            Codec.STRING.fieldOf("version").forGetter(Landing::version)
-    ).apply(inst, Landing::new));
-    private static Landing instance;
+public record LandingPage(String homepage,
+                          String discord,
+                          String name,
+                          String version) {
+    public static final Codec<LandingPage> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+            Codec.STRING.fieldOf("homepage").forGetter(LandingPage::homepage),
+            Codec.STRING.fieldOf("discord").forGetter(LandingPage::discord),
+            Codec.STRING.fieldOf("name").forGetter(LandingPage::name),
+            Codec.STRING.fieldOf("version").forGetter(LandingPage::version)
+    ).apply(inst, LandingPage::new));
+    private static LandingPage instance;
 
     public static void getLandingJson(Context ctx) {
         if (instance == null) {
@@ -32,12 +32,12 @@ public record Landing(String homepage,
                 ctx.status(404);
                 return;
             }
-            instance = ctx.jsonMapper().fromJsonStream(landingFile, Landing.class);
+            instance = ctx.jsonMapper().fromJsonStream(landingFile, LandingPage.class);
         }
         ctx.json(instance);
     }
 
-    public static Landing getInstance() {
+    public static LandingPage getInstance() {
         return instance;
     }
 

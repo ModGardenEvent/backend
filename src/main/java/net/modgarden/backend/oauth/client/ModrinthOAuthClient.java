@@ -6,11 +6,11 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
 import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.data.Landing;
+import net.modgarden.backend.data.LandingPage;
 
 public record ModrinthOAuthClient() implements OAuthClient {
 	public static final String API_URL = "https://api.modrinth.com/";
-	private static final String USER_AGENT = "ModGardenEvent/backend/" + Landing.getInstance().version() + " (modgarden.net)";
+	private static final String USER_AGENT = "ModGardenEvent/backend/" + LandingPage.getInstance().version() + " (modgarden.net)";
 
     @Override
 	public <T> HttpResponse<T> get(String endpoint, HttpResponse.BodyHandler<T> bodyHandler, String... headers) throws IOException, InterruptedException {

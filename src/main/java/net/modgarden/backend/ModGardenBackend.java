@@ -29,9 +29,9 @@ import com.mojang.serialization.JsonOps;
 import io.github.cdimascio.dotenv.Dotenv;
 import io.javalin.Javalin;
 import io.javalin.json.JsonMapper;
-import net.modgarden.backend.data.BackendError;
+import net.modgarden.backend.data.ExceptionPage;
 import net.modgarden.backend.data.DevelopmentModeData;
-import net.modgarden.backend.data.Landing;
+import net.modgarden.backend.data.LandingPage;
 import net.modgarden.backend.data.award.Award;
 import net.modgarden.backend.data.award.AwardInstance;
 import net.modgarden.backend.data.event.Event;
@@ -95,7 +95,7 @@ public class ModGardenBackend {
 		if ("development".equals(DOTENV.get("env")))
 			((ch.qos.logback.classic.Logger)LOG).setLevel(Level.DEBUG);
 
-		Landing.createInstance();
+		LandingPage.createInstance();
 
 		try {
 			boolean createdFile = new File("./database.db").createNewFile();
@@ -113,8 +113,8 @@ public class ModGardenBackend {
 			LOG.error("Failed to create database file.", ex);
 		}
 
-		registerCodec(Landing.class, Landing.CODEC);
-		registerCodec(BackendError.class, BackendError.CODEC);
+		registerCodec(LandingPage.class, LandingPage.CODEC);
+		registerCodec(ExceptionPage.class, ExceptionPage.CODEC);
 		registerCodec(Award.class, Award.DIRECT_CODEC);
 		registerCodec(Event.class, Event.DIRECT_CODEC);
 		registerCodec(Event.ApiFormat.class, Event.ApiFormat.CODEC);
@@ -131,7 +131,7 @@ public class ModGardenBackend {
 		AuthUtil.clearTokensEachFifteenMinutes();
 
 		Javalin app = Javalin.create(config -> config.jsonMapper(createDFUMapper()));
-		app.get("", Landing::getLandingJson);
+		app.get("", LandingPage::getLandingJson);
 		backend = new ModGardenBackend(app);
 
 		backend.v2();
@@ -139,24 +139,24 @@ public class ModGardenBackend {
 		app.exception(HypertextException.class, (e, ctx) -> {
 			ctx.status(e.getStatus());
 			ctx.result(e.getMessage());
-			BackendError.handleError(ctx);
+			ExceptionPage.handleError(ctx);
 		});
 		app.exception(NullPointerException.class, (e, ctx) -> {
 			ctx.status(404);
 			ctx.result(e.getMessage());
-			BackendError.handleError(ctx);
+			ExceptionPage.handleError(ctx);
 		});
 		app.exception(SQLException.class, (e, ctx) -> {
 			ctx.status(500);
 			ctx.result("Internal Error");
 			LOG.error("", e);
-			BackendError.handleError(ctx);
+			ExceptionPage.handleError(ctx);
 		});
 		app.exception(UnsupportedOperationException.class, (e, ctx) -> {
 			ctx.status(500);
 			ctx.result("Internal Error");
 			LOG.error("", e);
-			BackendError.handleError(ctx);
+			ExceptionPage.handleError(ctx);
 		});
 
 		app.start(7070);

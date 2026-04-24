@@ -14,7 +14,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.data.Landing;
+import net.modgarden.backend.data.LandingPage;
 import net.modgarden.backend.data.Metadata;
 import net.modgarden.backend.data.event.metadata.ModMetadata;
 import net.modgarden.backend.endpoint.exception.HypertextException;
@@ -29,7 +29,7 @@ import org.jetbrains.annotations.Nullable;
 /// @see Metadata
 /// @see ModMetadata
 public class MetadataUtils {
-	private static final String USER_AGENT = "ModGardenEvent/backend/" + Landing.getInstance().version() + " (modgarden.net)";
+	private static final String USER_AGENT = "ModGardenEvent/backend/" + LandingPage.getInstance().version() + " (modgarden.net)";
 
 	public static Metadata getMetadataFromModrinth(String modrinthProjectId,
 												   String modrinthVersionId) throws Exception {
