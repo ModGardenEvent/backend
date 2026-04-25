@@ -198,18 +198,12 @@ public final class DatabaseAccess implements AutoCloseable {
 	/**
 	 * @return The created user's ID.
 	 */
-	public String createUser(String username) throws SQLException, HypertextException {
+	public String createUser(String username) throws SQLException {
 		try (
 				PreparedStatement insertUserStatement = this.getConnection()
 						.prepareStatement("""
 							INSERT INTO users (id, username, permissions, created)
-							VALUES (generate_natural_id('users', 'id', NULL, 5), ?, ?, unix_millis())
-						""");
-				PreparedStatement getUserIdStatement = this.getConnection()
-						.prepareStatement("""
-							SELECT id
-							FROM users
-							WHERE username = ?
+							VALUES (?, ?, ?, unix_millis())
 						""");
 				PreparedStatement userBiosStatement = this.getConnection()
 						.prepareStatement("""
@@ -217,16 +211,11 @@ public final class DatabaseAccess implements AutoCloseable {
 							VALUES (?, NULL, NULL, NULL, NULL)
 						""")
 		) {
-			insertUserStatement.setString(1, username);
-			insertUserStatement.setLong(2, 0);
+			String id = NaturalId.generate("users", "id", null, 5);
+			insertUserStatement.setString(1, id);
+			insertUserStatement.setString(2, username);
+			insertUserStatement.setLong(3, 0);
 			insertUserStatement.execute();
-
-			getUserIdStatement.setString(1, username);
-			ResultSet resultSet = getUserIdStatement.executeQuery();
-			if (!resultSet.isBeforeFirst()) {
-				throw new HypertextException(500, "Could not obtain user id after creation");
-			}
-			String id = resultSet.getString("id");
 
 			userBiosStatement.setString(1, id);
 			userBiosStatement.execute();
