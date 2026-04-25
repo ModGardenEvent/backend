@@ -789,11 +789,28 @@ public final class DatabaseAccess implements AutoCloseable {
 		return project.submissions().getLast();
 	}
 
-	public String createEmptySubmission(String eventId, String projectId) throws SQLException {
-		try (var submissionsStatement = this.getConnection().prepareStatement("""
+	public String createEmptySubmission(String eventId, String projectId) throws SQLException, HypertextException {
+		try (
+				var endTimeStatement = this.getConnection().prepareStatement("""
+					SELECT 1
+					FROM events
+					WHERE id = ? AND start_time >= ? AND end_time < ?
+				""");
+				var submissionsStatement = this.getConnection().prepareStatement("""
 					INSERT INTO submissions (id, theme_id, project_id, submitted)
 					VALUES (?, ?, ?, ?)
-				""")) {
+				""")
+		) {
+			long currentMs = System.currentTimeMillis();
+			endTimeStatement.setString(1, eventId);
+			endTimeStatement.setLong(2, currentMs);
+			endTimeStatement.setLong(3, currentMs);
+			ResultSet endTimeResult = endTimeStatement.executeQuery();
+
+			if (!endTimeResult.isBeforeFirst()) {
+				throw new HypertextException(403, "Event '" + eventId + "' is not open to submissions");
+			}
+
 			String submissionId = NaturalId.generate("submissions", "id", null, 5);
 			submissionsStatement.setString(1, submissionId);
 			submissionsStatement.setString(2, eventId);
