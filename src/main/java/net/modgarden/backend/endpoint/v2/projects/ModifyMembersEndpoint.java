@@ -13,6 +13,7 @@ import net.modgarden.backend.data.user.User;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.util.NullableCodec;
 import org.jetbrains.annotations.NotNull;
 
@@ -37,8 +38,10 @@ public class ModifyMembersEndpoint extends AuthorizedProjectEndpoint {
 			String memberId = entry.getKey();
 			String role = entry.getValue().orElse(null);
 
-			// If a non-administrator attempts to modify an administrator, return.
-			db.assertUserCanModifyMember(projectId, memberId, scopePermissions);
+			// If a non-administrator attempts to modify an administrator, throw.
+			if (!db.canUserModifyMember(projectId, memberId, scopePermissions)) {
+				throw new HypertextException(403, "Non-administrators may not edit administrators' permissions on projects");
+			}
 
 			if (role == null) {
 				Permissions memberPermissions = db.getProjectMemberPermissions(memberId, projectId);

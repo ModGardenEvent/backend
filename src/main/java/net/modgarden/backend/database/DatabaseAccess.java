@@ -562,9 +562,9 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	public void assertUserCanModifyMember(
+	public boolean canUserModifyMember(
 			String projectId,
-			String memberUserIdToModify,
+			String targetUserIdToModify,
 			Permissions selfPermissions
 	) throws SQLException, HypertextException {
 		try (var memberPermissionsStatement = this.getConnection().prepareStatement("""
@@ -573,14 +573,12 @@ public final class DatabaseAccess implements AutoCloseable {
 					WHERE project_id = ? AND user_id = ?
 				""")) {
 			memberPermissionsStatement.setString(1, projectId);
-			memberPermissionsStatement.setString(2, memberUserIdToModify);
+			memberPermissionsStatement.setString(2, targetUserIdToModify);
 			ResultSet memberPermissionsResult = memberPermissionsStatement.executeQuery();
 			Permissions memberPermissions = new Permissions(memberPermissionsResult.getLong(1));
 
-			// If a non-administrator attempts to edit the permissions of an administrator, throw.
-			if (memberPermissions.hasPermissions(Permission.ADMINISTRATOR) && !selfPermissions.hasPermissions(Permission.ADMINISTRATOR)) {
-				throw new HypertextException(403, "Non-administrators may not edit administrators' permissions on projects");
-			}
+			// Return true if self can edit project, and if the target is not an administrator, or if self is an administrator.
+			return selfPermissions.hasPermissions(Permission.EDIT_PROJECT) && (!memberPermissions.hasPermissions(Permission.ADMINISTRATOR) || selfPermissions.hasPermissions(Permission.ADMINISTRATOR));
 		}
 	}
 
@@ -755,12 +753,6 @@ public final class DatabaseAccess implements AutoCloseable {
 			projectStatement.setString(1, projectId);
 			ResultSet resultSet = projectStatement.executeQuery();
 			return resultSet.isBeforeFirst();
-		}
-	}
-
-	public void assertProjectExists(String projectId) throws SQLException, HypertextException {
-		if (!this.projectExists(projectId)) {
-			throw new NotFoundException("Project with ID " + projectId + " does not exist");
 		}
 	}
 

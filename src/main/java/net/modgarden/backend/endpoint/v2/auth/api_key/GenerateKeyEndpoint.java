@@ -19,6 +19,7 @@ import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.exception.NotFoundException;
 import net.modgarden.backend.endpoint.v2.AuthEndpoint;
 import net.modgarden.backend.util.ExtraCodecs;
 import net.modgarden.backend.util.UuidUtils;
@@ -56,8 +57,8 @@ public final class GenerateKeyEndpoint extends AuthEndpoint {
 
 		DatabaseAccess db = DatabaseAccess.get();
 
-		if (projectId != null) {
-			db.assertProjectExists(projectId);
+		if (projectId != null && !db.projectExists(projectId)) {
+			throw new NotFoundException("Project with ID " + projectId + " does not exist");
 		}
 
 		switch (request.scope().id()) {
