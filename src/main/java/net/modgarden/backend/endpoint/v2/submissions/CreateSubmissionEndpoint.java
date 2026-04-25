@@ -30,6 +30,11 @@ public class CreateSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
 		if (request == null) return;
 
 		DatabaseAccess db = DatabaseAccess.get();
+
+		if (!db.areSubmissionsOpenForEvent(request.eventId)) {
+			throw new HypertextException(403, "Event '" + request.eventId + "' is not open to submissions");
+		}
+
 		String submissionId = db.createEmptySubmission(request.eventId(), request.projectId());
 		request.platform().addToDatabase(db, request.projectId(), submissionId);
 		ctx.status(201);
