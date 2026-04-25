@@ -3,7 +3,6 @@ package net.modgarden.backend.endpoint.internal.user;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
-import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.data.user.User;
 import net.modgarden.backend.database.DatabaseAccess;
@@ -28,8 +27,8 @@ public class CreateUserEndpoint extends InternalEndpoint {
 		Request request = decodeBody(ctx, Request.CODEC);
 		String newUserId = db.createUser(request.username());
 
-		ctx.result(ModGardenBackend.URL + "/v2/users/" + newUserId);
 		ctx.status(201);
+		ctx.header("Location", "/v2/users/" + newUserId);
 	}
 
 	public record Request(String username) {
