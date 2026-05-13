@@ -1,9 +1,9 @@
-package net.modgarden.backend.data.event.platform;
+package net.modgarden.backend.data.project.platform;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.modgarden.backend.data.Platform;
+import net.modgarden.backend.data.project.SubmissionPlatform;
 import net.modgarden.backend.database.DatabaseAccess;
 
 /// A platform for download URLs, useful for Git Releases without depending on a specific Git host.
@@ -18,10 +18,11 @@ import net.modgarden.backend.database.DatabaseAccess;
 ///
 /// @param downloadUrl A direct download link to a mod JAR.
 ///
-public record DownloadUrlPlatform(String downloadUrl) implements Platform {
-	public static final MapCodec<DownloadUrlPlatform> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
-			Codec.STRING.fieldOf("download_url").forGetter(DownloadUrlPlatform::downloadUrl)
-	).apply(inst, DownloadUrlPlatform::new));
+public record DownloadUrlSubmissionPlatform(String downloadUrl) implements SubmissionPlatform {
+	public static final String ID = "download_url";
+	public static final MapCodec<DownloadUrlSubmissionPlatform> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
+			Codec.STRING.fieldOf("download_url").forGetter(DownloadUrlSubmissionPlatform::downloadUrl)
+	).apply(inst, DownloadUrlSubmissionPlatform::new));
 
 	@Override
 	public String typeName() {
@@ -29,12 +30,12 @@ public record DownloadUrlPlatform(String downloadUrl) implements Platform {
 	}
 
 	@Override
-	public MapCodec<DownloadUrlPlatform> getCodec() {
+	public MapCodec<DownloadUrlSubmissionPlatform> getCodec() {
 		return CODEC;
 	}
 
 	@Override
 	public void addToDatabase(DatabaseAccess db, String gardenProjectId, String submissionId) throws Exception {
-		throw new UnsupportedOperationException("DownloadUrlPlatform#addToDatabase not implemented");
+		throw new UnsupportedOperationException("DownloadUrlSubmissionPlatform#addToDatabase not implemented");
 	}
 }

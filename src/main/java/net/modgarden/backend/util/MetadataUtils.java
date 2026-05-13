@@ -15,8 +15,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.LandingPage;
-import net.modgarden.backend.data.Metadata;
-import net.modgarden.backend.data.event.metadata.ModMetadata;
+import net.modgarden.backend.data.project.ProjectMetadata;
+import net.modgarden.backend.data.project.metadata.ModProjectMetadata;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.exception.NotFoundException;
 import net.modgarden.backend.oauth.OAuthService;
@@ -26,13 +26,13 @@ import org.jetbrains.annotations.Nullable;
 
 /// Imo, it's okay to hardcode this to Fabric for now.
 /// We can definitely implement resource/data-packs later.
-/// @see Metadata
-/// @see ModMetadata
+/// @see ProjectMetadata
+/// @see ModProjectMetadata
 public class MetadataUtils {
 	private static final String USER_AGENT = "ModGardenEvent/backend/" + LandingPage.getInstance().version() + " (modgarden.net)";
 
-	public static Metadata getMetadataFromModrinth(String modrinthProjectId,
-												   String modrinthVersionId) throws Exception {
+	public static ProjectMetadata getMetadataFromModrinth(String modrinthProjectId,
+	                                                      String modrinthVersionId) throws Exception {
 		ModrinthOAuthClient authClient = OAuthService.MODRINTH.authenticate();
 
 		ExternalData externalData = ModrinthUtils.getModrinthExternalData(authClient, modrinthProjectId);
@@ -77,8 +77,8 @@ public class MetadataUtils {
 		}
 	}
 
-	public static Metadata getMetadataFromFabricModJson(@NotNull URI jarUri,
-														@NotNull ExternalData externalData) throws Exception {
+	public static ProjectMetadata getMetadataFromFabricModJson(@NotNull URI jarUri,
+	                                                           @NotNull ExternalData externalData) throws Exception {
 		var request = HttpRequest.newBuilder()
 				.header("User-Agent", USER_AGENT)
 				.uri(jarUri)
@@ -88,7 +88,7 @@ public class MetadataUtils {
 		HttpResponse<Path> response = ModGardenBackend.HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(temporaryFolder));
 		Path temporaryFilePath = response.body();
 
-		Metadata metadata;
+		ProjectMetadata metadata;
 		try (
 				JarFile jarFile = new JarFile(temporaryFilePath.toFile());
 				InputStream fmjStream = getFmjAsStream(jarFile);
@@ -107,7 +107,7 @@ public class MetadataUtils {
 
 			String sourceUrl = getFmjSourceUrl(fmj, externalData);
 
-			metadata = new ModMetadata(
+			metadata = new ModProjectMetadata(
 					modId,
 					name,
 					description,

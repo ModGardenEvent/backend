@@ -1,4 +1,4 @@
-package net.modgarden.backend.data.event.platform;
+package net.modgarden.backend.data.project.platform;
 
 import static net.modgarden.backend.util.HandleFinder.findHandle;
 
@@ -10,9 +10,9 @@ import java.sql.Connection;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.modgarden.backend.data.Metadata;
-import net.modgarden.backend.data.Platform;
-import net.modgarden.backend.data.event.metadata.ModMetadata;
+import net.modgarden.backend.data.project.ProjectMetadata;
+import net.modgarden.backend.data.project.SubmissionPlatform;
+import net.modgarden.backend.data.project.metadata.ModProjectMetadata;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.util.MetadataUtils;
 
@@ -30,11 +30,12 @@ import net.modgarden.backend.util.MetadataUtils;
 /// @param projectId	The project ID of the Modrinth project.
 /// @param versionId	The version ID to pull from Modrinth for the mod JAR.
 ///
-public record ModrinthPlatform(String projectId, String versionId) implements Platform {
-	public static final MapCodec<ModrinthPlatform> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
-			Codec.STRING.fieldOf("project_id").forGetter(ModrinthPlatform::projectId),
-			Codec.STRING.fieldOf("version_id").forGetter(ModrinthPlatform::versionId)
-	).apply(inst, ModrinthPlatform::new));
+public record ModrinthSubmissionPlatform(String projectId, String versionId) implements SubmissionPlatform {
+	public static final String ID = "modrinth";
+	public static final MapCodec<ModrinthSubmissionPlatform> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
+			Codec.STRING.fieldOf("project_id").forGetter(ModrinthSubmissionPlatform::projectId),
+			Codec.STRING.fieldOf("version_id").forGetter(ModrinthSubmissionPlatform::versionId)
+	).apply(inst, ModrinthSubmissionPlatform::new));
 	private static final MethodHandle GET_CONNECTION =
 			findHandle(lookup -> MethodHandles.privateLookupIn(DatabaseAccess.class, lookup)
 					.findVirtual(DatabaseAccess.class, "getConnection", MethodType.methodType(Connection.class)))
@@ -46,7 +47,7 @@ public record ModrinthPlatform(String projectId, String versionId) implements Pl
 	}
 
 	@Override
-	public MapCodec<ModrinthPlatform> getCodec() {
+	public MapCodec<ModrinthSubmissionPlatform> getCodec() {
 		return CODEC;
 	}
 
@@ -77,8 +78,8 @@ public record ModrinthPlatform(String projectId, String versionId) implements Pl
 			submissionTypeModrinthStatement.setString(3, versionId);
 			submissionTypeModrinthStatement.executeUpdate();
 
-			Metadata metadata = MetadataUtils.getMetadataFromModrinth(projectId, versionId);
-			if (metadata instanceof ModMetadata(String modId, String name, String description, String sourceUrl)) {
+			ProjectMetadata metadata = MetadataUtils.getMetadataFromModrinth(projectId, versionId);
+			if (metadata instanceof ModProjectMetadata(String modId, String name, String description, String sourceUrl)) {
 				projectModMetadataStatement.setString(1, gardenProjectId);
 				projectModMetadataStatement.setString(2, modId);
 				projectModMetadataStatement.setString(3, name);

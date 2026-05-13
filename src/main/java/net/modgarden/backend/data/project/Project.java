@@ -1,7 +1,7 @@
-package net.modgarden.backend.data.event;
+package net.modgarden.backend.data.project;
 
 import static java.util.Map.entry;
-import static net.modgarden.backend.data.Metadata.fromMapCodec;
+import static net.modgarden.backend.data.project.ProjectMetadata.fromMapCodec;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -15,24 +15,23 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.data.Metadata;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.Permissions;
-import net.modgarden.backend.data.event.metadata.NoneMetadata;
-import net.modgarden.backend.data.event.metadata.ModMetadata;
+import net.modgarden.backend.data.project.metadata.NoneProjectMetadata;
+import net.modgarden.backend.data.project.metadata.ModProjectMetadata;
 import net.modgarden.backend.data.user.User;
 
 // TODO: Allow creating organisations, allow projects to be attributed to an organisation.
 public record Project(String id,
-					  Metadata metadata,
+					  ProjectMetadata metadata,
 					  Map<String, String> team,
 					  Map<String, Permissions> permissions,
 					  List<String> submissions) {
-	private static final Map<String, MapCodec<Metadata>> METADATA_MAP_CODECS = Map.ofEntries(
-			entry("none", fromMapCodec(NoneMetadata.CODEC)),
-			entry("mod", fromMapCodec(ModMetadata.CODEC))
+	private static final Map<String, MapCodec<ProjectMetadata>> METADATA_MAP_CODECS = Map.ofEntries(
+			entry("none", fromMapCodec(NoneProjectMetadata.CODEC)),
+			entry("mod", fromMapCodec(ModProjectMetadata.CODEC))
 	);
-	private static final Codec<Metadata> METADATA_CODEC = Codec.STRING.dispatch(Metadata::typeName, METADATA_MAP_CODECS::get);
+	private static final Codec<ProjectMetadata> METADATA_CODEC = Codec.STRING.dispatch(ProjectMetadata::typeName, METADATA_MAP_CODECS::get);
 
 	public static final Codec<Project> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Project::id),

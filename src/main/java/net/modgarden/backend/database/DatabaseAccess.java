@@ -10,19 +10,21 @@ import java.util.*;
 
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.*;
-import net.modgarden.backend.data.event.Event;
-import net.modgarden.backend.data.event.Genre;
-import net.modgarden.backend.data.event.Project;
-import net.modgarden.backend.data.event.Submission;
-import net.modgarden.backend.data.event.metadata.NoneMetadata;
-import net.modgarden.backend.data.event.metadata.ModMetadata;
-import net.modgarden.backend.data.event.platform.ModrinthPlatform;
+import net.modgarden.backend.data.event.game.MinecraftEventPlatform;
+import net.modgarden.backend.data.project.ProjectMetadata;
+import net.modgarden.backend.data.event.*;
+import net.modgarden.backend.data.project.metadata.NoneProjectMetadata;
+import net.modgarden.backend.data.project.metadata.ModProjectMetadata;
+import net.modgarden.backend.data.project.platform.ModrinthSubmissionPlatform;
+import net.modgarden.backend.data.project.SubmissionPlatform;
+import net.modgarden.backend.data.project.Project;
+import net.modgarden.backend.data.project.Submission;
 import net.modgarden.backend.data.user.User;
 import net.modgarden.backend.data.user.Bio;
-import net.modgarden.backend.data.user.integration.DiscordIntegration;
-import net.modgarden.backend.data.user.integration.MinecraftIntegration;
-import net.modgarden.backend.data.user.integration.ModrinthIntegration;
-import net.modgarden.backend.data.user.role.RoleDiscordIntegration;
+import net.modgarden.backend.data.user.integration.DiscordUserIntegration;
+import net.modgarden.backend.data.user.integration.MinecraftUserIntegration;
+import net.modgarden.backend.data.user.integration.ModrinthUserIntegration;
+import net.modgarden.backend.data.user.role.DiscordUserRoleIntegration;
 import net.modgarden.backend.data.user.role.UserRole;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.exception.NotFoundException;
@@ -324,7 +326,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			ResultSet usersIntegrationDiscordResult = userIntegrationDiscordStatement.executeQuery();
 
 			if (usersIntegrationDiscordResult.isBeforeFirst()) {
-				integrations.put("discord", new DiscordIntegration(usersIntegrationDiscordResult.getString("discord_id")));
+				integrations.put("discord", new DiscordUserIntegration(usersIntegrationDiscordResult.getString("discord_id")));
 			}
 
 			userIntegrationMinecraftStatement.setString(1, userId);
@@ -335,14 +337,14 @@ public final class DatabaseAccess implements AutoCloseable {
 				while (userIntegrationMinecraftResult.next()) {
 					accounts.add(userIntegrationMinecraftResult.getString("uuid"));
 				}
-				integrations.put("minecraft", new MinecraftIntegration(accounts));
+				integrations.put("minecraft", new MinecraftUserIntegration(accounts));
 			}
 
 			userIntegrationModrinthStatement.setString(1, userId);
 			ResultSet userIntegrationModrinthResult = userIntegrationModrinthStatement.executeQuery();
 
 			if (userIntegrationModrinthResult.isBeforeFirst()) {
-				integrations.put("modrinth", new ModrinthIntegration(userIntegrationModrinthResult.getString("modrinth_id")));
+				integrations.put("modrinth", new ModrinthUserIntegration(userIntegrationModrinthResult.getString("modrinth_id")));
 			}
 
 			Set<String> projects = new LinkedHashSet<>();
@@ -464,7 +466,7 @@ public final class DatabaseAccess implements AutoCloseable {
 
 			if (userRolesIntegrationDiscordResult.isBeforeFirst()) {
 				integrations.put("discord",
-						new RoleDiscordIntegration(
+						new DiscordUserRoleIntegration(
 								userRolesIntegrationDiscordResult.getString("discord_id"),
 								userRolesIntegrationDiscordResult.getString("permissions")
 						)
@@ -636,16 +638,16 @@ public final class DatabaseAccess implements AutoCloseable {
 			projectNoneMetadataStatement.setString(1, projectId);
 			ResultSet projectNoneMetadataResult = projectNoneMetadataStatement.executeQuery();
 
-			Metadata metadata;
+			ProjectMetadata metadata;
 			if (projectModMetadataResult.isBeforeFirst()) {
-				metadata = new ModMetadata(
+				metadata = new ModProjectMetadata(
 						projectModMetadataResult.getString("mod_id"),
 						projectModMetadataResult.getString("name"),
 						projectModMetadataResult.getString("description"),
 						projectModMetadataResult.getString("source_url")
 				);
 			} else if (projectNoneMetadataResult.isBeforeFirst()) {
-				metadata = new NoneMetadata(
+				metadata = new NoneProjectMetadata(
 						projectNoneMetadataResult.getString("name")
 				);
 			} else {
@@ -862,10 +864,10 @@ public final class DatabaseAccess implements AutoCloseable {
 			modrinthSubmissionTypeStatement.setString(1, submissionId);
 			ResultSet modrinthSubmissionTypeResult = modrinthSubmissionTypeStatement.executeQuery();
 
-			Platform platform;
+			SubmissionPlatform platform;
 			// TODO: Implement download URL submission type.
 			if (modrinthSubmissionTypeResult.isBeforeFirst()) {
-				platform = new ModrinthPlatform(
+				platform = new ModrinthSubmissionPlatform(
 						modrinthSubmissionTypeResult.getString("modrinth_id"),
 						modrinthSubmissionTypeResult.getString("version_id")
 				);
@@ -921,7 +923,7 @@ public final class DatabaseAccess implements AutoCloseable {
 	}
 
 	public List<Genre> getGenres() throws SQLException {
-		return List.of(Genre.getModGarden(getEventIdsFromGenreSlug("mod-garden")));
+		return List.of(Genre.getModGarden(getEventIds("mod-garden")));
 	}
 
 	public List<String> getGenreIds() throws SQLException {
@@ -932,39 +934,18 @@ public final class DatabaseAccess implements AutoCloseable {
 		return List.of("mod-garden");
 	}
 
-	public List<Event> getEvents() throws SQLException {
+	public List<Event> getEvents() throws SQLException, HypertextException {
 		try (var eventStatement = this.getConnection().prepareStatement("""
-				SELECT id, event_slug, genre_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time
+				SELECT slug, genre_slug
 				FROM events
-			""");
-			var discordIntegrationStatement = this.getConnection().prepareStatement("""
-				SELECT id, role_id
-				FROM event_integration_discord
 			""")) {
-			ResultSet discordIntegrationResultSet = discordIntegrationStatement.executeQuery();
-			Map<String, String> roleIds = new LinkedHashMap<>();
-
-			while (discordIntegrationResultSet.next()) {
-				roleIds.put(discordIntegrationResultSet.getString("id"), discordIntegrationResultSet.getString("role_id"));
-			}
-
 			ResultSet resultSet = eventStatement.executeQuery();
 			List<Event> events = new ArrayList<>();
 
 			while (resultSet.next()) {
-				events.add(new Event(
-						resultSet.getString("id"),
-						resultSet.getString("event_slug"),
+				events.add(getEvent(
 						resultSet.getString("genre_slug"),
-						resultSet.getString("display_name"),
-						Optional.ofNullable(roleIds.getOrDefault(resultSet.getString("id"), null)),
-						resultSet.getString("minecraft_version"),
-						resultSet.getString("loader"),
-						Instant.ofEpochMilli(resultSet.getLong("registration_open_time")),
-						Instant.ofEpochMilli(resultSet.getLong("registration_close_time")),
-						Instant.ofEpochMilli(resultSet.getLong("start_time")),
-						Instant.ofEpochMilli(resultSet.getLong("end_time")),
-						Instant.ofEpochMilli(resultSet.getLong("freeze_time"))
+						resultSet.getString("slug")
 				));
 			}
 
@@ -972,7 +953,7 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	public List<String> getEventIdsFromGenreSlug(String genreSlug) throws SQLException {
+	public List<String> getEventIds(String genreSlug) throws SQLException {
 		try (var eventStatement = this.getConnection().prepareStatement("""
 				SELECT id
 				FROM events
@@ -1012,7 +993,7 @@ public final class DatabaseAccess implements AutoCloseable {
 		try (var eventStatement = this.getConnection().prepareStatement("""
 					SELECT event_slug
 					FROM events
-					WHERE genre_slug = ? AND id = ?
+					WHERE genre_id = ? AND id = ?
 				""")) {
 			eventStatement.setString(1, genreSlug);
 			eventStatement.setString(2, eventId);
@@ -1030,7 +1011,7 @@ public final class DatabaseAccess implements AutoCloseable {
 		try (var eventStatement = this.getConnection().prepareStatement("""
 					SELECT id
 					FROM events
-					WHERE genre_slug = ? AND event_slug = ?
+					WHERE genre_id = ? AND event_slug = ?
 				""")) {
 			eventStatement.setString(1, genreSlug);
 			eventStatement.setString(2, eventSlug);
@@ -1044,45 +1025,87 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	public Event getEventFromSlug(String genreSlug, String eventSlug) throws SQLException, HypertextException {
-		try (var eventStatement = this.getConnection().prepareStatement("""
-				SELECT id, event_slug, genre_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time
+	public Event getEvent(String genreSlug, String eventSlug) throws SQLException, HypertextException {
+		try (
+			 var eventStatement = this.getConnection().prepareStatement("""
+				SELECT id, slug, genre_slug
 				FROM events
-				WHERE genre_slug = ? AND event_slug = ?
+				WHERE genre_slug = ? AND slug = ?
 			""");
-			var discordIntegrationStatement = this.getConnection().prepareStatement("""
-				SELECT id, role_id
-				FROM event_integration_discord
+			 var eventTimesStatement = this.getConnection().prepareStatement("""
+				SELECT registration_open, registration_close, development_start, development_end, pack_freeze
+				FROM event_times
+				WHERE id = ?
+			""");
+			 var eventMetadataStatement = this.getConnection().prepareStatement("""
+				SELECT name, description
+				FROM event_metadata
+				WHERE id = ?
+			""");
+		     var minecraftPlatformStatement = this.getConnection().prepareStatement("""
+				SELECT mod_loader, game_version
+				FROM event_platform_minecraft
 				WHERE id = ?
 			""")) {
 			eventStatement.setString(1, genreSlug);
 			eventStatement.setString(2, eventSlug);
-			var resultSet = eventStatement.executeQuery();
-			discordIntegrationStatement.setString(1, resultSet.getString("id"));
-			var discordIntegrationResultSet = discordIntegrationStatement.executeQuery();
-			String discordRoleId = null;
+			var eventResultSet = eventStatement.executeQuery();
 
-			if (!resultSet.isBeforeFirst()) {
+			if (!eventResultSet.isBeforeFirst()) {
 				throw new NotFoundException("Event '" + genreSlug + "/" + eventSlug + "' does not exist");
 			}
 
-			if (discordIntegrationResultSet.isBeforeFirst()) {
-				discordRoleId = discordIntegrationResultSet.getString("role_id");
+			String eventId = eventResultSet.getString("id");
+
+			eventMetadataStatement.setString(1, eventId);
+			var eventMetadataResultSet = eventMetadataStatement.executeQuery();
+
+			if (!eventMetadataResultSet.isBeforeFirst()) {
+				throw new HypertextException(500, "Event '" + genreSlug + "/" + eventSlug + "' does not have associated metadata");
 			}
 
+			eventTimesStatement.setString(1, eventId);
+			var eventTimesResultSet = eventTimesStatement.executeQuery();
+
+			if (!eventTimesResultSet.isBeforeFirst()) {
+				throw new HypertextException(500, "Event '" + genreSlug + "/" + eventSlug + "' does not have associated times");
+			}
+
+			EventPlatform platform;
+
+			minecraftPlatformStatement.setString(1, eventId);
+			var minecraftPlatformResultSet = minecraftPlatformStatement.executeQuery();
+
+			if (!minecraftPlatformResultSet.isBeforeFirst()) {
+				throw new HypertextException(500, "Event '" + genreSlug + "/" + eventSlug + "' does not have an associated platform");
+			}
+
+			platform = new MinecraftEventPlatform(
+					minecraftPlatformResultSet.getString("mod_loader"),
+					minecraftPlatformResultSet.getString("game_version")
+			);
+
 			return new Event(
-					resultSet.getString("id"),
-					resultSet.getString("event_slug"),
-					resultSet.getString("genre_slug"),
-					resultSet.getString("display_name"),
-					Optional.ofNullable(discordRoleId),
-					resultSet.getString("minecraft_version"),
-					resultSet.getString("loader"),
-					Instant.ofEpochMilli(resultSet.getLong("registration_open_time")),
-					Instant.ofEpochMilli(resultSet.getLong("registration_close_time")),
-					Instant.ofEpochMilli(resultSet.getLong("start_time")),
-					Instant.ofEpochMilli(resultSet.getLong("end_time")),
-					Instant.ofEpochMilli(resultSet.getLong("freeze_time"))
+					eventId,
+					eventSlug,
+					new EventMetadata(
+							eventMetadataResultSet.getString("name"),
+							eventMetadataResultSet.getString("description")
+					),
+					new EventTimes(
+							Instant.ofEpochMilli(eventTimesResultSet.getLong("registration_open")),
+							Instant.ofEpochMilli(eventTimesResultSet.getLong("registration_close")),
+							Instant.ofEpochMilli(eventTimesResultSet.getLong("development_start")),
+							Instant.ofEpochMilli(eventTimesResultSet.getLong("development_end")),
+							Instant.ofEpochMilli(eventTimesResultSet.getLong("pack_freeze"))
+					),
+					platform,
+					// TODO: Implement roles field in database as soon as fields are finalized...
+					new EventRoles(
+							null,
+							null,
+							null
+					)
 			);
 		}
 	}
@@ -1112,10 +1135,10 @@ public final class DatabaseAccess implements AutoCloseable {
 				modrinthSubmissionTypeStatement.setString(1, submissionResult.getString("id"));
 				ResultSet modrinthSubmissionTypeResult = modrinthSubmissionTypeStatement.executeQuery();
 
-				Platform platform;
+				SubmissionPlatform platform;
 				// TODO: Implement download URL submission type.
 				if (modrinthSubmissionTypeResult.isBeforeFirst()) {
-					platform = new ModrinthPlatform(
+					platform = new ModrinthSubmissionPlatform(
 							modrinthSubmissionTypeResult.getString("modrinth_id"),
 							modrinthSubmissionTypeResult.getString("version_id")
 					);

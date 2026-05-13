@@ -1,15 +1,15 @@
-package net.modgarden.backend.data;
+package net.modgarden.backend.data.project;
 
 import com.mojang.serialization.MapCodec;
 import net.modgarden.backend.database.DatabaseAccess;
 
-public interface Platform {
+public interface SubmissionPlatform {
 	String typeName();
-	MapCodec<? extends Platform> getCodec();
+	MapCodec<? extends SubmissionPlatform> getCodec();
 
 	void addToDatabase(DatabaseAccess db, String gardenProjectId, String submissionId) throws Exception;
 
-	static <T extends Platform> MapCodec<Platform> fromMapCodec(MapCodec<T> codec) {
+	static <T extends SubmissionPlatform> MapCodec<SubmissionPlatform> fromMapCodec(MapCodec<T> codec) {
 		//noinspection unchecked
 		return codec.xmap(
 				t -> t,

@@ -14,10 +14,10 @@ import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.data.award.Award;
 import net.modgarden.backend.data.event.Event;
-import net.modgarden.backend.data.event.Project;
-import net.modgarden.backend.data.user.integration.DiscordIntegration;
-import net.modgarden.backend.data.user.integration.MinecraftIntegration;
-import net.modgarden.backend.data.user.integration.ModrinthIntegration;
+import net.modgarden.backend.data.project.Project;
+import net.modgarden.backend.data.user.integration.DiscordUserIntegration;
+import net.modgarden.backend.data.user.integration.MinecraftUserIntegration;
+import net.modgarden.backend.data.user.integration.ModrinthUserIntegration;
 import net.modgarden.backend.data.user.role.UserRole;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.util.ExtraCodecs;
@@ -35,9 +35,9 @@ public record User(
 		Set<String> roles
 ) {
 	private static final Map<String, Codec<Integration>> INTEGRATION_CODECS = Map.ofEntries(
-			entry("modrinth", fromCodec(ModrinthIntegration.CODEC)),
-			entry("discord", fromCodec(DiscordIntegration.CODEC)),
-			entry("minecraft", fromCodec(MinecraftIntegration.CODEC))
+			entry(ModrinthUserIntegration.ID, fromCodec(ModrinthUserIntegration.CODEC)),
+			entry(DiscordUserIntegration.ID, fromCodec(DiscordUserIntegration.CODEC)),
+			entry(MinecraftUserIntegration.ID, fromCodec(MinecraftUserIntegration.CODEC))
 	);
 	private static final Codec<String> INTEGRATION_CODEC_KEY = Codec.STRING.validate(key -> {
 		if (!INTEGRATION_CODECS.containsKey(key)) {
@@ -45,7 +45,6 @@ public record User(
 		}
 		return DataResult.success(key);
 	});
-
 
     public static final Codec<User> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),

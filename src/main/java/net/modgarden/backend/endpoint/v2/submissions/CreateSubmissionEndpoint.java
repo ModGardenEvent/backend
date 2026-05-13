@@ -7,10 +7,10 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.Permissions;
-import net.modgarden.backend.data.Platform;
+import net.modgarden.backend.data.project.SubmissionPlatform;
 import net.modgarden.backend.data.event.Event;
-import net.modgarden.backend.data.event.Project;
-import net.modgarden.backend.data.event.Submission;
+import net.modgarden.backend.data.project.Project;
+import net.modgarden.backend.data.project.Submission;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
@@ -49,7 +49,7 @@ public class CreateSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
 		return request.projectId();
 	}
 
-	public record Request(String projectId, String eventId, Platform platform) {
+	public record Request(String projectId, String eventId, SubmissionPlatform platform) {
 		public static final Codec<Request> CODEC = RecordCodecBuilder.create(inst -> inst.group(
 				Project.ID_CODEC.fieldOf("project_id").forGetter(Request::projectId),
 				Event.ID_CODEC.fieldOf("event_id").forGetter(Request::eventId),

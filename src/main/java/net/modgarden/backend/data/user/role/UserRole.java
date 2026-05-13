@@ -28,7 +28,7 @@ public record UserRole(
 ) {
 	public static final Codec<String> ID_CODEC = Codec.STRING.validate(UserRole::validate);
 	private static final Map<String, Codec<Integration>> INTEGRATION_CODECS = Map.ofEntries(
-			entry("discord", fromCodec(RoleDiscordIntegration.CODEC))
+			entry(DiscordUserRoleIntegration.ID, fromCodec(DiscordUserRoleIntegration.CODEC))
 	);
 	private static final Codec<String> INTEGRATION_CODEC_KEY = Codec.STRING.validate(key -> {
 		if (!INTEGRATION_CODECS.containsKey(key)) {

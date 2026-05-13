@@ -23,7 +23,7 @@ public class GetEventSubmissionsEndpoint extends EventsEndpoint {
 
 		switch (queryKey) {
 		case ID -> {
-			db.getGenreById(ctx.pathParam("genre_id")); // Ensure the genre exists
+			db.getGenreById(ctx.pathParam("genre_id")); // Ensure the genreId exists
 			eventId = ctx.pathParam("event_id");
 		}
 		case SLUG -> eventId = db.getEventId(db.getGenreBySlug(ctx.pathParam("genre_id")).slug(), ctx.pathParam("event_id"));

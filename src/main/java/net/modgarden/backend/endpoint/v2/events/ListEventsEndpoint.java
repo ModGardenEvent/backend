@@ -21,13 +21,13 @@ public class ListEventsEndpoint extends EventsEndpoint {
 	@Override
 	public void onRequest(@NotNull Context ctx) throws Exception {
 		DatabaseAccess db = DatabaseAccess.get();
-		String genreSlug;
+		String genreId;
 		QueryKey queryKey = QueryKey.fromQuery(ctx, QueryKey.SLUG);
 		QueryValue queryValue = QueryValue.fromQuery(ctx, QueryValue.VALUE);
 
 		switch (queryKey) {
-		case SLUG -> genreSlug = ctx.pathParam("genre_id");
-		case ID -> genreSlug = db.getGenreById(ctx.pathParam("genre_id")).slug();
+		case SLUG -> genreId = db.getGenreBySlug(ctx.pathParam("genre_id")).slug();
+		case ID -> genreId = ctx.pathParam("genre_id");
 		default -> {
 			this.invalidQuery(ctx, QueryParameterType.get(QueryKey.class));
 			return;
@@ -36,8 +36,8 @@ public class ListEventsEndpoint extends EventsEndpoint {
 
 		switch (queryValue) {
 		case VALUE -> ctx.json(db.getEvents());
-		case ID -> ctx.json(db.getEventIdsFromGenreSlug(genreSlug));
-		case SLUG -> ctx.json(db.getEventSlugs(genreSlug));
+		case ID -> ctx.json(db.getEventIds(genreId));
+		case SLUG -> ctx.json(db.getEventSlugs(genreId));
 		default -> {
 			this.invalidQuery(ctx, QueryParameterType.get(QueryValue.class));
 			return;

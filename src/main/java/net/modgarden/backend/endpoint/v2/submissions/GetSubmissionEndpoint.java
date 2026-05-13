@@ -5,7 +5,7 @@ import static net.modgarden.backend.endpoint.EndpointMethod.Method.GET;
 import java.util.Locale;
 
 import io.javalin.http.Context;
-import net.modgarden.backend.data.event.Submission;
+import net.modgarden.backend.data.project.Submission;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.endpoint.EndpointMethod;

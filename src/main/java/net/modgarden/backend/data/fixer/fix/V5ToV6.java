@@ -4,7 +4,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.function.Consumer;
 
-import net.modgarden.backend.data.event.metadata.ModMetadata;
+import net.modgarden.backend.data.project.metadata.ModProjectMetadata;
 import net.modgarden.backend.data.fixer.DatabaseFix;
 import net.modgarden.backend.util.MetadataUtils;
 import org.jetbrains.annotations.Nullable;
@@ -133,36 +133,64 @@ public class V5ToV6 extends DatabaseFix {
 
 		// Events modification is above all event related operations because order matters when executing SQL actions.
 		statement.addBatch("""
-		ALTER TABLE events ADD event_type_slug TEXT NOT NULL DEFAULT 'mod-garden'
-		""");
-		statement.addBatch("""
-		ALTER TABLE events RENAME COLUMN registration_time TO registration_open_time
-		""");
-		statement.addBatch("""
-		ALTER TABLE events ADD registration_close_time INTEGER NOT NULL DEFAULT 1748131200000
-		""");
-		statement.addBatch("""
 		ALTER TABLE events RENAME TO events_old
 		""");
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS events (
 			id TEXT UNIQUE NOT NULL,
-			event_slug TEXT UNIQUE NOT NULL,
+			slug TEXT UNIQUE NOT NULL,
 			genre_slug TEXT NOT NULL,
-			display_name TEXT NOT NULL,
-			minecraft_version TEXT NOT NULL,
-			loader TEXT NOT NULL,
-			registration_open_time INTEGER NOT NULL,
-			registration_close_time INTEGER NOT NULL,
-			start_time INTEGER NOT NULL,
-			end_time INTEGER NOT NULL,
-			freeze_time INTEGER NOT NULL,
 			PRIMARY KEY (id)
 		)
 		""");
 		statement.addBatch("""
-		INSERT INTO events (id, event_slug, genre_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time)
-		SELECT id, slug, event_type_slug, display_name, minecraft_version, loader, registration_open_time, registration_close_time, start_time, end_time, freeze_time from events_old
+		INSERT INTO events (id, slug, genre_slug)
+		SELECT id, slug, 'mod-garden' from events_old
+		""");
+
+		statement.addBatch("""
+		CREATE TABLE IF NOT EXISTS event_metadata (
+			id TEXT UNIQUE NOT NULL,
+			name TEXT NOT NULL,
+			description TEXT,
+			FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			PRIMARY KEY (id)
+		)
+		""");
+		statement.addBatch("""
+		INSERT INTO event_metadata (id, name)
+		SELECT id, display_name from events_old
+		""");
+
+		statement.addBatch("""
+		CREATE TABLE IF NOT EXISTS event_times (
+			id TEXT UNIQUE NOT NULL,
+			registration_open TEXT NOT NULL,
+			registration_close TEXT NOT NULL,
+			development_start TEXT NOT NULL,
+			development_end TEXT NOT NULL,
+			pack_freeze TEXT NOT NULL,
+			FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			PRIMARY KEY (id)
+		)
+		""");
+		statement.addBatch("""
+		INSERT INTO event_times (id, registration_open, registration_close, development_start, development_end, pack_freeze)
+		SELECT id, registration_time, '1748131200000', start_time, end_time, freeze_time from events_old
+		""");
+
+		statement.addBatch("""
+		CREATE TABLE IF NOT EXISTS event_platform_minecraft (
+			id TEXT UNIQUE NOT NULL,
+			mod_loader TEXT NOT NULL,
+			game_version TEXT NOT NULL,
+			FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			PRIMARY KEY (id)
+		)
+		""");
+		statement.addBatch("""
+		INSERT INTO event_platform_minecraft (id, mod_loader, game_version)
+		SELECT id, loader, minecraft_version from events_old
 		""");
 
 		statement.addBatch("ALTER TABLE projects RENAME TO projects_old");
@@ -455,7 +483,7 @@ public class V5ToV6 extends DatabaseFix {
 		""");
 		statement.addBatch("""
 		UPDATE events
-		SET event_slug = clean_slug_mg(event_slug)
+		SET slug = clean_slug_mg(slug)
 		""");
 
 
@@ -490,7 +518,7 @@ public class V5ToV6 extends DatabaseFix {
 
 				try {
 					var modrinthMetadata = MetadataUtils.getMetadataFromModrinth(modrinthId, modrinthVersionId);
-					if (!(modrinthMetadata instanceof ModMetadata(
+					if (!(modrinthMetadata instanceof ModProjectMetadata(
 							String modId, String name, String description, String sourceUrl
 					))) continue;
 					projectMetadataInsertStatement.setString(1, projectId);

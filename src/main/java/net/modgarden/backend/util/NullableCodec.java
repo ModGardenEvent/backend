@@ -18,14 +18,19 @@ public class NullableCodec<T> implements Codec<Optional<T>> {
 
 	@Override
 	public <TOps> DataResult<Pair<Optional<T>, TOps>> decode(DynamicOps<TOps> ops, TOps input) {
-		DataResult<Pair<T, TOps>> nonNullAttempt = codec.decode(ops, input);
+		DataResult<Pair<Optional<T>, TOps>> nonNullAttempt = codec.decode(ops, input)
+				.map(pair -> pair.mapFirst(Optional::of));
+
 		if (nonNullAttempt.hasResultOrPartial()) {
-			return nonNullAttempt.map(pair -> pair.mapFirst(Optional::of));
+			return nonNullAttempt;
 		}
+
 		if (input == ops.empty()) {
 			return DataResult.success(Pair.of(Optional.empty(), input));
 		}
-		return DataResult.error(() -> "Value must be specific or null");
+
+		return nonNullAttempt
+				.mapError(s -> "Failed to decode nullable value. " + s);
 	}
 
 	@Override

@@ -18,8 +18,6 @@ import java.util.Properties;
 import java.util.function.Supplier;
 
 import ch.qos.logback.classic.Level;
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -36,8 +34,8 @@ import net.modgarden.backend.data.award.Award;
 import net.modgarden.backend.data.award.AwardInstance;
 import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.event.Genre;
-import net.modgarden.backend.data.event.Project;
-import net.modgarden.backend.data.event.Submission;
+import net.modgarden.backend.data.project.Project;
+import net.modgarden.backend.data.project.Submission;
 import net.modgarden.backend.data.fixer.DatabaseFixer;
 import net.modgarden.backend.data.user.User;
 import net.modgarden.backend.data.user.role.UserRole;
@@ -66,7 +64,6 @@ import net.modgarden.backend.endpoint.v2.submissions.DeleteSubmissionEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.GetSubmissionEndpoint;
 import net.modgarden.backend.endpoint.v2.users.GetUserEndpoint;
 import net.modgarden.backend.util.AuthUtil;
-import net.modgarden.backend.util.Converter;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,14 +74,9 @@ public class ModGardenBackend {
 	public static final String URL = "development".equals(DOTENV.get("env")) ? "http://localhost:7070" : "https://api.modgarden.net";
 	public static final Logger LOG = LoggerFactory.getLogger(ModGardenBackend.class);
 
-	private static final Map<Type, Converter<?, ?>> COERCION_COMAP_REGISTRY = new HashMap<>();
-	private static final Map<Type, Converter<?, ?>> COERCION_MAP_REGISTRY = new HashMap<>();
-	private static final BiMap<Type, Type> COERCION_REGISTRY = HashBiMap.create();
 	private static final Map<Type, Codec<?>> CODEC_REGISTRY = new HashMap<>();
 
 	public static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
-
-	private static ModGardenBackend backend;
 
 	private final Javalin app;
 
@@ -118,8 +110,6 @@ public class ModGardenBackend {
 		registerCodec(ExceptionPage.class, ExceptionPage.CODEC);
 		registerCodec(Award.class, Award.DIRECT_CODEC);
 		registerCodec(Event.class, Event.DIRECT_CODEC);
-		registerCodec(Event.ApiFormat.class, Event.ApiFormat.CODEC);
-		registerCoercion(Event.class, Event.ApiFormat.class, Event.COMAP, Event.MAP);
 		registerCodec(Genre.class, Genre.DIRECT_CODEC);
 		registerCodec(Project.class, Project.DIRECT_CODEC);
 		registerCodec(Submission.class, Submission.DIRECT_CODEC);
@@ -133,8 +123,8 @@ public class ModGardenBackend {
 
 		Javalin app = Javalin.create(config -> config.jsonMapper(createDFUMapper()));
 		app.get("", LandingPage::getLandingJson);
-		backend = new ModGardenBackend(app);
 
+		ModGardenBackend backend = new ModGardenBackend(app);
 		backend.v2();
 		backend.internal();
 
@@ -146,6 +136,7 @@ public class ModGardenBackend {
 		app.exception(NullPointerException.class, (e, ctx) -> {
 			ctx.status(404);
 			ctx.result(e.getMessage());
+			LOG.error("", e);
 			ExceptionPage.handleError(ctx);
 		});
 		app.exception(SQLException.class, (e, ctx) -> {
@@ -256,6 +247,14 @@ public class ModGardenBackend {
 				permissions INTEGER NOT NULL,
 				created INTEGER NOT NULL,
 				PRIMARY KEY (id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS user_role_integration_discord (
+				role_id TEXT UNIQUE NOT NULL,
+				discord_role_id TEXT NOT NULL,
+				permissions INTEGER NOT NULL,
+				PRIMARY KEY (role_id)
 			)
 			""");
 			statement.addBatch("""
@@ -370,23 +369,37 @@ public class ModGardenBackend {
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS events (
 				id TEXT UNIQUE NOT NULL,
-				event_slug TEXT UNIQUE NOT NULL,
+				slug TEXT UNIQUE NOT NULL,
 				genre_slug TEXT NOT NULL,
-				display_name TEXT NOT NULL,
-				minecraft_version TEXT NOT NULL,
-				loader TEXT NOT NULL,
-				registration_open_time INTEGER NOT NULL,
-				registration_close_time INTEGER NOT NULL,
-				start_time INTEGER NOT NULL,
-				end_time INTEGER NOT NULL,
-				freeze_time INTEGER NOT NULL,
 				PRIMARY KEY (id)
 			)
 			""");
 			statement.addBatch("""
-			CREATE TABLE IF NOT EXISTS event_integration_discord (
+			CREATE TABLE IF NOT EXISTS event_metadata (
 				id TEXT UNIQUE NOT NULL,
-				role_id TEXT NOT NULL,
+				name TEXT NOT NULL,
+				description TEXT,
+				FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				PRIMARY KEY (id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS event_times (
+				id TEXT UNIQUE NOT NULL,
+				registration_open TEXT NOT NULL,
+				registration_close TEXT NOT NULL,
+				development_start TEXT NOT NULL,
+				development_end TEXT NOT NULL,
+				pack_freeze TEXT NOT NULL,
+				FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				PRIMARY KEY (id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS event_platform_minecraft (
+				id TEXT UNIQUE NOT NULL,
+				mod_loader TEXT NOT NULL,
+				game_version TEXT NOT NULL,
 				FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (id)
 			)
@@ -527,19 +540,6 @@ public class ModGardenBackend {
 		LOG.debug("Updated database schema version.");
 	}
 
-	/// Converts a type into another type automatically at the encode/decode stage.
-	///
-	/// @param from the type to convert from during encoding.
-	/// @param into the type to convert from during decoding.
-	/// @param comap the conversion used during encoding.
-	/// @param map the conversion used during decoding.
-	/// @see #createDFUMapper()
-	private static <A, B> void registerCoercion(Class<A> from, Class<B> into, Converter<A, B> comap, Converter<B, A> map) {
-		COERCION_REGISTRY.put(from, into);
-		COERCION_COMAP_REGISTRY.put(from, comap);
-		COERCION_MAP_REGISTRY.put(into, map);
-	}
-
 	private static <T> void registerCodec(Class<T> type, Codec<T> codec) {
 		CODEC_REGISTRY.put(type, codec);
 	}
@@ -576,16 +576,6 @@ public class ModGardenBackend {
 
 						return builder.toString();
 					}
-				}
-
-				if (COERCION_COMAP_REGISTRY.containsKey(type)) {
-					Type into = COERCION_REGISTRY.get(type);
-					//noinspection unchecked
-					return ((Codec<Object>) CODEC_REGISTRY.get(into))
-							.xmap((Converter<Object, Object>) COERCION_MAP_REGISTRY.get(into), (Converter<Object, Object>) COERCION_COMAP_REGISTRY.get(type))
-							.encodeStart(JsonOps.INSTANCE, obj)
-							.getOrThrow()
-							.toString();
 				}
 
 				if (!CODEC_REGISTRY.containsKey(type))

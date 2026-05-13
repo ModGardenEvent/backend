@@ -39,7 +39,7 @@ public class GetEventEndpoint extends EventsEndpoint {
 		}
 		}
 
-		ctx.json(db.getEventFromSlug(genreSlug, eventSlug));
+		ctx.json(db.getEvent(genreSlug, eventSlug));
 		ctx.status(200);
 	}
 }

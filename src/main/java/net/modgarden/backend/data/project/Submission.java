@@ -1,7 +1,7 @@
-package net.modgarden.backend.data.event;
+package net.modgarden.backend.data.project;
 
 import static java.util.Map.entry;
-import static net.modgarden.backend.data.Platform.fromMapCodec;
+import static net.modgarden.backend.data.project.SubmissionPlatform.fromMapCodec;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -15,27 +15,27 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.data.Platform;
-import net.modgarden.backend.data.event.platform.DownloadUrlPlatform;
-import net.modgarden.backend.data.event.platform.ModrinthPlatform;
+import net.modgarden.backend.data.event.Event;
+import net.modgarden.backend.data.project.platform.DownloadUrlSubmissionPlatform;
+import net.modgarden.backend.data.project.platform.ModrinthSubmissionPlatform;
 import net.modgarden.backend.util.ExtraCodecs;
 
 public record Submission(String id,
                          String event,
 						 Instant timeSubmitted,
 						 Project project,
-						 Platform platform) {
-	private static final Map<String, MapCodec<Platform>> PLATFORM_MAP_CODECS = Map.ofEntries(
-			entry("modrinth", fromMapCodec(ModrinthPlatform.CODEC)),
-			entry("download_url", fromMapCodec(DownloadUrlPlatform.CODEC))
+						 SubmissionPlatform platform) {
+	private static final Map<String, MapCodec<SubmissionPlatform>> PLATFORM_MAP_CODECS = Map.ofEntries(
+			entry(ModrinthSubmissionPlatform.ID, fromMapCodec(ModrinthSubmissionPlatform.CODEC)),
+			entry(DownloadUrlSubmissionPlatform.ID, fromMapCodec(DownloadUrlSubmissionPlatform.CODEC))
 	);
 	private static final Codec<String> PLATFORM_KEY_CODEC = Codec.STRING.validate(key -> {
 		if (!PLATFORM_MAP_CODECS.containsKey(key)) {
-			return DataResult.error(() -> "Platform type '" + key + "' does not exist");
+			return DataResult.error(() -> "EventPlatform type '" + key + "' does not exist");
 		}
 		return DataResult.success(key);
 	});
-	public static final Codec<Platform> PLATFORM_CODEC = PLATFORM_KEY_CODEC.dispatch(Platform::typeName, PLATFORM_MAP_CODECS::get);
+	public static final Codec<SubmissionPlatform> PLATFORM_CODEC = PLATFORM_KEY_CODEC.dispatch(SubmissionPlatform::typeName, PLATFORM_MAP_CODECS::get);
 
 	public static final Codec<Submission> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(Submission::id),
