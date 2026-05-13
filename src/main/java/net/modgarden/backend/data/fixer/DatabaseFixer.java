@@ -73,6 +73,6 @@ public class DatabaseFixer {
 			}
 		}
 		long endTime = System.currentTimeMillis();
-		ModGardenBackend.LOG.debug("Data-fixer took {}ms", endTime - startTime);
+		ModGardenBackend.LOG.info("Data-fixer took {}ms", endTime - startTime);
 	}
 }
