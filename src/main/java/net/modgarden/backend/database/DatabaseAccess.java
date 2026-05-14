@@ -272,6 +272,12 @@ public final class DatabaseAccess implements AutoCloseable {
 						FROM project_roles
 						WHERE user_id = ?
 				""");
+			 PreparedStatement eventsStatement = this.getConnection()
+					 .prepareStatement("""
+						SELECT event_id
+						FROM submissions
+						WHERE project_id = ?
+				""");
 			 PreparedStatement userRolesStatement = this.getConnection()
 				.prepareStatement("""
 						SELECT role_id
@@ -356,9 +362,19 @@ public final class DatabaseAccess implements AutoCloseable {
 				projects.add(projectRolesResult.getString("project_id"));
 			}
 
-			// TODO: Awards and Events at a later date.
-			Set<String> awards = new LinkedHashSet<>();
 			Set<String> events = new LinkedHashSet<>();
+
+			for (String projectId : projects) {
+				eventsStatement.setString(1, projectId);
+				ResultSet eventsResult = eventsStatement.executeQuery();
+
+				while (eventsResult.next()) {
+					events.add(eventsResult.getString("event_id"));
+				}
+			}
+
+			// TODO: Awards at a later date.
+			Set<String> awards = new LinkedHashSet<>();
 
 			Set<String> roles = new LinkedHashSet<>();
 
@@ -377,8 +393,8 @@ public final class DatabaseAccess implements AutoCloseable {
 					created,
 					integrations,
 					projects,
-					awards,
 					events,
+					awards,
 					roles
 			);
 		}
@@ -803,7 +819,7 @@ public final class DatabaseAccess implements AutoCloseable {
 	public String createEmptySubmission(String eventId, String projectId) throws SQLException, HypertextException {
 		try (
 				var submissionsStatement = this.getConnection().prepareStatement("""
-					INSERT INTO submissions (id, theme_id, project_id, submitted)
+					INSERT INTO submissions (id, event_id, project_id, submitted)
 					VALUES (?, ?, ?, ?)
 				""")
 		) {
@@ -845,7 +861,7 @@ public final class DatabaseAccess implements AutoCloseable {
 
 		try (
 				var submissionStatement = connection.prepareStatement("""
-					SELECT theme_id, project_id, submitted
+					SELECT event_id, project_id, submitted
 					FROM submissions
 					WHERE id = ?
 				""");
@@ -877,7 +893,7 @@ public final class DatabaseAccess implements AutoCloseable {
 
 			return new Submission(
 					submissionId,
-					submissionResult.getString("theme_id"),
+					submissionResult.getString("event_id"),
 					Instant.ofEpochMilli(submissionResult.getLong("submitted")),
 					this.getProjectFromId(submissionResult.getString("project_id")),
 					platform
@@ -890,7 +906,7 @@ public final class DatabaseAccess implements AutoCloseable {
 		try (var submissionsStatement = this.getConnection().prepareStatement("""
 					SELECT id
 					FROM submissions
-					WHERE project_id = ? AND theme_id = ?
+					WHERE project_id = ? AND event_id = ?
 				""")) {
 			submissionsStatement.setString(1, projectId);
 			submissionsStatement.setString(2, eventId);
@@ -1115,7 +1131,7 @@ public final class DatabaseAccess implements AutoCloseable {
 				var submissionStatement = this.getConnection().prepareStatement("""
 					SELECT id, project_id, submitted
 					FROM submissions
-					WHERE theme_id = ?
+					WHERE event_id = ?
 				""");
 				var modrinthSubmissionTypeStatement = this.getConnection().prepareStatement("""
 					SELECT modrinth_id, version_id
@@ -1164,7 +1180,7 @@ public final class DatabaseAccess implements AutoCloseable {
 				var submissionStatement = this.getConnection().prepareStatement("""
 					SELECT id
 					FROM submissions
-					WHERE theme_id = ?
+					WHERE event_id = ?
 				""")
 		) {
 			submissionStatement.setString(1, eventId);

@@ -360,8 +360,8 @@ public class ModGardenBackend {
 			""");
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS user_integration_minecraft (
-				uuid TEXT UNIQUE NOT NULL,
 				user_id TEXT NOT NULL,
+				uuid TEXT UNIQUE NOT NULL,
 				FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (uuid)
 			)
@@ -392,6 +392,17 @@ public class ModGardenBackend {
 				development_end TEXT NOT NULL,
 				pack_freeze TEXT NOT NULL,
 				FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				PRIMARY KEY (id)
+			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS event_roles (
+				id TEXT UNIQUE NOT NULL,
+				participant TEXT,
+				theme_award TEXT,
+				team_pick_award TEXT,
+				FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				FOREIGN KEY (participant, theme_award, team_pick_award) REFERENCES user_role_definitions(id) ON UPDATE CASCADE,
 				PRIMARY KEY (id)
 			)
 			""");
@@ -446,11 +457,11 @@ public class ModGardenBackend {
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS submissions (
 				id TEXT UNIQUE NOT NULL,
-				theme_id TEXT NOT NULL,
+				event_id TEXT NOT NULL,
 				project_id TEXT NOT NULL,
 				submitted INTEGER NOT NULL,
 				FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
-				FOREIGN KEY (theme_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY(id)
 			)
 			""");

@@ -136,7 +136,7 @@ public class DevelopmentModeData {
 				projectStatement.execute();
 
 				var submissionStatement = connection.prepareStatement(
-						"INSERT OR IGNORE INTO submissions(id, theme_id, project_id, submitted) VALUES (?, ?, ?, ?)");
+						"INSERT OR IGNORE INTO submissions(id, event_id, project_id, submitted) VALUES (?, ?, ?, ?)");
 
 				long glowBannersSubmissionId = RANDOM.nextLong(Long.MAX_VALUE);
 				submissionStatement.setString(1, Long.toString(glowBannersSubmissionId));
