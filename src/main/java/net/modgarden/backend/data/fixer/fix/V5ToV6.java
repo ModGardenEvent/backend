@@ -131,6 +131,19 @@ public class V5ToV6 extends DatabaseFix {
 		SELECT id, display_name, pronouns, avatar_url FROM users_old
 		""");
 
+		statement.addBatch("""
+		INSERT INTO user_role_definitions
+		VALUES ('nature-participant', 'Mod Garden: Nature - Participant', 0, unix_millis())
+		""");
+		statement.addBatch("""
+		INSERT INTO user_role_definitions
+		VALUES ('nature-pick', 'Mod Garden: Nature - Team Pick', 0, unix_millis())
+		""");
+		statement.addBatch("""
+		INSERT INTO user_role_definitions
+		VALUES ('nature-theme', 'Mod Garden: Nature - Theme Award', 0, unix_millis())
+		""");
+
 		// Events modification is above all event related operations because order matters when executing SQL actions.
 		statement.addBatch("""
 		ALTER TABLE events RENAME TO events_old
@@ -145,7 +158,7 @@ public class V5ToV6 extends DatabaseFix {
 		""");
 		statement.addBatch("""
 		INSERT INTO events (id, slug, genre_slug)
-		SELECT id, slug, 'mod-garden' from events_old
+		SELECT id, slug, 'mod-garden' FROM events_old
 		""");
 
 		statement.addBatch("""
@@ -158,8 +171,8 @@ public class V5ToV6 extends DatabaseFix {
 		)
 		""");
 		statement.addBatch("""
-		INSERT INTO event_metadata (id, name)
-		SELECT id, display_name from events_old
+		INSERT INTO event_metadata (id, name, description)
+		SELECT id, display_name, NULL FROM events_old
 		""");
 
 		statement.addBatch("""
@@ -176,7 +189,25 @@ public class V5ToV6 extends DatabaseFix {
 		""");
 		statement.addBatch("""
 		INSERT INTO event_times (id, registration_open, registration_close, development_start, development_end, pack_freeze)
-		SELECT id, registration_time, '1748131200000', start_time, end_time, freeze_time from events_old
+		SELECT id, registration_time, '1748131200000', start_time, end_time, freeze_time FROM events_old
+		""");
+
+		statement.addBatch("""
+		CREATE TABLE IF NOT EXISTS event_roles (
+			id TEXT UNIQUE NOT NULL,
+			participant TEXT,
+			theme_award TEXT,
+			team_pick_award TEXT,
+			FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			FOREIGN KEY (participant) REFERENCES user_role_definitions(id) ON UPDATE CASCADE,
+			FOREIGN KEY (theme_award) REFERENCES user_role_definitions(id) ON UPDATE CASCADE,
+			FOREIGN KEY (team_pick_award) REFERENCES user_role_definitions(id) ON UPDATE CASCADE,
+			PRIMARY KEY (id)
+		)
+		""");
+		statement.addBatch("""
+		INSERT INTO event_roles (id, participant, theme_award, team_pick_award)
+		SELECT id, 'nature-participant', 'nature-theme', 'nature-pick' FROM events_old
 		""");
 
 		statement.addBatch("""
@@ -190,7 +221,7 @@ public class V5ToV6 extends DatabaseFix {
 		""");
 		statement.addBatch("""
 		INSERT INTO event_platform_minecraft (id, mod_loader, game_version)
-		SELECT id, loader, minecraft_version from events_old
+		SELECT id, loader, minecraft_version FROM events_old
 		""");
 
 		statement.addBatch("ALTER TABLE projects RENAME TO projects_old");
@@ -231,11 +262,11 @@ public class V5ToV6 extends DatabaseFix {
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS submissions (
 			id TEXT UNIQUE NOT NULL,
-			theme_id TEXT NOT NULL,
+			event_id TEXT NOT NULL,
 			project_id TEXT NOT NULL,
 			submitted INTEGER NOT NULL,
 			FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
-			FOREIGN KEY (theme_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			PRIMARY KEY(id)
 		)
 		""");
@@ -245,8 +276,8 @@ public class V5ToV6 extends DatabaseFix {
 		SET id = generate_natural_id('submissions', 'id', NULL, 5)
 		""");
 		statement.addBatch("""
-		INSERT INTO submissions (id, theme_id, project_id, submitted)
-		SELECT id, event, project_id, submitted from submissions_old
+		INSERT INTO submissions (id, event_id, project_id, submitted)
+		SELECT id, event, project_id, submitted FROM submissions_old
 		""");
 
 		// Use submissions_old since it has not yet been deleted.
@@ -384,11 +415,23 @@ public class V5ToV6 extends DatabaseFix {
 		SELECT project_id, user_id, permissions, role_name FROM project_roles_temp
 		""");
 
+		// This really sucks...
+		// We just have a lot of tables to traverse.
+		statement.addBatch("""
+		INSERT INTO user_roles(role_id, user_id)
+		SELECT 'nature-participant', u.id FROM users u
+		INNER JOIN project_roles pr ON pr.user_id = u.id
+		INNER JOIN submissions s ON s.project_id = pr.project_id
+		INNER JOIN events e ON e.id = s.event_id
+		WHERE e.slug == 'mod-garden-nature'
+		GROUP BY u.id
+		""");
+
 		statement.addBatch("ALTER TABLE minecraft_accounts RENAME TO minecraft_accounts_old");
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS user_integration_minecraft (
+			user_id TEXT NOT NULL,
 			uuid TEXT UNIQUE NOT NULL,
-			user_id TEXT UNIQUE NOT NULL,
 			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			PRIMARY KEY (uuid)
 		)
@@ -486,13 +529,27 @@ public class V5ToV6 extends DatabaseFix {
 		SET slug = clean_slug_mg(slug)
 		""");
 
-
 		// Randomize User Role Definition IDs
 		// Users must not be updated after this point
 		statement.addBatch("""
 		UPDATE user_role_definitions
 		SET id = generate_natural_id('user_role_definitions', 'id', NULL, 5)
 		WHERE id == 'admin'
+		""");
+		statement.addBatch("""
+		UPDATE user_role_definitions
+		SET id = generate_natural_id('user_role_definitions', 'id', NULL, 5)
+		WHERE id == 'nature-participant'
+		""");
+		statement.addBatch("""
+		UPDATE user_role_definitions
+		SET id = generate_natural_id('user_role_definitions', 'id', NULL, 5)
+		WHERE id == 'nature-pick'
+		""");
+		statement.addBatch("""
+		UPDATE user_role_definitions
+		SET id = generate_natural_id('user_role_definitions', 'id', NULL, 5)
+		WHERE id == 'nature-theme'
 		""");
 
 		statement.executeBatch();
