@@ -6,6 +6,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 
+// TODO: Move award roles to a list.
 public record EventRoles(@Nullable String participant,
                          @Nullable String themeAward,
                          @Nullable String teamPickAward) {
