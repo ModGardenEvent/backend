@@ -939,12 +939,12 @@ public final class DatabaseAccess implements AutoCloseable {
 		return project.submissions().getLast();
 	}
 
-	public boolean areSubmissionsOpenForEvent(String eventId) throws SQLException, HypertextException {
+	public boolean areSubmissionsOpenForEvent(String eventId) throws SQLException {
 		try (
 				var submissionsOpenStatement = this.getConnection().prepareStatement("""
 					SELECT 1
 					FROM event_times
-					WHERE event_id = ? AND development_start >= ? AND development_end < ?
+					WHERE event_id = ? AND development_start <= ? AND development_end > ?
 				""")
 		) {
 			long currentMs = System.currentTimeMillis();
