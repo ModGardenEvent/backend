@@ -499,9 +499,10 @@ public final class DatabaseAccess implements AutoCloseable {
 			ResultSet userRolesIntegrationDiscordResult = userRoleIntegrationDiscordStatement.executeQuery();
 
 			if (userRolesIntegrationDiscordResult.isBeforeFirst()) {
-				integrations.put("discord",
+				integrations.put(
+						"discord",
 						new DiscordUserRoleIntegration(
-								userRolesIntegrationDiscordResult.getString("discord_id")
+								userRolesIntegrationDiscordResult.getString("discord_role_id")
 						)
 				);
 			}
