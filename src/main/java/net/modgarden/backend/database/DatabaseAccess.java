@@ -94,7 +94,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			ResultSet resultSet = apiKeyStatement.executeQuery();
 
 			if (!resultSet.isBeforeFirst()) {
-				return List.of();
+				return Collections.emptyList();
 			}
 
 			while (resultSet.next()) {
