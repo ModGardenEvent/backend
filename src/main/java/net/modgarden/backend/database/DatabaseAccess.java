@@ -478,7 +478,7 @@ public final class DatabaseAccess implements AutoCloseable {
 					""");
 		     var userRoleIntegrationDiscordStatement = this.getConnection()
 					 .prepareStatement("""
-							SELECT discord_id, permissions
+							SELECT discord_role_id
 							FROM user_role_integration_discord
 							WHERE role_id = ?
 						""")
@@ -501,8 +501,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			if (userRolesIntegrationDiscordResult.isBeforeFirst()) {
 				integrations.put("discord",
 						new DiscordUserRoleIntegration(
-								userRolesIntegrationDiscordResult.getString("discord_id"),
-								userRolesIntegrationDiscordResult.getString("permissions")
+								userRolesIntegrationDiscordResult.getString("discord_id")
 						)
 				);
 			}

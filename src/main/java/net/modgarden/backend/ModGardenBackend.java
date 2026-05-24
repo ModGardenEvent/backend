@@ -254,7 +254,6 @@ public class ModGardenBackend {
 			CREATE TABLE IF NOT EXISTS user_role_integration_discord (
 				role_id TEXT UNIQUE NOT NULL,
 				discord_role_id TEXT NOT NULL,
-				permissions INTEGER NOT NULL,
 				PRIMARY KEY (role_id)
 			)
 			""");

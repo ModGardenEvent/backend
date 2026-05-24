@@ -374,16 +374,24 @@ public class V5ToV6 extends DatabaseFix {
 		""");
 
 		statement.addBatch("""
-		CREATE TABLE IF NOT EXISTS event_integration_discord (
-			id TEXT UNIQUE NOT NULL,
-			role_id TEXT NOT NULL,
-			FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+		CREATE TABLE IF NOT EXISTS user_role_integration_discord (
+			role_id TEXT UNIQUE NOT NULL,
+			discord_role_id TEXT NOT NULL,
+			FOREIGN KEY (id) REFERENCES user_role_definitions(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			PRIMARY KEY (id)
 		)
 		""");
 		statement.addBatch("""
-		INSERT INTO event_integration_discord (id, role_id)
-		SELECT id, discord_role_id FROM events_old
+		INSERT INTO role_integration_discord (role_id, discord_role_id)
+		SELECT 'nature-participant', discord_role_id FROM events_old
+		""");
+		statement.addBatch("""
+		INSERT INTO role_integration_discord (role_id, discord_role_id)
+		VALUES ('nature-pick', '1429897600269549758')
+		""");
+		statement.addBatch("""
+		INSERT INTO role_integration_discord (role_id, discord_role_id)
+		VALUES ('nature-theme', '1429897581344981193')
 		""");
 
 		statement.addBatch("""
