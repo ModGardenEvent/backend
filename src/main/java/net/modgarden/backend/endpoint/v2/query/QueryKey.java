@@ -14,6 +14,7 @@ public enum QueryKey {
 	ID,
 	SLUG,
 	USERNAME,
+	INTEGRATION_DISCORD,
 	UNDEFINED;
 
 	public static QueryKey fromQuery(Context ctx, QueryKey defaultKey) throws HypertextException {

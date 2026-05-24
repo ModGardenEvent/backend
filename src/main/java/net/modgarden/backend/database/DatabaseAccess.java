@@ -420,6 +420,24 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
+	public String getUserIdFromDiscordId(String discordId) throws SQLException, HypertextException {
+		try (PreparedStatement prepared = this.getConnection()
+				.prepareStatement("""
+						SELECT user_id
+						FROM user_integration_discord
+						WHERE discord_id = ?
+				""")
+		) {
+			prepared.setString(1, discordId);
+			ResultSet result = prepared.executeQuery();
+			if (!result.isBeforeFirst()) {
+				throw new HypertextException(404, "Could not find user from Discord ID '" + discordId + "'");
+			}
+
+			return result.getString("user_id");
+		}
+	}
+
 	public boolean userIdExists(String id) throws SQLException {
 		try (PreparedStatement prepared = this.getConnection()
 				.prepareStatement("SELECT 1 FROM users WHERE id = ?")) {

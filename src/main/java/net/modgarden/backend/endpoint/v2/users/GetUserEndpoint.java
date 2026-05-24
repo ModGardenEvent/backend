@@ -31,6 +31,7 @@ public class GetUserEndpoint extends UsersEndpoint {
 		case ID -> {
 		}
 		case USERNAME -> userId = db.getUserIdFromUsername(userId);
+		case INTEGRATION_DISCORD -> userId = db.getUserIdFromDiscordId(userId);
 		default -> {
 			this.invalidQuery(ctx, QueryParameterType.get(QueryKey.class));
 			return;
