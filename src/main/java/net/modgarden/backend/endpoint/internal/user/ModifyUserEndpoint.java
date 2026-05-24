@@ -8,27 +8,32 @@ import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.data.user.Bio;
 import net.modgarden.backend.data.user.User;
 import net.modgarden.backend.data.user.integration.DiscordUserIntegration;
+import net.modgarden.backend.data.user.role.UserRole;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.internal.InternalEndpoint;
 import net.modgarden.backend.util.NullableWrapper;
+import net.modgarden.backend.util.RemovableValue;
+import net.modgarden.backend.util.codec.RemovableValueCodec;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.management.relation.Role;
 import java.sql.SQLException;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.PATCH;
 
 @EndpointMethod(PATCH)
-@EndpointPath("/internal/user/modify/{id}")
+@EndpointPath("/internal/user/modify/{user_id}")
 public class ModifyUserEndpoint extends InternalEndpoint {
 	public ModifyUserEndpoint() {
-		super("user/modify/{id}");
+		super("user/modify/{user_id}");
 	}
 
 	@Override
@@ -36,7 +41,7 @@ public class ModifyUserEndpoint extends InternalEndpoint {
 		DatabaseAccess db = DatabaseAccess.get();
 
 		Request request = decodeBody(ctx, Request.CODEC);
-		String userIdToModify = ctx.pathParam("id");
+		String userIdToModify = ctx.pathParam("user_id");
 
 		if (request.username != null) {
 			String username = request.username;
@@ -63,9 +68,6 @@ public class ModifyUserEndpoint extends InternalEndpoint {
 			if (request.bio.description() != null) {
 				db.setUserBioDescription(userIdToModify, request.bio.description().value());
 			}
-			if (request.bio.avatarUrl() != null) {
-				db.setUserBioAvatarUrl(userIdToModify, request.bio.avatarUrl().value());
-			}
 			if (request.bio.fields() != null) {
 				for (Map.Entry<String, NullableWrapper<String>> entry : request.bio.fields().entrySet()) {
 					handleUserBioField(db, userIdToModify, entry.getKey(), entry.getValue().value());
@@ -76,6 +78,16 @@ public class ModifyUserEndpoint extends InternalEndpoint {
 		if (!request.integrations.isEmpty()) {
 			for (Map.Entry<String, NullableWrapper<Integration>> entry : request.integrations.entrySet()) {
 				handleIntegration(db, userIdToModify, entry.getKey(), entry.getValue().value());
+			}
+		}
+
+		if (!request.roles.isEmpty()) {
+			for (RemovableValue<String> role : request.roles) {
+				if (role.remove()) {
+					db.removeUserRole(role.value(), userIdToModify);
+					continue;
+				}
+				db.addUserRole(role.value(), userIdToModify);
 			}
 		}
 	}
@@ -106,16 +118,24 @@ public class ModifyUserEndpoint extends InternalEndpoint {
 	}
 
 	public record Request(@Nullable String username,
-						  @Nullable Bio.Modifiable bio,
-	                      Map<String, NullableWrapper<Integration>> integrations) {
+	                      @Nullable Bio.Modifiable bio,
+	                      Map<String, NullableWrapper<Integration>> integrations,
+	                      List<RemovableValue<String>> roles) {
 		public static final Codec<Request> CODEC = RecordCodecBuilder.create(inst -> inst.group(
-				Codec.STRING.optionalFieldOf("username")
+				Codec.STRING
+						.optionalFieldOf("username")
 						.forGetter(request -> Optional.ofNullable(request.username)),
-				Bio.Modifiable.CODEC.optionalFieldOf("bio")
+				Bio.Modifiable.CODEC
+						.optionalFieldOf("bio")
 						.forGetter(request -> Optional.ofNullable(request.bio)),
-				User.MODIFIABLE_INTEGRATION_CODEC.optionalFieldOf("integrations", Collections.emptyMap()).
-						forGetter(Request::integrations)
-		).apply(inst, (username, bio, integrations) ->
-				new Request(username.orElse(null), bio.orElse(null), integrations)));
+				User.MODIFIABLE_INTEGRATION_CODEC
+						.optionalFieldOf("integrations", Collections.emptyMap()).
+						forGetter(Request::integrations),
+				RemovableValueCodec.removable(UserRole.ID_CODEC)
+						.listOf()
+						.optionalFieldOf("roles", Collections.emptyList())
+						.forGetter(Request::roles)
+		).apply(inst, (username, bio, integrations, roles) ->
+				new Request(username.orElse(null), bio.orElse(null), integrations, roles)));
 	}
 }

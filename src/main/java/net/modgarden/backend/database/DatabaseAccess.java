@@ -639,6 +639,32 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
+	public void addUserRole(String roleId, String userId) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					INSERT INTO user_roles (role_id, user_id)
+					VALUES (?, ?)
+				""")
+		) {
+			statement.setString(1, roleId);
+			statement.setString(2, userId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void removeUserRole(String roleId, String userId) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					DELETE FROM user_roles
+					WHERE role_id = ? AND user_id = ?
+				""")
+		) {
+			statement.setString(1, roleId);
+			statement.setString(2, userId);
+			statement.executeUpdate();
+		}
+	}
+
 	// Projects
 
 	private void createProject(String projectId, String ownerUserId, String name) throws SQLException {

@@ -1,12 +1,15 @@
-package net.modgarden.backend.util;
+package net.modgarden.backend.util.codec;
 
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
+import net.modgarden.backend.util.NullableWrapper;
 
 /// A Codec that can be specified as 'null' when decoding/encoding.
 /// Will return {@link NullableWrapper#empty()} if null.
+///
+/// @see RemovableValueCodec RemovableValueCodec. Should be used for list values instead of this.
 public class NullableCodec<T> implements Codec<NullableWrapper<T>> {
 	private final Codec<T> codec;
 

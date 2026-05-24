@@ -13,7 +13,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.util.ExtraCodecs;
+import net.modgarden.backend.util.codec.ExtraCodecs;
 import org.jetbrains.annotations.Nullable;
 
 public record LinkCode(String code, String accountId, Service service, Instant expires) {

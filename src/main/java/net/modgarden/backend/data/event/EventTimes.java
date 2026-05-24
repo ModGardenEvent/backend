@@ -2,7 +2,7 @@ package net.modgarden.backend.data.event;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.modgarden.backend.util.ExtraCodecs;
+import net.modgarden.backend.util.codec.ExtraCodecs;
 
 import java.time.Instant;
 

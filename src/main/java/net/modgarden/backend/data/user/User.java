@@ -20,8 +20,8 @@ import net.modgarden.backend.data.user.integration.MinecraftUserIntegration;
 import net.modgarden.backend.data.user.integration.ModrinthUserIntegration;
 import net.modgarden.backend.data.user.role.UserRole;
 import net.modgarden.backend.database.DatabaseAccess;
-import net.modgarden.backend.util.ExtraCodecs;
-import net.modgarden.backend.util.NullableCodec;
+import net.modgarden.backend.util.codec.ExtraCodecs;
+import net.modgarden.backend.util.codec.NullableCodec;
 import net.modgarden.backend.util.NullableWrapper;
 
 public record User(

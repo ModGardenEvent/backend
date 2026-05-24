@@ -18,7 +18,7 @@ import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.project.platform.DownloadUrlSubmissionPlatform;
 import net.modgarden.backend.data.project.platform.ModrinthSubmissionPlatform;
-import net.modgarden.backend.util.ExtraCodecs;
+import net.modgarden.backend.util.codec.ExtraCodecs;
 
 public record Submission(String id,
                          String event,

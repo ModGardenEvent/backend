@@ -13,7 +13,7 @@ import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.exception.HypertextException;
-import net.modgarden.backend.util.NullableCodec;
+import net.modgarden.backend.util.codec.NullableCodec;
 import net.modgarden.backend.util.NullableWrapper;
 import org.jetbrains.annotations.NotNull;
 

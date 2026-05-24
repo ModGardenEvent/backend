@@ -20,7 +20,7 @@ import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.v2.AuthEndpoint;
-import net.modgarden.backend.util.ExtraCodecs;
+import net.modgarden.backend.util.codec.ExtraCodecs;
 import net.modgarden.backend.util.FallibleFunction;
 import org.jetbrains.annotations.NotNull;
 

@@ -1,5 +1,6 @@
 package net.modgarden.backend.util;
 
+import net.modgarden.backend.util.codec.NullableCodec;
 import org.jetbrains.annotations.Nullable;
 
 /// Used within {@link NullableCodec} to allow encasing inside an optional.

@@ -2,7 +2,7 @@ package net.modgarden.backend.data.user;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.modgarden.backend.util.NullableCodec;
+import net.modgarden.backend.util.codec.NullableCodec;
 import net.modgarden.backend.util.NullableWrapper;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,7 +26,6 @@ public record Bio(@Nullable String displayName,
 	public record Modifiable(@Nullable NullableWrapper<String> displayName,
 	                         @Nullable NullableWrapper<String> pronouns,
 	                         @Nullable NullableWrapper<String> description,
-	                         @Nullable NullableWrapper<String> avatarUrl,
 							 Map<String, NullableWrapper<String>> fields) {
 		public static final Codec<Modifiable> CODEC = RecordCodecBuilder.create(inst -> inst.group(
 				NullableCodec.nullable(Codec.STRING)
@@ -38,13 +37,10 @@ public record Bio(@Nullable String displayName,
 				NullableCodec.nullable(Codec.STRING)
 						.optionalFieldOf("description")
 						.forGetter(bio -> Optional.ofNullable(bio.description())),
-				NullableCodec.nullable(Codec.STRING)
-						.optionalFieldOf("avatar_url")
-						.forGetter(bio -> Optional.ofNullable(bio.avatarUrl())),
 				Codec.unboundedMap(Codec.STRING, NullableCodec.nullable(Codec.STRING))
 						.optionalFieldOf("fields", Collections.emptyMap())
 						.forGetter(Modifiable::fields)
-		).apply(inst, (displayName, pronouns, description, avatarUrl, fields) ->
-				new Modifiable(displayName.orElse(null), pronouns.orElse(null), description.orElse(null), avatarUrl.orElse(null), fields)));
+		).apply(inst, (displayName, pronouns, description, fields) ->
+				new Modifiable(displayName.orElse(null), pronouns.orElse(null), description.orElse(null), fields)));
 	}
 }

@@ -17,7 +17,7 @@ import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.Integration;
 import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.Permissions;
-import net.modgarden.backend.util.ExtraCodecs;
+import net.modgarden.backend.util.codec.ExtraCodecs;
 
 public record UserRole(
 		String id,

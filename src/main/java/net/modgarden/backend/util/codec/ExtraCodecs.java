@@ -1,4 +1,4 @@
-package net.modgarden.backend.util;
+package net.modgarden.backend.util.codec;
 
 import java.time.Instant;
 import java.time.ZoneId;

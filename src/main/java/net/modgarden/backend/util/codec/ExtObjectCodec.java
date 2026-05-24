@@ -1,4 +1,4 @@
-package net.modgarden.backend.util;
+package net.modgarden.backend.util.codec;
 
 import java.util.List;
 import java.util.Map;
