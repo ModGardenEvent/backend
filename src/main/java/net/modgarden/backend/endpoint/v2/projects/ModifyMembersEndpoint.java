@@ -3,7 +3,6 @@ package net.modgarden.backend.endpoint.v2.projects;
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.PATCH;
 
 import java.util.Map;
-import java.util.Optional;
 
 import com.mojang.serialization.Codec;
 import io.javalin.http.Context;
@@ -15,6 +14,7 @@ import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.util.NullableCodec;
+import net.modgarden.backend.util.NullableWrapper;
 import org.jetbrains.annotations.NotNull;
 
 @EndpointMethod(PATCH)
@@ -34,9 +34,9 @@ public class ModifyMembersEndpoint extends AuthorizedProjectEndpoint {
 		DatabaseAccess db = DatabaseAccess.get();
 		Request request = this.decodeBody(ctx, Request.CODEC);
 
-		for (Map.Entry<String, Optional<String>> entry : request.users().entrySet()) {
+		for (Map.Entry<String, NullableWrapper<String>> entry : request.users().entrySet()) {
 			String memberId = entry.getKey();
-			String role = entry.getValue().orElse(null);
+			String role = entry.getValue().value();
 
 			// If a non-administrator attempts to modify an administrator, throw.
 			if (!db.canUserModifyMember(projectId, memberId, scopePermissions)) {
@@ -80,8 +80,8 @@ public class ModifyMembersEndpoint extends AuthorizedProjectEndpoint {
 		return ctx.pathParam("project_id");
 	}
 
-	public record Request(Map<String, Optional<String>> users) {
-		public static final Codec<Request> CODEC = Codec.unboundedMap(User.ID_CODEC, new NullableCodec<>(Codec.STRING))
+	public record Request(Map<String, NullableWrapper<String>> users) {
+		public static final Codec<Request> CODEC = Codec.unboundedMap(User.ID_CODEC, NullableCodec.nullable(Codec.STRING))
 				.xmap(Request::new, Request::users);
 	}
 }

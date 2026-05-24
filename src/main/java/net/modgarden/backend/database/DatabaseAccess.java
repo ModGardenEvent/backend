@@ -499,6 +499,128 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
+	public void setUsername(String userId, String newUsername) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					UPDATE users
+					SET username = ?
+					WHERE id = ?
+				""")
+		) {
+			statement.setString(1, newUsername);
+			statement.setString(2, userId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void setUserBioDisplayName(String userId, @Nullable String displayName) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					UPDATE user_bios
+					SET display_name = ?
+					WHERE user_id = ?
+				""")
+		) {
+			statement.setString(1, displayName);
+			statement.setString(2, userId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void setUserBioPronouns(String userId, @Nullable String pronouns) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					UPDATE user_bios
+					SET pronouns = ?
+					WHERE user_id = ?
+				""")
+		) {
+			statement.setString(1, pronouns);
+			statement.setString(2, userId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void setUserBioDescription(String userId, @Nullable String description) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					UPDATE user_bios
+					SET description = ?
+					WHERE user_id = ?
+				""")
+		) {
+			statement.setString(1, description);
+			statement.setString(2, userId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void setUserBioAvatarUrl(String userId, @Nullable String avatarUrl) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					UPDATE user_bios
+					SET avatar_url = ?
+					WHERE user_id = ?
+				""")
+		) {
+			statement.setString(1, avatarUrl);
+			statement.setString(2, userId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void addUserBioField(String userId, String fieldName, String fieldValue) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					INSERT INTO user_bio_fields (user_id, field_name, field_value)
+					VALUES (?, ?, ?)
+				""")
+		) {
+			statement.setString(1, userId);
+			statement.setString(2, fieldName);
+			statement.setString(3, fieldValue);
+			statement.executeUpdate();
+		}
+	}
+
+	public void removeUserBioField(String userId, String fieldName) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					DELETE FROM user_bio_fields
+					WHERE user_id = ? AND field_name = ?
+				""")
+		) {
+			statement.setString(1, userId);
+			statement.setString(2, fieldName);
+			statement.executeUpdate();
+		}
+	}
+
+	public void setUserDiscordIntegration(String userId, String discordId) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					INSERT OR REPLACE INTO user_integration_discord (user_id, discord_id)
+					VALUES (?, ?)
+				""")
+		) {
+			statement.setString(1, userId);
+			statement.setString(2, discordId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void removeUserDiscordIntegration(String userId) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					DELETE FROM user_integration_discord
+					WHERE user_id = ?
+				""")
+		) {
+			statement.setString(1, userId);
+			statement.executeUpdate();
+		}
+	}
+
 	// Projects
 
 	private void createProject(String projectId, String ownerUserId, String name) throws SQLException {

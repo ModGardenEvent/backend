@@ -21,6 +21,8 @@ import net.modgarden.backend.data.user.integration.ModrinthUserIntegration;
 import net.modgarden.backend.data.user.role.UserRole;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.util.ExtraCodecs;
+import net.modgarden.backend.util.NullableCodec;
+import net.modgarden.backend.util.NullableWrapper;
 
 public record User(
 		String id,
@@ -45,6 +47,9 @@ public record User(
 		}
 		return DataResult.success(key);
 	});
+	public static final Codec<Map<String, Integration>> INTEGRATION_CODEC = Codec.dispatchedMap(INTEGRATION_CODEC_KEY, INTEGRATION_CODECS::get);
+	public static final Codec<Map<String, NullableWrapper<Integration>>> MODIFIABLE_INTEGRATION_CODEC = Codec.dispatchedMap(INTEGRATION_CODEC_KEY,
+			key -> NullableCodec.nullable(INTEGRATION_CODECS.get(key)));
 
     public static final Codec<User> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING.fieldOf("id").forGetter(User::id),
@@ -52,7 +57,7 @@ public record User(
 			Bio.DIRECT_CODEC.fieldOf("bio").forGetter(User::bio),
 			Permission.STRING_PERMISSIONS_CODEC.fieldOf("permissions").forGetter(User::permissions),
 			ExtraCodecs.INSTANT_CODEC.fieldOf("created").forGetter(User::created),
-		    Codec.dispatchedMap(INTEGRATION_CODEC_KEY, INTEGRATION_CODECS::get).fieldOf("integrations").forGetter(User::integrations),
+		    INTEGRATION_CODEC.fieldOf("integrations").forGetter(User::integrations),
 		    Project.ID_CODEC.listOf()
 				    .xmap(list -> (Set<String>) new HashSet<>(list), set -> List.of(set.toArray(String[]::new)))
 				    .fieldOf("projects")
@@ -73,7 +78,7 @@ public record User(
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(User::validateId);
 	public static final Codec<String> NEW_USERNAME_CODEC = Codec.STRING
 			.xmap(s -> s.toLowerCase(Locale.ROOT), s -> s)
-			.validate(User::validateMewUsername);
+			.validate(User::validateNewUsername);
 
 	private static DataResult<String> validateId(String id) {
 		DatabaseAccess db = DatabaseAccess.get();
@@ -85,7 +90,7 @@ public record User(
 		}
     }
 
-	private static DataResult<String> validateMewUsername(String username) {
+	private static DataResult<String> validateNewUsername(String username) {
 		DatabaseAccess db = DatabaseAccess.get();
 
 		if (db.logIfThrown(() -> !db.usernameExists(username))) {

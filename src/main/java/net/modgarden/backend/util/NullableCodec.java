@@ -5,28 +5,30 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.DynamicOps;
 
-import java.util.Optional;
-
 /// A Codec that can be specified as 'null' when decoding/encoding.
-/// Will return {@link Optional#empty()} if null.
-public class NullableCodec<T> implements Codec<Optional<T>> {
+/// Will return {@link NullableWrapper#empty()} if null.
+public class NullableCodec<T> implements Codec<NullableWrapper<T>> {
 	private final Codec<T> codec;
 
-	public NullableCodec(Codec<T> codec) {
+	private NullableCodec(Codec<T> codec) {
 		this.codec = codec;
 	}
 
+	public static <T> NullableCodec<T> nullable(Codec<T> codec) {
+		return new NullableCodec<>(codec);
+	}
+
 	@Override
-	public <TOps> DataResult<Pair<Optional<T>, TOps>> decode(DynamicOps<TOps> ops, TOps input) {
-		DataResult<Pair<Optional<T>, TOps>> nonNullAttempt = codec.decode(ops, input)
-				.map(pair -> pair.mapFirst(Optional::of));
+	public <TOps> DataResult<Pair<NullableWrapper<T>, TOps>> decode(DynamicOps<TOps> ops, TOps input) {
+		DataResult<Pair<NullableWrapper<T>, TOps>> nonNullAttempt = codec.decode(ops, input)
+				.map(pair -> pair.mapFirst(NullableWrapper::of));
 
 		if (nonNullAttempt.hasResultOrPartial()) {
 			return nonNullAttempt;
 		}
 
 		if (input == ops.empty()) {
-			return DataResult.success(Pair.of(Optional.empty(), input));
+			return DataResult.success(Pair.of(NullableWrapper.empty(), input));
 		}
 
 		return nonNullAttempt
@@ -34,9 +36,9 @@ public class NullableCodec<T> implements Codec<Optional<T>> {
 	}
 
 	@Override
-	public <TOps> DataResult<TOps> encode(Optional<T> input, DynamicOps<TOps> ops, TOps prefix) {
+	public <TOps> DataResult<TOps> encode(NullableWrapper<T> input, DynamicOps<TOps> ops, TOps prefix) {
 		if (input.isPresent()) {
-			return codec.encode(input.get(), ops, prefix);
+			return codec.encode(input.value(), ops, prefix);
 		}
 		return DataResult.success(ops.empty());
 	}
