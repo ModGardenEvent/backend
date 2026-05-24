@@ -43,9 +43,10 @@ public class ModifyUserEndpoint extends InternalEndpoint {
 		Request request = decodeBody(ctx, Request.CODEC);
 		String userIdToModify = ctx.pathParam("user_id");
 
+		User user = db.getUserFromId(userIdToModify);
+
 		if (request.username != null) {
 			String username = request.username;
-			User user = db.getUserFromId(userIdToModify);
 			boolean sameUsername = username.equals(user.username());
 
 			if (!sameUsername && db.usernameExists(username)) {
@@ -87,6 +88,12 @@ public class ModifyUserEndpoint extends InternalEndpoint {
 					db.removeUserRole(role.value(), userIdToModify);
 					continue;
 				}
+
+				boolean hasRole = user.roles().contains(role.value());
+
+				if (hasRole)
+					continue;
+
 				db.addUserRole(role.value(), userIdToModify);
 			}
 		}
