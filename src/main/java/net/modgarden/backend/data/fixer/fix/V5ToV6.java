@@ -464,25 +464,6 @@ public class V5ToV6 extends DatabaseFix {
 		SELECT award_id, awarded_to, custom_data, submission_id, tier_override FROM award_instances_old
 		""");
 
-		statement.addBatch("ALTER TABLE team_invites RENAME TO team_invites_old");
-		statement.addBatch("""
-		CREATE TABLE IF NOT EXISTS team_invites (
-			code TEXT NOT NULL,
-			project_id TEXT NOT NULL,
-			user_id TEXT NOT NULL,
-			expires INTEGER NOT NULL,
-			role TEXT NOT NULL DEFAULT 'Member',
-			permissions INTEGER NOT NULL DEFAULT 0,
-			FOREIGN KEY (project_id) REFERENCES projects(id) ON UPDATE CASCADE ON DELETE CASCADE,
-			FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE,
-			PRIMARY KEY (code)
-		)
-		""");
-		statement.addBatch("""
-		INSERT INTO team_invites (code, project_id, user_id, expires, role)
-		SELECT code, project_id, user_id, expires, role FROM team_invites_old
-		""");
-
 		statement.addBatch("""
 		UPDATE users
 		SET id = generate_natural_id('users', 'id', NULL, 5)
@@ -594,10 +575,12 @@ public class V5ToV6 extends DatabaseFix {
 			}
 		}
 
-		return postConnections -> {
+		return postConnection -> {
 			try {
-				var postStatements = postConnections.createStatement();
+				var postStatements = postConnection.createStatement();
 				postStatements.addBatch("PRAGMA foreign_keys = ON");
+
+				postStatements.addBatch("DROP TABLE team_invites");
 
 				postStatements.addBatch("DROP TABLE submissions_old");
 				postStatements.addBatch("DROP TABLE submissions_mr");
@@ -606,7 +589,6 @@ public class V5ToV6 extends DatabaseFix {
 				postStatements.addBatch("DROP TABLE project_roles_temp");
 				postStatements.addBatch("DROP TABLE minecraft_accounts_old");
 				postStatements.addBatch("DROP TABLE award_instances_old");
-				postStatements.addBatch("DROP TABLE team_invites_old");
 				postStatements.addBatch("DROP TABLE projects_old");
 				postStatements.addBatch("DROP TABLE users_old");
 				postStatements.addBatch("DROP TABLE events_old");
