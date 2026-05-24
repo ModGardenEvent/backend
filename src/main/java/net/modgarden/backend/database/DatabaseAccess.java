@@ -943,8 +943,8 @@ public final class DatabaseAccess implements AutoCloseable {
 		try (
 				var submissionsOpenStatement = this.getConnection().prepareStatement("""
 					SELECT 1
-					FROM events
-					WHERE id = ? AND start_time >= ? AND end_time < ?
+					FROM event_times
+					WHERE event_id = ? AND development_start >= ? AND development_end < ?
 				""")
 		) {
 			long currentMs = System.currentTimeMillis();
