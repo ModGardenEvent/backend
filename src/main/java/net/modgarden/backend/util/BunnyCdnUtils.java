@@ -18,6 +18,7 @@ import net.modgarden.backend.oauth.OAuthService;
 import net.modgarden.backend.oauth.client.BunnyCdnOAuthClient;
 import org.jetbrains.annotations.Nullable;
 
+// TODO: Implement CDN when we get to Website V2.
 public class BunnyCdnUtils {
 	@Nullable
 	private static String uploadToCdn(String baseUrl, @Nullable InputStream imageStream) throws Exception {
