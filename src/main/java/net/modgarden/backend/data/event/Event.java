@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.Map;
 
 import com.mojang.serialization.Codec;
@@ -14,24 +15,36 @@ import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.event.game.MinecraftEventPlatform;
+import net.modgarden.backend.data.user.role.UserRole;
 
 public record Event(String id,
 					String slug,
 					EventMetadata metadata,
 					EventTimes times,
 					EventPlatform platform,
-					EventRoles roles) {
+					Map<String, String> roles) {
 	private static final Map<String, MapCodec<EventPlatform>> PLATFORM_MAP_CODECS = Map.ofEntries(
 			entry(MinecraftEventPlatform.ID, EventPlatform.fromMapCodec(MinecraftEventPlatform.CODEC))
 	);
 	private static final Codec<EventPlatform> PLATFORM_CODEC = Codec.STRING.dispatch("game", EventPlatform::game, PLATFORM_MAP_CODECS::get);
 	public static final Codec<Event> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
-            Codec.STRING.fieldOf("id").forGetter(Event::id),
-			Codec.STRING.fieldOf("slug").forGetter(Event::slug),
-			EventMetadata.CODEC.fieldOf("metadata").forGetter(Event::metadata),
-			EventTimes.CODEC.fieldOf("times").forGetter(Event::times),
-			PLATFORM_CODEC.fieldOf("platform").forGetter(Event::platform),
-			EventRoles.CODEC.optionalFieldOf("roles", new EventRoles(null, null, null)).forGetter(Event::roles)
+            Codec.STRING
+					.fieldOf("id")
+					.forGetter(Event::id),
+			Codec.STRING
+					.fieldOf("slug")
+					.forGetter(Event::slug),
+			EventMetadata.CODEC
+					.fieldOf("metadata")
+					.forGetter(Event::metadata),
+			EventTimes.CODEC
+					.fieldOf("times")
+					.forGetter(Event::times),
+			PLATFORM_CODEC.fieldOf("platform")
+					.forGetter(Event::platform),
+			Codec.unboundedMap(Codec.STRING, UserRole.ID_CODEC)
+					.optionalFieldOf("roles", Collections.emptyMap())
+					.forGetter(Event::roles)
 	).apply(inst, Event::new)));
     public static final Codec<String> ID_CODEC = Codec.STRING.validate(Event::validate);
 

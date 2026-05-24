@@ -1188,20 +1188,25 @@ public final class DatabaseAccess implements AutoCloseable {
 				FROM events
 				WHERE genre_slug = ? AND slug = ?
 			""");
-			 var eventTimesStatement = this.getConnection().prepareStatement("""
-				SELECT registration_open, registration_close, development_start, development_end, pack_freeze
-				FROM event_times
-				WHERE id = ?
-			""");
 			 var eventMetadataStatement = this.getConnection().prepareStatement("""
 				SELECT name, description
 				FROM event_metadata
-				WHERE id = ?
+				WHERE event_id = ?
+			""");
+			 var eventTimesStatement = this.getConnection().prepareStatement("""
+				SELECT registration_open, registration_close, development_start, development_end, pack_freeze
+				FROM event_times
+				WHERE event_id = ?
 			""");
 		     var minecraftPlatformStatement = this.getConnection().prepareStatement("""
 				SELECT mod_loader, game_version
 				FROM event_platform_minecraft
-				WHERE id = ?
+				WHERE event_id = ?
+			""");
+		     var rolesStatement = this.getConnection().prepareStatement("""
+				SELECT role_key, role_id
+				FROM event_roles
+				WHERE event_id = ?
 			""")) {
 			eventStatement.setString(1, genreSlug);
 			eventStatement.setString(2, eventSlug);
@@ -1241,6 +1246,17 @@ public final class DatabaseAccess implements AutoCloseable {
 					minecraftPlatformResultSet.getString("game_version")
 			);
 
+			Map<String, String> roles = new LinkedHashMap<>();
+
+			rolesStatement.setString(1, eventId);
+			ResultSet rolesResultSet = rolesStatement.executeQuery();
+
+			while (rolesResultSet.next()) {
+				String roleKey = rolesResultSet.getString("role_key");
+				String roleId = rolesResultSet.getString("role_id");
+				roles.put(roleKey, roleId);
+			}
+
 			return new Event(
 					eventId,
 					eventSlug,
@@ -1256,12 +1272,7 @@ public final class DatabaseAccess implements AutoCloseable {
 							Instant.ofEpochMilli(eventTimesResultSet.getLong("pack_freeze"))
 					),
 					platform,
-					// TODO: Implement roles field in database as soon as fields are finalized...
-					new EventRoles(
-							null,
-							null,
-							null
-					)
+					roles
 			);
 		}
 	}

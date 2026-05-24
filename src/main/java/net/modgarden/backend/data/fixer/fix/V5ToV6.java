@@ -163,64 +163,68 @@ public class V5ToV6 extends DatabaseFix {
 
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS event_metadata (
-			id TEXT UNIQUE NOT NULL,
+			event_id TEXT UNIQUE NOT NULL,
 			name TEXT NOT NULL,
 			description TEXT,
-			FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
-			PRIMARY KEY (id)
+			FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			PRIMARY KEY (event_id)
 		)
 		""");
 		statement.addBatch("""
-		INSERT INTO event_metadata (id, name, description)
+		INSERT INTO event_metadata (event_id, name, description)
 		SELECT id, display_name, NULL FROM events_old
 		""");
 
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS event_times (
-			id TEXT UNIQUE NOT NULL,
+			event_id TEXT UNIQUE NOT NULL,
 			registration_open TEXT NOT NULL,
 			registration_close TEXT NOT NULL,
 			development_start TEXT NOT NULL,
 			development_end TEXT NOT NULL,
 			pack_freeze TEXT NOT NULL,
-			FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
-			PRIMARY KEY (id)
+			FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			PRIMARY KEY (event_id)
 		)
 		""");
 		statement.addBatch("""
-		INSERT INTO event_times (id, registration_open, registration_close, development_start, development_end, pack_freeze)
+		INSERT INTO event_times (event_id, registration_open, registration_close, development_start, development_end, pack_freeze)
 		SELECT id, registration_time, '1748131200000', start_time, end_time, freeze_time FROM events_old
 		""");
 
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS event_roles (
-			id TEXT UNIQUE NOT NULL,
-			participant TEXT,
-			theme_award TEXT,
-			team_pick_award TEXT,
-			FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
-			FOREIGN KEY (participant) REFERENCES user_role_definitions(id) ON UPDATE CASCADE,
-			FOREIGN KEY (theme_award) REFERENCES user_role_definitions(id) ON UPDATE CASCADE,
-			FOREIGN KEY (team_pick_award) REFERENCES user_role_definitions(id) ON UPDATE CASCADE,
-			PRIMARY KEY (id)
+			event_id TEXT NOT NULL,
+			role_key TEXT,
+			role_id TEXT,
+			FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			FOREIGN KEY (role_id) REFERENCES user_role_definitions(id) ON UPDATE CASCADE ON DELETE CASCADE
 		)
 		""");
 		statement.addBatch("""
-		INSERT INTO event_roles (id, participant, theme_award, team_pick_award)
-		SELECT id, 'nature-participant', 'nature-theme', 'nature-pick' FROM events_old
+		INSERT INTO event_roles (event_id, role_key, role_id)
+		SELECT id, 'participant', 'nature-participant' FROM events_old
+		""");
+		statement.addBatch("""
+		INSERT INTO event_roles (event_id, role_key, role_id)
+		SELECT id, 'theme_award', 'nature-theme' FROM events_old
+		""");
+		statement.addBatch("""
+		INSERT INTO event_roles (event_id, role_key, role_id)
+		SELECT id, 'team_pick_award', 'nature-pick' FROM events_old
 		""");
 
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS event_platform_minecraft (
-			id TEXT UNIQUE NOT NULL,
+			event_id TEXT UNIQUE NOT NULL,
 			mod_loader TEXT NOT NULL,
 			game_version TEXT NOT NULL,
-			FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
-			PRIMARY KEY (id)
+			FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			PRIMARY KEY (event_id)
 		)
 		""");
 		statement.addBatch("""
-		INSERT INTO event_platform_minecraft (id, mod_loader, game_version)
+		INSERT INTO event_platform_minecraft (event_id, mod_loader, game_version)
 		SELECT id, loader, minecraft_version FROM events_old
 		""");
 

@@ -28,7 +28,6 @@ import io.github.cdimascio.dotenv.Dotenv;
 import io.javalin.Javalin;
 import io.javalin.json.JsonMapper;
 import net.modgarden.backend.data.ExceptionPage;
-import net.modgarden.backend.data.DevelopmentModeData;
 import net.modgarden.backend.data.LandingPage;
 import net.modgarden.backend.data.award.Award;
 import net.modgarden.backend.data.award.AwardInstance;
@@ -378,43 +377,41 @@ public class ModGardenBackend {
 			""");
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS event_metadata (
-				id TEXT UNIQUE NOT NULL,
+				event_id TEXT UNIQUE NOT NULL,
 				name TEXT NOT NULL,
 				description TEXT,
-				FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
-				PRIMARY KEY (id)
+				FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				PRIMARY KEY (event_id)
 			)
 			""");
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS event_times (
-				id TEXT UNIQUE NOT NULL,
+				event_id TEXT UNIQUE NOT NULL,
 				registration_open TEXT NOT NULL,
 				registration_close TEXT NOT NULL,
 				development_start TEXT NOT NULL,
 				development_end TEXT NOT NULL,
 				pack_freeze TEXT NOT NULL,
-				FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
-				PRIMARY KEY (id)
+				FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				PRIMARY KEY (event_id)
 			)
 			""");
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS event_roles (
-				id TEXT UNIQUE NOT NULL,
-				participant TEXT,
-				theme_award TEXT,
-				team_pick_award TEXT,
-				FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
-				FOREIGN KEY (participant, theme_award, team_pick_award) REFERENCES user_role_definitions(id) ON UPDATE CASCADE,
-				PRIMARY KEY (id)
+				event_id TEXT NOT NULL,
+				role_key TEXT,
+				role_id TEXT,
+				FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				FOREIGN KEY (role_id) REFERENCES user_role_definitions(id) ON DELETE CASCADE
 			)
 			""");
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS event_platform_minecraft (
-				id TEXT UNIQUE NOT NULL,
+				event_id TEXT UNIQUE NOT NULL,
 				mod_loader TEXT NOT NULL,
 				game_version TEXT NOT NULL,
-				FOREIGN KEY (id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
-				PRIMARY KEY (id)
+				FOREIGN KEY (event_id) REFERENCES events(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				PRIMARY KEY (event_id)
 			)
 			""");
 			statement.addBatch("""
@@ -532,7 +529,8 @@ public class ModGardenBackend {
 		LOG.debug("Created database tables.");
 
 		if ("development".equals(DOTENV.get("env"))) {
-			DevelopmentModeData.insertDevelopmentModeData();
+			// TODO: Setup tests at a later date.
+//			DevelopmentModeData.insertDevelopmentModeData();
 		}
 	}
 
