@@ -64,10 +64,10 @@ public final class GenerateKeyEndpoint extends AuthEndpoint {
 		switch (request.scope().id()) {
 			case "project" -> {
 				Permissions projectPermissions = db.getProjectMemberPermissions(userId, projectId);
-				requestedPermissions = requestedPermissions.restrict(projectPermissions.bits());
+				requestedPermissions = requestedPermissions.restrictTo(projectPermissions.bits());
 				if (this.requireAllPermissions(ctx, projectPermissions, Permission.MODIFY_API_KEY)) return;
 			}
-			case "user" -> requestedPermissions = requestedPermissions.restrict(
+			case "user" -> requestedPermissions = requestedPermissions.restrictTo(
 					Permission.DEFAULT_USER_PERMISSIONS.bits() | scopePermissions.bits());
 		}
 

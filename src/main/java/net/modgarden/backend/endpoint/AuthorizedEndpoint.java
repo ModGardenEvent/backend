@@ -220,7 +220,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 					case USER -> {
 						try {
 							scopePermissions = db.getUserPermissions(userId);
-							scopePermissions = scopePermissions.restrict(apiKeyPermissions.bits());
+							scopePermissions = scopePermissions.restrictTo(apiKeyPermissions.bits());
 						} catch (HypertextException e) {
 							this.setStatusUnauthorized(ctx);
 							return ValidationResult.no();
@@ -229,7 +229,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 					case PROJECT -> {
 						try {
 							scopePermissions = db.getProjectMemberPermissions(userId, projectId);
-							scopePermissions = scopePermissions.restrict(apiKeyPermissions.bits());
+							scopePermissions = scopePermissions.restrictTo(apiKeyPermissions.bits());
 						} catch (HypertextException e) {
 							this.setStatusUnauthorized(ctx);
 							return ValidationResult.no();

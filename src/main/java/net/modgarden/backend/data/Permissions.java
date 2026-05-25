@@ -53,7 +53,7 @@ public record Permissions(long bits) {
 	}
 
 	/// Only allows permissions in [#bits] and ignores all other permissions.
-	public Permissions restrict(long bits) {
+	public Permissions restrictTo(long bits) {
 		return new Permissions(this.bits & bits);
 	}
 
