@@ -20,6 +20,7 @@ import net.modgarden.backend.data.Permission;
 import net.modgarden.backend.data.PermissionScope;
 import net.modgarden.backend.data.Permissions;
 import net.modgarden.backend.database.DatabaseAccess;
+import net.modgarden.backend.endpoint.exception.BadRequestException;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.v2.auth.api_key.GenerateKeyEndpoint;
 import org.jetbrains.annotations.NotNull;
@@ -149,7 +150,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 		projectId = this.getProjectId(ctx);
 
 		if (!authorization.startsWith("Basic ")) {
-			throw new HypertextException(400, "Only Basic authentication is supported.");
+			throw new BadRequestException("Only Basic authentication is supported.");
 		}
 
 		String idSecretPair = new String(
@@ -157,81 +158,81 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 				StandardCharsets.UTF_8
 		);
 		String[] idSecretPairSplit = idSecretPair.split(":");
-		String userId = idSecretPairSplit[0];
-		String secret = null;
-		if (idSecretPairSplit.length > 1) {
-			secret = Arrays.stream(idSecretPairSplit)
-					.skip(1)
-					.collect(Collectors.joining(":"));
+
+		if (idSecretPairSplit.length < 2) {
+			throw new BadRequestException("Basic authentication requires a Base64-encoded colon-separated username:password value, but the input is malformed.");
 		}
 
-		if (secret != null) {
-			DatabaseAccess db = DatabaseAccess.get();
+		String userId = idSecretPairSplit[0];
+		String secret = Arrays.stream(idSecretPairSplit)
+				.skip(1)
+				.collect(Collectors.joining(":"));
 
-			Collection<DatabaseAccess.ApiKey> apiKeyResult = db.getApiKeys(userId);
-			if (apiKeyResult.isEmpty()) {
+		DatabaseAccess db = DatabaseAccess.get();
+
+		Collection<DatabaseAccess.ApiKey> apiKeyResult = db.getApiKeys(userId);
+		if (apiKeyResult.isEmpty()) {
+			this.setStatusUnauthorized(ctx);
+			return ValidationResult.no();
+		}
+
+		Iterator<DatabaseAccess.ApiKey> it = apiKeyResult.iterator();
+		while (!authorized && it.hasNext()) {
+			DatabaseAccess.ApiKey apiKey = it.next();
+			Optional<DatabaseAccess.ApiKeyScope> optionalApiKeyScope = db.getApiKeyScope(apiKey.uuid());
+			if (optionalApiKeyScope.isEmpty()) {
 				this.setStatusUnauthorized(ctx);
 				return ValidationResult.no();
 			}
 
-			Iterator<DatabaseAccess.ApiKey> it = apiKeyResult.iterator();
-			while (!authorized && it.hasNext()) {
-				DatabaseAccess.ApiKey apiKey = it.next();
-				Optional<DatabaseAccess.ApiKeyScope> optionalApiKeyScope = db.getApiKeyScope(apiKey.uuid());
-				if (optionalApiKeyScope.isEmpty()) {
-					this.setStatusUnauthorized(ctx);
-					return ValidationResult.no();
-				}
+			DatabaseAccess.ApiKeyScope apiKeyScope = optionalApiKeyScope.get();
 
-				DatabaseAccess.ApiKeyScope apiKeyScope = optionalApiKeyScope.get();
+			// forbid expired keys
+			if (Instant.now().isAfter(apiKey.expires())) {
+				this.setStatusUnauthorized(ctx);
+				db.deleteApiKey(apiKey.uuid());
+				return ValidationResult.no();
+			}
 
-				// forbid expired keys
-				if (Instant.now().isAfter(apiKey.expires())) {
-					this.setStatusUnauthorized(ctx);
-					db.deleteApiKey(apiKey.uuid());
-					return ValidationResult.no();
-				}
+			// validate permission scope matches
+			PermissionScope scope = apiKeyScope.scope();
+			if (scope != this.permissionScope && this.permissionScope != PermissionScope.ALL) {
+				ctx.result("Permission scope " + scope + " does not match the scope " + this.permissionScope + " for this endpoint.");
+				ctx.status(403);
+				return ValidationResult.no();
+			}
 
-				// validate permission scope matches
-				PermissionScope scope = apiKeyScope.scope();
-				if (scope != this.permissionScope && this.permissionScope != PermissionScope.ALL) {
-					ctx.result("Permission scope " + scope + " does not match the scope " + this.permissionScope + " for this endpoint.");
-					ctx.status(403);
-					return ValidationResult.no();
-				}
+			// validate project ID matches
+			if (!(this instanceof GenerateKeyEndpoint) && projectId != null && !projectId.equals(apiKeyScope.projectId())) {
+				ctx.result("Project ID " + projectId + " does not match the project ID for this scope.");
+				ctx.status(403);
+				return ValidationResult.no();
+			}
 
-				// validate project ID matches
-				if (!(this instanceof GenerateKeyEndpoint) && projectId != null && !projectId.equals(apiKeyScope.projectId())) {
-					ctx.result("Project ID " + projectId + " does not match the project ID for this scope.");
-					ctx.status(403);
-					return ValidationResult.no();
-				}
+			String hash = apiKey.hash();
+			authorized = verifySecret(hash, secret);
 
-				String hash = apiKey.hash();
-				authorized = verifySecret(hash, secret);
-
-				// give this endpoint the permissions as specified by the API key
-				if (authorized) {
-					Permissions apiKeyPermissions = apiKeyScope.permissions();
-					// Disallow permissions the user doesn't already have
-					switch (scope) {
-						case USER -> {
-							try {
-								scopePermissions = db.getUserPermissions(userId);
-								scopePermissions = scopePermissions.restrict(apiKeyPermissions.bits());
-							} catch (HypertextException e) {
-								this.setStatusUnauthorized(ctx);
-								return ValidationResult.no();
-							}
+			// give this endpoint the permissions as specified by the API key
+			if (authorized) {
+				Permissions apiKeyPermissions = apiKeyScope.permissions();
+				// Disallow permissions the user doesn't already have
+				switch (scope) {
+					case USER -> {
+						try {
+							scopePermissions = db.getUserPermissions(userId);
+							scopePermissions = scopePermissions.restrict(apiKeyPermissions.bits());
+						} catch (HypertextException e) {
+							this.setStatusUnauthorized(ctx);
+							return ValidationResult.no();
 						}
-						case PROJECT -> {
-							try {
-								scopePermissions = db.getProjectMemberPermissions(userId, projectId);
-								scopePermissions = scopePermissions.restrict(apiKeyPermissions.bits());
-							} catch (HypertextException e) {
-								this.setStatusUnauthorized(ctx);
-								return ValidationResult.no();
-							}
+					}
+					case PROJECT -> {
+						try {
+							scopePermissions = db.getProjectMemberPermissions(userId, projectId);
+							scopePermissions = scopePermissions.restrict(apiKeyPermissions.bits());
+						} catch (HypertextException e) {
+							this.setStatusUnauthorized(ctx);
+							return ValidationResult.no();
 						}
 					}
 				}

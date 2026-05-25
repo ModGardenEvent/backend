@@ -12,6 +12,8 @@ import net.modgarden.backend.data.user.User;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.exception.BadRequestException;
+import net.modgarden.backend.endpoint.exception.ForbiddenException;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.util.codec.NullableCodec;
 import net.modgarden.backend.util.NullableWrapper;
@@ -40,7 +42,7 @@ public class ModifyMembersEndpoint extends AuthorizedProjectEndpoint {
 
 			// If a non-administrator attempts to modify an administrator, throw.
 			if (!db.canUserModifyMember(projectId, memberId, scopePermissions)) {
-				throw new HypertextException(403, "Non-administrators may not edit administrators' permissions on projects");
+				throw new ForbiddenException("Non-administrators may not edit administrators' permissions on projects");
 			}
 
 			if (role == null) {
@@ -52,9 +54,7 @@ public class ModifyMembersEndpoint extends AuthorizedProjectEndpoint {
 				// check if admin can edit admin and other admin exist, and we are admin this scope
 				if (memberIsAdmin && scopePermissions.hasPermissions(Permission.ADMINISTRATOR)) {
 					if (db.getProjectAdministratorCount(projectId) < 2) {
-						ctx.status(400);
-						ctx.result("A project must have at least one administrator");
-						return;
+						throw new BadRequestException("A project must have at least one administrator");
 					}
 				}
 

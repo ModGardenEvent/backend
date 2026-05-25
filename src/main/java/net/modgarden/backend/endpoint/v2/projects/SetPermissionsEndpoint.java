@@ -12,6 +12,7 @@ import net.modgarden.backend.data.user.User;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.exception.ForbiddenException;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import org.jetbrains.annotations.NotNull;
 
@@ -37,7 +38,7 @@ public class SetPermissionsEndpoint extends AuthorizedProjectEndpoint {
 		// This is a separate loop to make sure that no actions are made if there is one error.
 		for (String targetId : request.usersToPermissions().keySet()) {
 			if (!db.canUserModifyMember(projectId, targetId, scopePermissions)) {
-				throw new HypertextException(403, "Non-administrators may not edit administrators' permissions on projects");
+				throw new ForbiddenException("Non-administrators may not edit administrators' permissions on projects");
 			}
 		}
 

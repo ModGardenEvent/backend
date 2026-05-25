@@ -12,6 +12,7 @@ import net.modgarden.backend.data.user.role.UserRole;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.exception.AlreadyExistsException;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.internal.InternalEndpoint;
 import net.modgarden.backend.util.NullableWrapper;
@@ -50,7 +51,7 @@ public class ModifyUserEndpoint extends InternalEndpoint {
 			boolean sameUsername = username.equals(user.username());
 
 			if (!sameUsername && db.usernameExists(username)) {
-				throw new HypertextException(422, "Username '" + username + "' is already in use");
+				throw new AlreadyExistsException("Username '" + username + "' is already in use");
 			}
 
 			// Allow result to go through anyways in the case of the same username.

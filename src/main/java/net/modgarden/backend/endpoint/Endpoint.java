@@ -9,6 +9,7 @@ import com.mojang.serialization.JsonOps;
 import io.javalin.http.Context;
 import io.javalin.http.Handler;
 import net.modgarden.backend.database.DatabaseAccess;
+import net.modgarden.backend.endpoint.exception.BadRequestException;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.v2.query.QueryParameterType;
 import org.jetbrains.annotations.NotNull;
@@ -38,7 +39,7 @@ public abstract class Endpoint implements Handler {
 		// validate all path params
 		for (String pathParam : ctx.pathParamMap().values()) {
 			if (!pathParam.matches(SAFE_URL_REGEX)) {
-				throw new HypertextException(422, "Illegal characters in path '" + pathParam + "'.");
+				throw new BadRequestException("Illegal characters in path '" + pathParam + "'.");
 			}
 		}
 
@@ -79,7 +80,7 @@ public abstract class Endpoint implements Handler {
 		if (result.isError()) {
 			//noinspection OptionalGetWithoutIsPresent
 			this.invalidBody(ctx, result.error().get().message());
-			throw new HypertextException(ctx.statusCode(), ctx.result());
+			throw new GenericHypertextException(ctx);
 		}
 
 		T bodyResult;
@@ -87,9 +88,15 @@ public abstract class Endpoint implements Handler {
 			bodyResult = result.getOrThrow().getFirst();
 		} catch (IllegalStateException e) {
 			this.invalidBody(ctx, e.getMessage());
-			throw new HypertextException(ctx.statusCode(), ctx.result());
+			throw new GenericHypertextException(ctx);
 		}
 
 		return bodyResult;
+	}
+
+	private static class GenericHypertextException extends HypertextException {
+		public GenericHypertextException(Context ctx) {
+			super(ctx.statusCode(), ctx.result());
+		}
 	}
 }

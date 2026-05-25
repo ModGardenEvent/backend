@@ -26,7 +26,9 @@ import net.modgarden.backend.data.user.integration.MinecraftUserIntegration;
 import net.modgarden.backend.data.user.integration.ModrinthUserIntegration;
 import net.modgarden.backend.data.user.role.DiscordUserRoleIntegration;
 import net.modgarden.backend.data.user.role.UserRole;
+import net.modgarden.backend.endpoint.exception.ForbiddenException;
 import net.modgarden.backend.endpoint.exception.HypertextException;
+import net.modgarden.backend.endpoint.exception.InternalServerException;
 import net.modgarden.backend.endpoint.exception.NotFoundException;
 import net.modgarden.backend.util.FallibleSupplier;
 import net.modgarden.backend.util.LazyValue;
@@ -413,7 +415,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			prepared.setString(1, username);
 			ResultSet result = prepared.executeQuery();
 			if (!result.isBeforeFirst()) {
-				throw new HypertextException(404, "Could not find user '" + username + "'");
+				throw new NotFoundException("Could not find user '" + username + "'");
 			}
 
 			return result.getString("id");
@@ -431,7 +433,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			prepared.setString(1, discordId);
 			ResultSet result = prepared.executeQuery();
 			if (!result.isBeforeFirst()) {
-				throw new HypertextException(404, "Could not find user from Discord ID '" + discordId + "'");
+				throw new NotFoundException("Could not find user from Discord ID '" + discordId + "'");
 			}
 
 			return result.getString("user_id");
@@ -1054,7 +1056,7 @@ public final class DatabaseAccess implements AutoCloseable {
 						modrinthSubmissionTypeResult.getString("version_id")
 				);
 			} else {
-				throw new HypertextException(400, "Submission does not have a valid 'platform'");
+				throw new InternalServerException("Submission does not have a valid 'platform'");
 			}
 
 			return new Submission(
@@ -1248,14 +1250,14 @@ public final class DatabaseAccess implements AutoCloseable {
 			var eventMetadataResultSet = eventMetadataStatement.executeQuery();
 
 			if (!eventMetadataResultSet.isBeforeFirst()) {
-				throw new HypertextException(500, "Event '" + genreSlug + "/" + eventSlug + "' does not have associated metadata");
+				throw new InternalServerException("Event '" + genreSlug + "/" + eventSlug + "' does not have associated metadata");
 			}
 
 			eventTimesStatement.setString(1, eventId);
 			var eventTimesResultSet = eventTimesStatement.executeQuery();
 
 			if (!eventTimesResultSet.isBeforeFirst()) {
-				throw new HypertextException(500, "Event '" + genreSlug + "/" + eventSlug + "' does not have associated times");
+				throw new InternalServerException("Event '" + genreSlug + "/" + eventSlug + "' does not have associated times");
 			}
 
 			EventPlatform platform;
@@ -1264,7 +1266,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			var minecraftPlatformResultSet = minecraftPlatformStatement.executeQuery();
 
 			if (!minecraftPlatformResultSet.isBeforeFirst()) {
-				throw new HypertextException(500, "Event '" + genreSlug + "/" + eventSlug + "' does not have an associated platform");
+				throw new InternalServerException("Event '" + genreSlug + "/" + eventSlug + "' does not have an associated platform");
 			}
 
 			platform = new MinecraftEventPlatform(
@@ -1336,7 +1338,7 @@ public final class DatabaseAccess implements AutoCloseable {
 							modrinthSubmissionTypeResult.getString("version_id")
 					);
 				} else {
-					throw new HypertextException(400, "Submission does not have a valid 'platform'");
+					throw new InternalServerException("Submission does not have a valid 'platform'");
 				}
 
 				submissions.add(new Submission(

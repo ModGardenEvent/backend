@@ -17,6 +17,7 @@ import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.LandingPage;
 import net.modgarden.backend.data.project.ProjectMetadata;
 import net.modgarden.backend.data.project.metadata.ModProjectMetadata;
+import net.modgarden.backend.endpoint.exception.BadRequestException;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.exception.NotFoundException;
 import net.modgarden.backend.oauth.OAuthService;
@@ -73,7 +74,7 @@ public class MetadataUtils {
 				}
 			}
 
-			throw new HypertextException(422, "All mod-loaders associated with the specified version are unsupported.");
+			throw new BadRequestException("All mod-loaders associated with the specified version are unsupported.");
 		}
 	}
 
@@ -133,7 +134,7 @@ public class MetadataUtils {
 		if (entry != null) {
 			return file.getInputStream(entry);
 		}
-		throw new HypertextException(422, "The specified JAR is not a Fabric mod.");
+		throw new BadRequestException("The specified JAR is not a Fabric mod.");
 	}
 
 	private static String getFmjSourceUrl(JsonObject fmj, ExternalData data) throws NotFoundException {

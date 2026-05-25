@@ -14,6 +14,7 @@ import net.modgarden.backend.data.project.Submission;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.exception.ForbiddenException;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import org.jetbrains.annotations.NotNull;
 
@@ -32,7 +33,7 @@ public class CreateSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
 		DatabaseAccess db = DatabaseAccess.get();
 
 		if (!db.areSubmissionsOpenForEvent(request.eventId)) {
-			throw new HypertextException(403, "Event '" + request.eventId + "' is not open to submissions");
+			throw new ForbiddenException("Event '" + request.eventId + "' is not open to submissions");
 		}
 
 		String submissionId = db.createEmptySubmission(request.eventId(), request.projectId());
