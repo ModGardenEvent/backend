@@ -1,9 +1,11 @@
 package net.modgarden.backend.endpoint;
 
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Optional;
@@ -30,6 +32,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 			Argon2Factory.createAdvanced(Argon2Factory.Argon2Types.ARGON2id);
 	private final PermissionScope permissionScope;
 	private final static String characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_+=[]{}|/?;:,.<>~";
+	private final static String GARDEN_BOT_CREDENTIALS = Base64.getEncoder().encodeToString(("grbot:" + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).getBytes(StandardCharsets.UTF_8));
 
 	public AuthorizedEndpoint(int version, String path, PermissionScope permissionScope) {
 		super(version, path);
@@ -126,7 +129,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 	/// users' permissions. This is dangerous because administrators'
 	/// and project owners' API keys could access anything they could
 	/// access which violates the [Principle of Least Privilege](https://en.wikipedia.org/wiki/Principle_of_least_privilege).
-	private ValidationResult validateAuth(Context ctx) throws SQLException {
+	private ValidationResult validateAuth(Context ctx) throws SQLException, HypertextException {
 		String authorization = ctx.header("Authorization");
 		if (authorization == null) {
 			ctx.result("Unauthorized.");
@@ -134,8 +137,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 			return ValidationResult.no();
 		}
 
-		boolean authorized = ("Basic " + ModGardenBackend.DOTENV.get("DISCORD_OAUTH_SECRET")).equals(
-				authorization);
+		boolean authorized = ("Basic " + GARDEN_BOT_CREDENTIALS).equals(authorization);
 		Permissions scopePermissions = new Permissions();
 		// we know this is GardenBot. let it bypass everything
 		if (authorized) {
@@ -144,13 +146,16 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 		}
 
 		String projectId;
-		try {
-			projectId = this.getProjectId(ctx);
-		} catch (HypertextException e) {
-			throw new RuntimeException(e);
+		projectId = this.getProjectId(ctx);
+
+		if (!authorization.startsWith("Basic ")) {
+			throw new HypertextException(400, "Only Basic authentication is supported.");
 		}
 
-		String idSecretPair = authorization.split(" ")[1];
+		String idSecretPair = new String(
+				Base64.getDecoder().decode(authorization.split(" ")[1]),
+				StandardCharsets.UTF_8
+		);
 		String[] idSecretPairSplit = idSecretPair.split(":");
 		String userId = idSecretPairSplit[0];
 		String secret = null;
