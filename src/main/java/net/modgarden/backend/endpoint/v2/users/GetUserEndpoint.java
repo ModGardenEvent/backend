@@ -6,6 +6,9 @@ import io.javalin.http.Context;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.Response;
+import net.modgarden.backend.endpoint.exception.BadRequestException;
+import net.modgarden.backend.endpoint.exception.NotFoundException;
 import net.modgarden.backend.endpoint.v2.query.QueryKey;
 import net.modgarden.backend.endpoint.v2.query.QueryParameterType;
 import net.modgarden.backend.endpoint.v2.query.QueryValue;
@@ -21,7 +24,7 @@ public class GetUserEndpoint extends UsersEndpoint {
 	}
 
 	@Override
-	public void onRequest(@NotNull Context ctx) throws Exception {
+	public Response onRequest(@NotNull Context ctx) throws Exception {
 		DatabaseAccess db = DatabaseAccess.get();
 		QueryKey queryKey = QueryKey.fromQuery(ctx, QueryKey.ID);
 		QueryValue queryValue = QueryValue.fromQuery(ctx, QueryValue.VALUE);
@@ -32,26 +35,14 @@ public class GetUserEndpoint extends UsersEndpoint {
 		}
 		case USERNAME -> userId = db.getUserIdFromUsername(userId);
 		case INTEGRATION_DISCORD -> userId = db.getUserIdFromDiscordId(userId);
-		default -> {
-			this.invalidQuery(ctx, QueryParameterType.get(QueryKey.class));
-			return;
-		}
+		default -> throw this.invalidQuery(ctx, QueryParameterType.get(QueryKey.class));
 		}
 
-		if (userId == null) {
-			return;
-		}
-
-		switch (queryValue) {
-		case VALUE -> ctx.json(db.getUserFromId(userId));
-		case ID -> ctx.json(userId);
-		default -> {
-			this.invalidQuery(ctx, QueryParameterType.get(QueryValue.class));
-			return;
-		}
-		}
-
-		ctx.status(200);
+		return Response.ok(switch (queryValue) {
+		case VALUE -> db.getUserFromId(userId);
+		case ID -> userId;
+		default -> throw this.invalidQuery(ctx, QueryParameterType.get(QueryValue.class));
+		});
 	}
 }
 

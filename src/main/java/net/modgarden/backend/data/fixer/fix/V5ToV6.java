@@ -153,12 +153,13 @@ public class V5ToV6 extends DatabaseFix {
 			id TEXT UNIQUE NOT NULL,
 			slug TEXT UNIQUE NOT NULL,
 			genre_slug TEXT NOT NULL,
+			genre_id TEXT NOT NULL,
 			PRIMARY KEY (id)
 		)
 		""");
 		statement.addBatch("""
-		INSERT INTO events (id, slug, genre_slug)
-		SELECT id, slug, 'mod-garden' FROM events_old
+		INSERT INTO events (id, slug, genre_slug, genre_id)
+		SELECT id, slug, 'mod-garden', 'modgr' FROM events_old
 		""");
 
 		statement.addBatch("""

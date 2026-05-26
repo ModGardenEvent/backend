@@ -15,18 +15,21 @@ import de.mkammerer.argon2.Argon2Advanced;
 import de.mkammerer.argon2.Argon2Factory;
 import io.javalin.http.Context;
 import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.data.NaturalId;
-import net.modgarden.backend.data.Permission;
-import net.modgarden.backend.data.PermissionScope;
-import net.modgarden.backend.data.Permissions;
+import net.modgarden.backend.data.permission.Permission;
+import net.modgarden.backend.data.permission.PermissionPredicate;
+import net.modgarden.backend.data.permission.PermissionScope;
+import net.modgarden.backend.data.permission.Permissions;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.exception.BadRequestException;
+import net.modgarden.backend.endpoint.exception.ForbiddenException;
 import net.modgarden.backend.endpoint.exception.HypertextException;
-import net.modgarden.backend.endpoint.v2.auth.api_key.GenerateKeyEndpoint;
+import net.modgarden.backend.endpoint.exception.UnauthorizedException;
+import net.modgarden.backend.endpoint.v2.auth.api_keys.GenerateKeyEndpoint;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class AuthorizedEndpoint extends Endpoint {
+	private static final ScopedValue<Permissions> SCOPE_PERMISSIONS = ScopedValue.newInstance();
 	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 	/// OWASP [recommends](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) Argon2id.
 	private static final Argon2Advanced ARGON =
@@ -80,25 +83,27 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 		return ARGON.verify(hash, secret.toCharArray());
 	}
 
-	protected abstract void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception;
+	protected abstract Response onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception;
 
+	/// Base permissions required to use this endpoint.
 	@Nullable
-	protected Permission[] requiredPermissions() {
+	protected PermissionPredicate requiredPermissions() {
 		return null;
 	}
 
 	@Override
-	public final void onRequest(@NotNull Context ctx) throws Exception {
+	public final Response onRequest(@NotNull Context ctx) throws Exception {
 		ValidationResult validationResult = validateAuth(ctx);
-		if (!validationResult.authorized()) {
-			return;
+		PermissionPredicate requiredPermissions = this.requiredPermissions();
+
+		if (requiredPermissions != null) {
+			if (!requiredPermissions.test(validationResult.scopePermissions())) {
+				throw new ForbiddenException("User lacks permission; required " + requiredPermissions.getMode() + " of " + requiredPermissions.getPermissions());
+			}
 		}
 
-		if (this.requiredPermissions() != null && this.requireAllPermissions(ctx, validationResult.scopePermissions(), requiredPermissions())) {
-			return;
-		}
-
-		this.onRequest(ctx, validationResult.userId(), validationResult.scopePermissions());
+		return ScopedValue.where(SCOPE_PERMISSIONS, validationResult.scopePermissions())
+				.call(() -> this.onRequest(ctx, validationResult.userId(), validationResult.scopePermissions()));
 	}
 
 	protected @Nullable String getProjectId(Context ctx) throws SQLException, HypertextException {
@@ -133,17 +138,18 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 	private ValidationResult validateAuth(Context ctx) throws SQLException, HypertextException {
 		String authorization = ctx.header("Authorization");
 		if (authorization == null) {
-			ctx.result("Unauthorized.");
-			ctx.status(401);
-			return ValidationResult.no();
+			throw new UnauthorizedException();
 		}
 
 		boolean authorized = ("Basic " + GARDEN_BOT_CREDENTIALS).equals(authorization);
 		Permissions scopePermissions = new Permissions();
+		// :concernium:
+		// TODO remove this awful insecure system with permanent API keys (bot tokens)
+		//  and some kind of timed auth keys system
 		// we know this is GardenBot. let it bypass everything
 		if (authorized) {
 			scopePermissions = new Permissions(Permission.ADMINISTRATOR);
-			return new ValidationResult(true, "grbot", scopePermissions);
+			return new ValidationResult("grbot", scopePermissions);
 		}
 
 		String projectId;
@@ -153,10 +159,17 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 			throw new BadRequestException("Only Basic authentication is supported.");
 		}
 
-		String idSecretPair = new String(
-				Base64.getDecoder().decode(authorization.split(" ")[1]),
-				StandardCharsets.UTF_8
-		);
+		String idSecretPair;
+
+		try {
+			idSecretPair = new String(
+					Base64.getDecoder().decode(authorization.split(" ")[1]),
+					StandardCharsets.UTF_8
+			);
+		} catch (IllegalArgumentException e) {
+			throw new BadRequestException("Basic authentication requires a Base64-encoded colon-separated username:password value, but the input is malformed.", e);
+		}
+
 		String[] idSecretPairSplit = idSecretPair.split(":");
 
 		if (idSecretPairSplit.length < 2) {
@@ -172,8 +185,7 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 
 		Collection<DatabaseAccess.ApiKey> apiKeyResult = db.getApiKeys(userId);
 		if (apiKeyResult.isEmpty()) {
-			this.setStatusUnauthorized(ctx);
-			return ValidationResult.no();
+			throw new UnauthorizedException();
 		}
 
 		Iterator<DatabaseAccess.ApiKey> it = apiKeyResult.iterator();
@@ -181,32 +193,26 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 			DatabaseAccess.ApiKey apiKey = it.next();
 			Optional<DatabaseAccess.ApiKeyScope> optionalApiKeyScope = db.getApiKeyScope(apiKey.uuid());
 			if (optionalApiKeyScope.isEmpty()) {
-				this.setStatusUnauthorized(ctx);
-				return ValidationResult.no();
+				throw new UnauthorizedException();
 			}
 
 			DatabaseAccess.ApiKeyScope apiKeyScope = optionalApiKeyScope.get();
 
 			// forbid expired keys
 			if (Instant.now().isAfter(apiKey.expires())) {
-				this.setStatusUnauthorized(ctx);
 				db.deleteApiKey(apiKey.uuid());
-				return ValidationResult.no();
+				throw new UnauthorizedException();
 			}
 
 			// validate permission scope matches
 			PermissionScope scope = apiKeyScope.scope();
 			if (scope != this.permissionScope && this.permissionScope != PermissionScope.ALL) {
-				ctx.result("Permission scope " + scope + " does not match the scope " + this.permissionScope + " for this endpoint.");
-				ctx.status(403);
-				return ValidationResult.no();
+				throw new ForbiddenException("Permission scope " + scope + " does not match the scope " + this.permissionScope + " for this endpoint.");
 			}
 
 			// validate project ID matches
 			if (!(this instanceof GenerateKeyEndpoint) && projectId != null && !projectId.equals(apiKeyScope.projectId())) {
-				ctx.result("Project ID " + projectId + " does not match the project ID for this scope.");
-				ctx.status(403);
-				return ValidationResult.no();
+				throw new ForbiddenException("Project ID " + projectId + " does not match the project ID for this scope.");
 			}
 
 			String hash = apiKey.hash();
@@ -222,8 +228,11 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 							scopePermissions = db.getUserPermissions(userId);
 							scopePermissions = scopePermissions.restrictTo(apiKeyPermissions.bits());
 						} catch (HypertextException e) {
-							this.setStatusUnauthorized(ctx);
-							return ValidationResult.no();
+							// Hiding the underlying exception behind 403 Forbidden helps prevent
+							//  side channel attacks where attackers can extract information about
+							//  project teams or users.
+							//  See https://en.wikipedia.org/wiki/Side-channel_attack
+							throw new ForbiddenException();
 						}
 					}
 					case PROJECT -> {
@@ -231,62 +240,36 @@ public abstract class AuthorizedEndpoint extends Endpoint {
 							scopePermissions = db.getProjectMemberPermissions(userId, projectId);
 							scopePermissions = scopePermissions.restrictTo(apiKeyPermissions.bits());
 						} catch (HypertextException e) {
-							this.setStatusUnauthorized(ctx);
-							return ValidationResult.no();
+							// Hiding the underlying exception behind 403 Forbidden helps prevent
+							//  side channel attacks where attackers can extract information about
+							//  project teams or users.
+							//  See https://en.wikipedia.org/wiki/Side-channel_attack
+							throw new ForbiddenException();
 						}
 					}
 				}
 			}
 		}
+
 		if (!authorized && !ctx.status().isError()) {
-			this.setStatusUnauthorized(ctx);
-			return ValidationResult.no();
+			throw new UnauthorizedException();
 		}
 
-		return new ValidationResult(authorized, userId, scopePermissions);
+		return new ValidationResult(userId, scopePermissions);
 	}
 
-	protected void setStatusUnauthorized(Context ctx) {
-		ctx.result("Unauthorized.");
-		ctx.status(401);
-	}
-
-	protected void setStatusForbidden(Context ctx) {
-		ctx.result("Forbidden.");
-		ctx.status(403);
-	}
-
-	private boolean requireAllPermissions(Context ctx, Permissions scopePermissions, Permissions permissions) {
+	private void requireAllPermissions(Permissions scopePermissions, Permissions permissions) throws ForbiddenException {
 		if (!scopePermissions.hasPermissions(permissions)) {
-			ctx.status(403);
-			ctx.result("User lacks permission; required " + permissions);
-			return true;
+			throw new ForbiddenException("User lacks permission; required all of " + permissions);
 		}
 
-		return false;
 	}
 
-	private boolean requireAnyPermissions(Context ctx, Permissions scopePermissions, Permissions permissions) {
-		if (!scopePermissions.hasAnyPermissions(permissions)) {
-			ctx.status(403);
-			ctx.result("User lacks permission; required any of " + permissions);
-			return true;
-		}
-
-		return false;
+	/// @throws ForbiddenException if `scopePermissions` does not have all of `permissions`.
+	protected void requireAllPermissions(Permissions scopePermissions, Permission... permissions) throws ForbiddenException {
+		requireAllPermissions(scopePermissions, new Permissions(permissions));
 	}
 
-	protected boolean requireAllPermissions(Context ctx, Permissions scopePermissions, Permission... permissions) {
-		return requireAllPermissions(ctx, scopePermissions, new Permissions(permissions));
-	}
-
-	protected boolean requireAnyPermissions(Context ctx, Permissions scopePermissions, Permission... permissions) {
-		return requireAnyPermissions(ctx, scopePermissions, new Permissions(permissions));
-	}
-
-	private record ValidationResult(boolean authorized, String userId, Permissions scopePermissions) {
-		public static ValidationResult no() {
-			return new ValidationResult(false, NaturalId.getMissingno(), new Permissions());
-		}
+	private record ValidationResult(String userId, Permissions scopePermissions) {
 	}
 }

@@ -11,6 +11,9 @@ import java.util.*;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.*;
 import net.modgarden.backend.data.event.game.MinecraftEventPlatform;
+import net.modgarden.backend.data.permission.Permission;
+import net.modgarden.backend.data.permission.PermissionScope;
+import net.modgarden.backend.data.permission.Permissions;
 import net.modgarden.backend.data.project.ProjectMetadata;
 import net.modgarden.backend.data.event.*;
 import net.modgarden.backend.data.project.metadata.NoneProjectMetadata;
@@ -26,7 +29,6 @@ import net.modgarden.backend.data.user.integration.MinecraftUserIntegration;
 import net.modgarden.backend.data.user.integration.ModrinthUserIntegration;
 import net.modgarden.backend.data.user.role.DiscordUserRoleIntegration;
 import net.modgarden.backend.data.user.role.UserRole;
-import net.modgarden.backend.endpoint.exception.ForbiddenException;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.exception.InternalServerException;
 import net.modgarden.backend.endpoint.exception.NotFoundException;
@@ -1106,6 +1108,22 @@ public final class DatabaseAccess implements AutoCloseable {
 		return this.getGenres().getFirst();
 	}
 
+	public String getGenreSlug(String id) throws SQLException, HypertextException {
+		if (!"modgr".equals(id)) {
+			throw new NotFoundException("Genre with ID '" + id + "' does not exist");
+		}
+
+		return "mod-garden";
+	}
+
+	public String getGenreId(String slug) throws SQLException, HypertextException {
+		if (!"mod-garden".equals(slug)) {
+			throw new NotFoundException("Genre with slug '" + slug + "' does not exist");
+		}
+
+		return "modgr";
+	}
+
 	public List<Genre> getGenres() throws SQLException {
 		return List.of(Genre.getModGarden(getEventIds("mod-garden")));
 	}
@@ -1127,7 +1145,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			List<Event> events = new ArrayList<>();
 
 			while (resultSet.next()) {
-				events.add(getEvent(
+				events.add(getEventBySlug(
 						resultSet.getString("genre_slug"),
 						resultSet.getString("slug")
 				));
@@ -1157,7 +1175,7 @@ public final class DatabaseAccess implements AutoCloseable {
 
 	public List<String> getEventSlugs(String genreSlug) throws SQLException {
 		try (var eventStatement = this.getConnection().prepareStatement("""
-				SELECT event_slug
+				SELECT slug
 				FROM events
 				WHERE genre_slug = ?
 			""")) {
@@ -1166,20 +1184,20 @@ public final class DatabaseAccess implements AutoCloseable {
 			List<String> slugs = new ArrayList<>();
 
 			while (eventResult.next()) {
-				slugs.add(eventResult.getString("event_slug"));
+				slugs.add(eventResult.getString("slug"));
 			}
 
 			return slugs;
 		}
 	}
 
-	public String getEventSlug(String genreSlug, String eventId) throws SQLException, HypertextException {
+	public String getEventSlug(String genreId, String eventId) throws SQLException, HypertextException {
 		try (var eventStatement = this.getConnection().prepareStatement("""
-					SELECT event_slug
+					SELECT slug
 					FROM events
 					WHERE genre_id = ? AND id = ?
 				""")) {
-			eventStatement.setString(1, genreSlug);
+			eventStatement.setString(1, genreId);
 			eventStatement.setString(2, eventId);
 			var eventResult = eventStatement.executeQuery();
 
@@ -1187,7 +1205,7 @@ public final class DatabaseAccess implements AutoCloseable {
 				throw new NotFoundException("Event with ID '" + eventId + "' does not exist");
 			}
 
-			return eventResult.getString("event_slug");
+			return eventResult.getString("slug");
 		}
 	}
 
@@ -1195,7 +1213,7 @@ public final class DatabaseAccess implements AutoCloseable {
 		try (var eventStatement = this.getConnection().prepareStatement("""
 					SELECT id
 					FROM events
-					WHERE genre_id = ? AND event_slug = ?
+					WHERE genre_slug = ? AND slug = ?
 				""")) {
 			eventStatement.setString(1, genreSlug);
 			eventStatement.setString(2, eventSlug);
@@ -1209,7 +1227,7 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	public Event getEvent(String genreSlug, String eventSlug) throws SQLException, HypertextException {
+	public Event getEventBySlug(String genreSlug, String eventSlug) throws SQLException, HypertextException {
 		try (
 			 var eventStatement = this.getConnection().prepareStatement("""
 				SELECT id, slug, genre_slug

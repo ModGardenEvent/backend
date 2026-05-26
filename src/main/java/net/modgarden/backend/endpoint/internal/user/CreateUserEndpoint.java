@@ -3,11 +3,12 @@ package net.modgarden.backend.endpoint.internal.user;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
-import net.modgarden.backend.data.Permissions;
+import net.modgarden.backend.data.permission.Permissions;
 import net.modgarden.backend.data.user.User;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.Response;
 import net.modgarden.backend.endpoint.internal.InternalEndpoint;
 import org.jetbrains.annotations.NotNull;
 
@@ -21,14 +22,13 @@ public class CreateUserEndpoint extends InternalEndpoint {
 	}
 
 	@Override
-	protected void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
+	protected Response onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
 		DatabaseAccess db = DatabaseAccess.get();
 
 		Request request = decodeBody(ctx, Request.CODEC);
 		String newUserId = db.createUser(request.username());
 
-		ctx.status(201);
-		ctx.header("Location", "/v2/users/" + newUserId);
+		return Response.created("/v2/users/" + newUserId);
 	}
 
 	public record Request(String username) {

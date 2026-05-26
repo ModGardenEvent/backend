@@ -7,6 +7,8 @@ import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.Response;
+import net.modgarden.backend.endpoint.exception.NotFoundException;
 import net.modgarden.backend.endpoint.v2.query.QueryKey;
 import net.modgarden.backend.endpoint.v2.query.QueryParameterType;
 import org.jetbrains.annotations.NotNull;
@@ -19,7 +21,7 @@ public class GetProjectEndpoint extends Endpoint {
 	}
 
 	@Override
-	public void onRequest(@NotNull Context ctx) throws Exception {
+	public Response onRequest(@NotNull Context ctx) throws Exception {
 		QueryKey queryKey = QueryKey.fromQuery(ctx, QueryKey.PROJECT_ID);
 		String id = ctx.pathParam("id");
 		String projectId;
@@ -30,27 +32,19 @@ public class GetProjectEndpoint extends Endpoint {
 			projectId = db.getLatestProjectIdFromModId(id);
 
 			if (projectId == null) {
-				ctx.result("Could not find project from mod ID '" + id + "'");
-				ctx.status(404);
-				return;
+				throw new NotFoundException("Could not find project from mod ID '" + id + "'");
 			}
 		}
 		case PROJECT_ID -> {
 			projectId = id;
 
 			if (!db.projectExists(id)) {
-				ctx.result("Could not find project from id '" + id + "'");
-				ctx.status(404);
-				return;
+				throw new NotFoundException("Could not find project from id '" + id + "'");
 			}
 		}
-		default -> {
-			this.invalidQuery(ctx, QueryParameterType.get(QueryKey.class));
-			return;
-		}
+		default -> throw this.invalidQuery(ctx, QueryParameterType.get(QueryKey.class));
 		}
 
-		ctx.json(db.getProjectFromId(projectId));
-		ctx.status(200);
+		return Response.ok(db.getProjectFromId(projectId));
 	}
 }

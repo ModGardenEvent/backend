@@ -5,8 +5,9 @@ import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
-import net.modgarden.backend.data.Permission;
-import net.modgarden.backend.data.Permissions;
+import net.modgarden.backend.data.permission.Permission;
+import net.modgarden.backend.data.permission.PermissionPredicate;
+import net.modgarden.backend.data.permission.Permissions;
 import net.modgarden.backend.data.project.SubmissionPlatform;
 import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.project.Project;
@@ -14,21 +15,18 @@ import net.modgarden.backend.data.project.Submission;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.Response;
 import net.modgarden.backend.endpoint.exception.ForbiddenException;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 @EndpointMethod(POST)
 @EndpointPath("/v2/submissions")
 public class CreateSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
 	@Override
-	public void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
-		if (this.requireAnyPermissions(ctx, scopePermissions,
-				Permission.EDIT_PROJECT)) return;
-
+	public Response onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
 		Request request = decodeBody(ctx, Request.CODEC);
-
-		if (request == null) return;
 
 		DatabaseAccess db = DatabaseAccess.get();
 
@@ -38,8 +36,13 @@ public class CreateSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
 
 		String submissionId = db.createEmptySubmission(request.eventId(), request.projectId());
 		request.platform().addToDatabase(db, request.projectId(), submissionId);
-		ctx.status(201);
-		ctx.header("Location", "/v2/submissions/" + submissionId);
+		return Response.created("/v2/submissions/" + submissionId);
+	}
+
+	@Nullable
+	@Override
+	protected PermissionPredicate requiredPermissions() {
+		return PermissionPredicate.all(Permission.EDIT_PROJECT);
 	}
 
 	@NotNull

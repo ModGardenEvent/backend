@@ -1,4 +1,4 @@
-package net.modgarden.backend.endpoint.v2.auth.api_key;
+package net.modgarden.backend.endpoint.v2.auth.api_keys;
 
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.GET;
 
@@ -13,26 +13,27 @@ import java.util.UUID;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
-import net.modgarden.backend.data.Permission;
-import net.modgarden.backend.data.PermissionScope;
-import net.modgarden.backend.data.Permissions;
+import net.modgarden.backend.data.permission.Permission;
+import net.modgarden.backend.data.permission.PermissionScope;
+import net.modgarden.backend.data.permission.Permissions;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.Response;
 import net.modgarden.backend.endpoint.v2.AuthEndpoint;
 import net.modgarden.backend.util.codec.ExtraCodecs;
 import net.modgarden.backend.util.FallibleFunction;
 import org.jetbrains.annotations.NotNull;
 
 @EndpointMethod(GET)
-@EndpointPath("/v2/auth/api_key")
+@EndpointPath("/v2/auth/api-keys")
 public final class ListKeysEndpoint extends AuthEndpoint {
 	public ListKeysEndpoint() {
-		super("api_key", PermissionScope.ALL, false);
+		super("api-keys", PermissionScope.ALL, false);
 	}
 
 	@Override
-	public void onRequest(
+	public Response onRequest(
 			@NotNull Context ctx,
 			String userId,
 			Permissions scopePermissions
@@ -65,14 +66,7 @@ public final class ListKeysEndpoint extends AuthEndpoint {
 			));
 		}
 
-		ctx.json(new Response(apiKeys));
-		ctx.status(200);
-	}
-
-	public record Response(List<ApiKey> apiKeys) {
-		public static final Codec<Response> CODEC = RecordCodecBuilder.create(inst -> inst.group(
-				Codec.list(ApiKey.CODEC).fieldOf("api_keys").forGetter(Response::apiKeys)
-		).apply(inst, Response::new));
+		return Response.ok(apiKeys);
 	}
 
 	public record ApiKey(

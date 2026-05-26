@@ -1,4 +1,4 @@
-package net.modgarden.backend.data;
+package net.modgarden.backend.data.permission;
 
 import java.util.List;
 
@@ -63,6 +63,25 @@ public record Permissions(long bits) {
 
 	@NotNull
 	public String toString() {
+		StringBuilder builder = new StringBuilder();
+		long bits = this.bits;
+		builder.append('[');
+
+		for (int i = 0; i < Long.bitCount(this.bits); i++) {
+			if (i > 0) {
+				builder.append(", ");
+			}
+
+			Permission permission = Permission.values()[Long.numberOfTrailingZeros(bits)];
+			builder.append(permission.getName());
+			bits = bits ^ Long.lowestOneBit(bits);
+		}
+
+		builder.append(']');
+		return builder.toString();
+	}
+
+	public String toLongString() {
 		return Long.toString(this.bits);
 	}
 }

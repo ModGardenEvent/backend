@@ -4,7 +4,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.data.Integration;
-import net.modgarden.backend.data.Permissions;
+import net.modgarden.backend.data.permission.Permissions;
 import net.modgarden.backend.data.user.Bio;
 import net.modgarden.backend.data.user.User;
 import net.modgarden.backend.data.user.integration.DiscordUserIntegration;
@@ -12,8 +12,8 @@ import net.modgarden.backend.data.user.role.UserRole;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.Response;
 import net.modgarden.backend.endpoint.exception.AlreadyExistsException;
-import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.internal.InternalEndpoint;
 import net.modgarden.backend.util.NullableWrapper;
 import net.modgarden.backend.util.RemovableValue;
@@ -21,7 +21,6 @@ import net.modgarden.backend.util.codec.RemovableValueCodec;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import javax.management.relation.Role;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.List;
@@ -38,7 +37,7 @@ public class ModifyUserEndpoint extends InternalEndpoint {
 	}
 
 	@Override
-	protected void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
+	protected Response onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
 		DatabaseAccess db = DatabaseAccess.get();
 
 		Request request = decodeBody(ctx, Request.CODEC);
@@ -98,6 +97,8 @@ public class ModifyUserEndpoint extends InternalEndpoint {
 				db.addUserRole(role.value(), userIdToModify);
 			}
 		}
+
+		return Response.ok();
 	}
 
 	private static void handleUserBioField(DatabaseAccess db,

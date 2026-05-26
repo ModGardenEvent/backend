@@ -8,6 +8,11 @@ public abstract class HypertextException extends Exception {
 		this.status = status;
 	}
 
+	public HypertextException(int status, String message, Exception cause) {
+		super(message, cause);
+		this.status = status;
+	}
+
 	public int getStatus() {
 		return status;
 	}

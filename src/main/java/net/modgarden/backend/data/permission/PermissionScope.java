@@ -1,4 +1,4 @@
-package net.modgarden.backend.data;
+package net.modgarden.backend.data.permission;
 
 import java.util.Locale;
 

@@ -6,8 +6,10 @@ import io.javalin.http.Context;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.Response;
 import net.modgarden.backend.endpoint.v2.query.QueryKey;
 import net.modgarden.backend.endpoint.v2.query.QueryParameterType;
+import net.modgarden.backend.endpoint.v2.query.QueryValue;
 import org.jetbrains.annotations.NotNull;
 
 @EndpointMethod(GET)
@@ -18,20 +20,29 @@ public class GetGenreEndpoint extends GenresEndpoint {
 	}
 
 	@Override
-	public void onRequest(@NotNull Context ctx) throws Exception {
+	public Response onRequest(@NotNull Context ctx) throws Exception {
 		DatabaseAccess db = DatabaseAccess.get();
 		String id = ctx.pathParam("genre_id");
 		QueryKey queryKey = QueryKey.fromQuery(ctx, QueryKey.SLUG);
+		QueryValue queryValue = QueryValue.fromQuery(ctx, QueryValue.VALUE);
 
-		switch (queryKey) {
-		case ID -> ctx.json(db.getGenreById(id));
-		case SLUG -> ctx.json(db.getGenreBySlug(id));
-		default -> {
-			this.invalidQuery(ctx, QueryParameterType.get(QueryKey.class));
-			return;
-		}
-		}
-
-		ctx.status(200);
+		return Response.ok(switch (queryValue) {
+			case VALUE -> switch (queryKey) {
+				case ID -> db.getGenreById(id);
+				case SLUG -> db.getGenreBySlug(id);
+				default -> throw this.invalidQuery(ctx, QueryParameterType.get(QueryKey.class));
+			};
+			case ID -> switch (queryKey) {
+				case ID -> id;
+				case SLUG -> db.getGenreId(id);
+				default -> throw this.invalidQuery(ctx, QueryParameterType.get(QueryKey.class));
+			};
+			case SLUG -> switch (queryKey) {
+				case ID -> db.getGenreSlug(id);
+				case SLUG -> id;
+				default -> throw this.invalidQuery(ctx, QueryParameterType.get(QueryKey.class));
+			};
+			default -> throw this.invalidQuery(ctx, QueryParameterType.get(QueryValue.class));
+		});
 	}
 }

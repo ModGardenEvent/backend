@@ -1,8 +1,8 @@
-package net.modgarden.backend.data;
+package net.modgarden.backend.data.permission;
 
-import static net.modgarden.backend.data.PermissionScope.ALL;
-import static net.modgarden.backend.data.PermissionScope.PROJECT;
-import static net.modgarden.backend.data.PermissionScope.USER;
+import static net.modgarden.backend.data.permission.PermissionScope.ALL;
+import static net.modgarden.backend.data.permission.PermissionScope.PROJECT;
+import static net.modgarden.backend.data.permission.PermissionScope.USER;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,15 +34,6 @@ public enum Permission {
 	/// Generate and delete API keys on behalf of this user or project.
 	MODIFY_API_KEY(0x200, "modify_api_key", ALL),;
 
-	/// The default permissions that all users have.
-	///
-	/// At some point, we're going to switch to user roles,
-	/// but for now, users have inherent, default permissions.
-	public static final Permissions DEFAULT_USER_PERMISSIONS = new Permissions(
-			EDIT_PROFILE,
-			PARTICIPATE
-	);
-
 	public static final Codec<Permission> CODEC = Codec.STRING.flatXmap(string -> {
 		try {
 			return DataResult.success(Permission.valueOf(string));
@@ -55,7 +46,7 @@ public enum Permission {
 	), Permission::toLongString));
 	public static final Codec<List<Permission>> PROJECT_LIST_CODEC = Codec.withAlternative(CODEC.listOf(), Codec.STRING.xmap(string -> fromLongString(string, PROJECT), Permission::toLongString));
 	public static final Codec<Permissions> PERMISSIONS_CODEC = Codec.LONG.xmap(Permissions::new, Permissions::bits);
-	public static final Codec<Permissions> STRING_PERMISSIONS_CODEC = Codec.STRING.xmap(Permissions::new, Permissions::toString);
+	public static final Codec<Permissions> STRING_PERMISSIONS_CODEC = Codec.STRING.xmap(Permissions::new, Permissions::toLongString);
 
 	private final long bit;
 	private final String name;
@@ -93,20 +84,10 @@ public enum Permission {
 		return Long.toString(toLong(permissions));
 	}
 
-	public static long grantPermission(long previousValue, Permission permission) {
+	private static long grantPermission(long previousValue, Permission permission) {
 		long newValue = previousValue;
 		newValue |= permission.bit;
 		return newValue;
-	}
-
-	public static long revokePermission(long previousValue, Permission permission) {
-		long newValue = previousValue;
-		newValue ^= permission.bit;
-		return newValue;
-	}
-
-	public static boolean hasPermission(long userPermissions, Permission permission) {
-		return userPermissions == 1 || hasPermissionRaw(userPermissions, permission);
 	}
 
 	private static boolean hasPermissionRaw(long userPermissions, Permission permission) {

@@ -1,7 +1,9 @@
 package net.modgarden.backend.endpoint.internal;
 
-import net.modgarden.backend.data.Permission;
-import net.modgarden.backend.data.PermissionScope;
+import net.modgarden.backend.data.permission.Permission;
+import net.modgarden.backend.data.permission.PermissionPredicate;
+import net.modgarden.backend.data.permission.PermissionScope;
+import net.modgarden.backend.data.permission.Permissions;
 import net.modgarden.backend.endpoint.AuthorizedEndpoint;
 import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.endpoint.EndpointPath;
@@ -25,9 +27,7 @@ public abstract class InternalEndpoint extends AuthorizedEndpoint {
 
 	@Nullable
 	@Override
-	protected Permission[] requiredPermissions() {
-		return new Permission[] {
-				Permission.ADMINISTRATOR
-		};
+	protected PermissionPredicate requiredPermissions() {
+		return PermissionPredicate.all(Permission.ADMINISTRATOR);
 	}
 }

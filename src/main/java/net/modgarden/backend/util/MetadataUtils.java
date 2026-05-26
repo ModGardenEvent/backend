@@ -18,7 +18,6 @@ import net.modgarden.backend.data.LandingPage;
 import net.modgarden.backend.data.project.ProjectMetadata;
 import net.modgarden.backend.data.project.metadata.ModProjectMetadata;
 import net.modgarden.backend.endpoint.exception.BadRequestException;
-import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.exception.NotFoundException;
 import net.modgarden.backend.oauth.OAuthService;
 import net.modgarden.backend.oauth.client.ModrinthOAuthClient;

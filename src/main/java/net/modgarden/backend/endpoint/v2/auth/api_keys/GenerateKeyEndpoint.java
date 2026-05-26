@@ -1,4 +1,4 @@
-package net.modgarden.backend.endpoint.v2.auth.api_key;
+package net.modgarden.backend.endpoint.v2.auth.api_keys;
 
 import static java.util.Map.entry;
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
@@ -13,12 +13,15 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
-import net.modgarden.backend.data.Permission;
-import net.modgarden.backend.data.PermissionScope;
-import net.modgarden.backend.data.Permissions;
+import net.modgarden.backend.data.permission.Permission;
+import net.modgarden.backend.data.permission.PermissionPredicate;
+import net.modgarden.backend.data.permission.PermissionScope;
+import net.modgarden.backend.data.permission.Permissions;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.Response;
+import net.modgarden.backend.endpoint.exception.BadRequestException;
 import net.modgarden.backend.endpoint.exception.NotFoundException;
 import net.modgarden.backend.endpoint.v2.AuthEndpoint;
 import net.modgarden.backend.util.codec.ExtraCodecs;
@@ -26,22 +29,18 @@ import net.modgarden.backend.util.UuidUtils;
 import org.jetbrains.annotations.NotNull;
 
 @EndpointMethod(POST)
-@EndpointPath("/v2/auth/api_key")
+@EndpointPath("/v2/auth/api-keys")
 public final class GenerateKeyEndpoint extends AuthEndpoint {
 	public GenerateKeyEndpoint() {
-		super("api_key", PermissionScope.ALL, true);
+		super("api-keys", PermissionScope.ALL, true);
 	}
 
 	@Override
-	public void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
-		if (this.requireAllPermissions(ctx, scopePermissions, Permission.MODIFY_API_KEY)) return;
-
+	public Response onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
 		Request<?> request = this.decodeBody(ctx, Request.CODEC);
 
 		if (Duration.between(Instant.now(), request.expires()).toDays() > 365 || Duration.between(Instant.now(), request.expires()).isNegative()) {
-			ctx.status(400);
-			ctx.result("API key expires too late or too early. It must expire at most in a year.");
-			return;
+			throw new BadRequestException("API key expires too late or too early. It must expire at most in a year.");
 		}
 
 		byte[] uuid = UuidUtils.randomBytes();
@@ -65,17 +64,20 @@ public final class GenerateKeyEndpoint extends AuthEndpoint {
 			case "project" -> {
 				Permissions projectPermissions = db.getProjectMemberPermissions(userId, projectId);
 				requestedPermissions = requestedPermissions.restrictTo(projectPermissions.bits());
-				if (this.requireAllPermissions(ctx, projectPermissions, Permission.MODIFY_API_KEY)) return;
+				this.requireAllPermissions(projectPermissions, Permission.MODIFY_API_KEY);
 			}
-			case "user" -> requestedPermissions = requestedPermissions.restrictTo(
-					Permission.DEFAULT_USER_PERMISSIONS.bits() | scopePermissions.bits());
+			case "user" -> requestedPermissions = requestedPermissions.restrictTo(scopePermissions.bits());
 		}
 
 		db.createApiKey(uuid, userId, hash, request.expires(), request.name());
 		db.createApiKeyScope(uuid, request.scope().id(), projectId, requestedPermissions);
 
-		ctx.json(new Response(apiKey, UuidUtils.fromBytes(uuid)));
-		ctx.status(200);
+		return Response.ok(new ApiKeyResponse(apiKey, UuidUtils.fromBytes(uuid)));
+	}
+
+	@Override
+	protected PermissionPredicate requiredPermissions() {
+		return PermissionPredicate.all(Permission.MODIFY_API_KEY);
 	}
 
 	private interface Scope {
@@ -111,11 +113,11 @@ public final class GenerateKeyEndpoint extends AuthEndpoint {
 		);
 	}
 
-	public record Response(String apiKey, UUID uuid) {
-		public static final Codec<Response> CODEC = RecordCodecBuilder.create(inst -> inst.group(
-				Codec.STRING.fieldOf("api_key").forGetter(Response::apiKey),
-				ExtraCodecs.UUID_CODEC.fieldOf("uuid").forGetter(Response::uuid)
-		).apply(inst, Response::new));
+	public record ApiKeyResponse(String apiKey, UUID uuid) {
+		public static final Codec<ApiKeyResponse> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+				Codec.STRING.fieldOf("api_key").forGetter(ApiKeyResponse::apiKey),
+				ExtraCodecs.UUID_CODEC.fieldOf("uuid").forGetter(ApiKeyResponse::uuid)
+		).apply(inst, ApiKeyResponse::new));
 	}
 
 	private record ScopeType<T extends Scope>(String id, MapCodec<T> codec) {

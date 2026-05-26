@@ -45,9 +45,9 @@ import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.internal.user.CreateUserEndpoint;
 import net.modgarden.backend.endpoint.internal.user.ModifyUserEndpoint;
-import net.modgarden.backend.endpoint.v2.auth.api_key.DeleteKeyEndpoint;
-import net.modgarden.backend.endpoint.v2.auth.api_key.GenerateKeyEndpoint;
-import net.modgarden.backend.endpoint.v2.auth.api_key.ListKeysEndpoint;
+import net.modgarden.backend.endpoint.v2.auth.api_keys.DeleteKeyEndpoint;
+import net.modgarden.backend.endpoint.v2.auth.api_keys.GenerateKeyEndpoint;
+import net.modgarden.backend.endpoint.v2.auth.api_keys.ListKeysEndpoint;
 import net.modgarden.backend.endpoint.v2.events.GetEventEndpoint;
 import net.modgarden.backend.endpoint.v2.events.GetEventSubmissionsEndpoint;
 import net.modgarden.backend.endpoint.v2.events.ListEventsEndpoint;
@@ -116,8 +116,8 @@ public class ModGardenBackend {
 		registerCodec(User.class, User.DIRECT_CODEC);
 		registerCodec(UserRole.class, UserRole.DIRECT_CODEC);
 		registerCodec(AwardInstance.FullAwardData.class, AwardInstance.FullAwardData.CODEC);
-		registerCodec(GenerateKeyEndpoint.Response.class, GenerateKeyEndpoint.Response.CODEC);
-		registerCodec(ListKeysEndpoint.Response.class, ListKeysEndpoint.Response.CODEC);
+		registerCodec(GenerateKeyEndpoint.ApiKeyResponse.class, GenerateKeyEndpoint.ApiKeyResponse.CODEC);
+		registerCodec(ListKeysEndpoint.ApiKey.class, ListKeysEndpoint.ApiKey.CODEC);
 
 		AuthUtil.clearTokensEachFifteenMinutes();
 
@@ -371,6 +371,7 @@ public class ModGardenBackend {
 				id TEXT UNIQUE NOT NULL,
 				slug TEXT UNIQUE NOT NULL,
 				genre_slug TEXT NOT NULL,
+				genre_id TEXT NOT NULL,
 				PRIMARY KEY (id)
 			)
 			""");

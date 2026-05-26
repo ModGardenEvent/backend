@@ -15,8 +15,8 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.Integration;
-import net.modgarden.backend.data.Permission;
-import net.modgarden.backend.data.Permissions;
+import net.modgarden.backend.data.permission.Permission;
+import net.modgarden.backend.data.permission.Permissions;
 import net.modgarden.backend.util.codec.ExtraCodecs;
 
 public record UserRole(

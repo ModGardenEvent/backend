@@ -1,5 +1,7 @@
 package net.modgarden.backend.endpoint;
 
+import java.util.Map;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.mojang.datafixers.util.Pair;
@@ -43,33 +45,48 @@ public abstract class Endpoint implements Handler {
 			}
 		}
 
-		carrier.<Void, Exception>call(() -> {
-			this.onRequest(ctx);
-			DatabaseAccess.get().close();
-			return null;
+		Response response = carrier.call(() -> {
+			try {
+				Response response1 = this.onRequest(ctx);
+				DatabaseAccess.get().close();
+				return response1;
+			} catch (Exception e) {
+				DatabaseAccess.get().close(); // ensure the db access is closed
+				throw e;
+			}
 		});
+
+		if (!response.getHeaders().isEmpty()) {
+			for (Map.Entry<String, String> entry : response.getHeaders().entrySet()) {
+				ctx.header(entry.getKey(), entry.getValue());
+			}
+		}
+
+		if (response.getBody() != null) {
+			ctx.json(response.getBody());
+		}
+
+		ctx.status(response.getStatus());
 	}
 
 	// TODO: Version of onRequest that allows returning Object and throwing HypertextException
-	public abstract void onRequest(@NotNull Context ctx) throws Exception;
+	public abstract Response onRequest(@NotNull Context ctx) throws Exception;
 
 	public String getPath() {
 		return path;
 	}
 
-	protected void invalidBody(Context ctx, String message) {
-		ctx.status(400);
-		ctx.result("Invalid body: " + message);
+	protected BadRequestException invalidBody(String message) {
+		return new BadRequestException("Invalid body: " + message);
 	}
 
-	protected void invalidQuery(Context ctx, QueryParameterType queryParameterType) {
-		ctx.status(400);
+	protected BadRequestException invalidQuery(Context ctx, QueryParameterType queryParameterType) {
 		String value = ctx.queryParam(queryParameterType.toString());
 
 		if (value != null) {
-			ctx.result("Invalid query parameter ('" + queryParameterType + "'): " + value);
+			return new BadRequestException("Invalid query parameter ('" + queryParameterType + "'): " + value);
 		} else {
-			ctx.result("Missing query parameter '" + queryParameterType + "'");
+			return new BadRequestException("Missing query parameter '" + queryParameterType + "'");
 		}
 	}
 
@@ -79,24 +96,16 @@ public abstract class Endpoint implements Handler {
 
 		if (result.isError()) {
 			//noinspection OptionalGetWithoutIsPresent
-			this.invalidBody(ctx, result.error().get().message());
-			throw new GenericHypertextException(ctx);
+			throw this.invalidBody(result.error().get().message());
 		}
 
 		T bodyResult;
 		try {
 			bodyResult = result.getOrThrow().getFirst();
 		} catch (IllegalStateException e) {
-			this.invalidBody(ctx, e.getMessage());
-			throw new GenericHypertextException(ctx);
+			throw this.invalidBody(e.getMessage());
 		}
 
 		return bodyResult;
-	}
-
-	private static class GenericHypertextException extends HypertextException {
-		public GenericHypertextException(Context ctx) {
-			super(ctx.statusCode(), ctx.result());
-		}
 	}
 }

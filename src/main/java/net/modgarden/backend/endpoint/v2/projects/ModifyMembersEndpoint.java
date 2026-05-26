@@ -6,18 +6,20 @@ import java.util.Map;
 
 import com.mojang.serialization.Codec;
 import io.javalin.http.Context;
-import net.modgarden.backend.data.Permission;
-import net.modgarden.backend.data.Permissions;
+import net.modgarden.backend.data.permission.Permission;
+import net.modgarden.backend.data.permission.PermissionPredicate;
+import net.modgarden.backend.data.permission.Permissions;
 import net.modgarden.backend.data.user.User;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.Response;
 import net.modgarden.backend.endpoint.exception.BadRequestException;
 import net.modgarden.backend.endpoint.exception.ForbiddenException;
-import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.util.codec.NullableCodec;
 import net.modgarden.backend.util.NullableWrapper;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 @EndpointMethod(PATCH)
 @EndpointPath("/v2/projects/{project_id}/members")
@@ -27,13 +29,10 @@ public class ModifyMembersEndpoint extends AuthorizedProjectEndpoint {
 	}
 
 	@Override
-	public void onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
-		//noinspection DuplicatedCode
-		if (this.requireAnyPermissions(ctx, scopePermissions,
-				Permission.EDIT_PROJECT)) return;
+	public Response onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
+		DatabaseAccess db = DatabaseAccess.get();
 
 		String projectId = this.getProjectId(ctx);
-		DatabaseAccess db = DatabaseAccess.get();
 		Request request = this.decodeBody(ctx, Request.CODEC);
 
 		for (Map.Entry<String, NullableWrapper<String>> entry : request.users().entrySet()) {
@@ -72,6 +71,14 @@ public class ModifyMembersEndpoint extends AuthorizedProjectEndpoint {
 				db.setRoleName(projectId, memberId, "Member");
 			}
 		}
+
+		return Response.ok();
+	}
+
+	@Nullable
+	@Override
+	protected PermissionPredicate requiredPermissions() {
+		return PermissionPredicate.all(Permission.EDIT_PROJECT);
 	}
 
 	@NotNull
