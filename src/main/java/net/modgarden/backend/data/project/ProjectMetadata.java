@@ -1,6 +1,11 @@
 package net.modgarden.backend.data.project;
 
+import java.util.Optional;
+
+import com.mojang.serialization.Codec;
 import com.mojang.serialization.MapCodec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import org.jetbrains.annotations.Nullable;
 
 public interface ProjectMetadata {
 	String typeName();
@@ -12,5 +17,13 @@ public interface ProjectMetadata {
 				t -> t,
 				metadata -> (T)metadata // We can't encode unless an unsafe cast happens.
 		);
+	}
+
+	record Modifiable(@Nullable String typeName) {
+		public static final MapCodec<Modifiable> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
+				Codec.STRING
+						.optionalFieldOf("type_name")
+						.forGetter(metadata -> Optional.ofNullable(metadata.typeName()))
+		).apply(inst, (typeName) -> new Modifiable(typeName.orElse(null))));
 	}
 }

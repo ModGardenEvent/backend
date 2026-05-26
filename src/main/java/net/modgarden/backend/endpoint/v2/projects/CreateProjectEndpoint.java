@@ -25,10 +25,10 @@ public class CreateProjectEndpoint extends AuthorizedProjectEndpoint {
 
 	@Override
 	public Response onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
-		Request request = decodeBody(ctx, Request.CODEC);
+		Metadata metadata = decodeBody(ctx, Request.CODEC).metadata();
 
 		DatabaseAccess db = DatabaseAccess.get();
-		String projectId = db.createProject(userId, request.name());
+		String projectId = db.createProject(userId, metadata.name());
 
 		return Response.created("/v2/projects/" + projectId);
 	}
@@ -46,9 +46,15 @@ public class CreateProjectEndpoint extends AuthorizedProjectEndpoint {
 		return null;
 	}
 
-	public record Request(String name) {
+	public record Request(Metadata metadata) {
 		public static final Codec<Request> CODEC = RecordCodecBuilder.create(instance -> instance.group(
-				Codec.STRING.fieldOf("name").forGetter(Request::name)
+				Metadata.CODEC.fieldOf("metadata").forGetter(Request::metadata)
 		).apply(instance, Request::new));
+	}
+
+	public record Metadata(String name) {
+		public static final Codec<Metadata> CODEC = RecordCodecBuilder.create(instance -> instance.group(
+				Codec.STRING.fieldOf("name").forGetter(Metadata::name)
+		).apply(instance, Metadata::new));
 	}
 }

@@ -56,8 +56,7 @@ import net.modgarden.backend.endpoint.v2.genres.ListGenresEndpoint;
 import net.modgarden.backend.endpoint.v2.projects.CreateProjectEndpoint;
 import net.modgarden.backend.endpoint.v2.projects.DeleteProjectEndpoint;
 import net.modgarden.backend.endpoint.v2.projects.GetProjectEndpoint;
-import net.modgarden.backend.endpoint.v2.projects.ModifyMembersEndpoint;
-import net.modgarden.backend.endpoint.v2.projects.SetPermissionsEndpoint;
+import net.modgarden.backend.endpoint.v2.projects.ModifyProjectEndpoint;
 import net.modgarden.backend.endpoint.v2.roles.GetRoleEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.CreateSubmissionEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.DeleteSubmissionEndpoint;
@@ -163,8 +162,7 @@ public class ModGardenBackend {
 		get(ListKeysEndpoint::new);
 
 		post(CreateProjectEndpoint::new);
-		patch(ModifyMembersEndpoint::new);
-		patch(SetPermissionsEndpoint::new);
+		patch(ModifyProjectEndpoint::new);
 		delete(DeleteProjectEndpoint::new);
 		get(GetProjectEndpoint::new);
 

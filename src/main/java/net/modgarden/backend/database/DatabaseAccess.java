@@ -719,6 +719,36 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
+	public void deleteProjectMetadata(String projectId) throws SQLException {
+		try (var deleteModStatement = this.getConnection().prepareStatement("""
+					DELETE FROM project_mod_metadata
+					WHERE project_id = ?
+				""");
+			var deleteNoneStatement = this.getConnection().prepareStatement("""
+					DELETE FROM project_none_metadata
+					WHERE project_id = ?
+				""")) {
+			deleteModStatement.setString(1, projectId);
+			deleteModStatement.executeUpdate();
+			deleteNoneStatement.setString(1, projectId);
+			deleteNoneStatement.executeUpdate();
+		}
+	}
+
+	public void setProjectNoneMetadata(String projectId, NoneProjectMetadata.Modifiable metadata) throws SQLException {
+		if (metadata.name() != null) {
+			try (var updateStatement = this.getConnection().prepareStatement("""
+					UPDATE project_none_metadata
+					SET name = ?
+					WHERE project_id = ?
+				""")) {
+				updateStatement.setString(1, metadata.name());
+				updateStatement.setString(2, projectId);
+				updateStatement.executeUpdate();
+			}
+		}
+	}
+
 	public void setRoleName(String projectId, String userId, String roleName) throws SQLException {
 		try (var updateStatement = this.getConnection().prepareStatement("""
 					UPDATE project_roles
@@ -942,6 +972,15 @@ public final class DatabaseAccess implements AutoCloseable {
 			ResultSet resultSet = projectStatement.executeQuery();
 			return resultSet.isBeforeFirst();
 		}
+	}
+
+	/// @return the project's ID
+	public String checkProjectExists(String projectId) throws SQLException, HypertextException {
+		if (!this.projectExists(projectId)) {
+			throw new NotFoundException("Project with ID " + projectId + " does not exist.");
+		}
+
+		return projectId;
 	}
 
 	public String getLatestProjectIdFromModId(String modId) throws SQLException, HypertextException {

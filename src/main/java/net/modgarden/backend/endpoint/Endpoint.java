@@ -45,31 +45,26 @@ public abstract class Endpoint implements Handler {
 			}
 		}
 
-		Response response = carrier.call(() -> {
-			try {
-				Response response1 = this.onRequest(ctx);
-				DatabaseAccess.get().close();
-				return response1;
-			} catch (Exception e) {
-				DatabaseAccess.get().close(); // ensure the db access is closed
-				throw e;
+		carrier.call(() -> {
+			try (DatabaseAccess _ = DatabaseAccess.get()) {
+				Response response = this.onRequest(ctx);
+
+				if (!response.getHeaders().isEmpty()) {
+					for (Map.Entry<String, String> entry : response.getHeaders().entrySet()) {
+						ctx.header(entry.getKey(), entry.getValue());
+					}
+				}
+
+				if (response.getBody() != null) {
+					ctx.json(response.getBody());
+				}
+
+				ctx.status(response.getStatus());
+				return null;
 			}
 		});
-
-		if (!response.getHeaders().isEmpty()) {
-			for (Map.Entry<String, String> entry : response.getHeaders().entrySet()) {
-				ctx.header(entry.getKey(), entry.getValue());
-			}
-		}
-
-		if (response.getBody() != null) {
-			ctx.json(response.getBody());
-		}
-
-		ctx.status(response.getStatus());
 	}
 
-	// TODO: Version of onRequest that allows returning Object and throwing HypertextException
 	public abstract Response onRequest(@NotNull Context ctx) throws Exception;
 
 	public String getPath() {
