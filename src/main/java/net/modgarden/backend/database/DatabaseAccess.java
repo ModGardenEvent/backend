@@ -773,7 +773,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			submissionIdStatement.setString(1, submissionId);
 			ResultSet submissionResult = submissionIdStatement.executeQuery();
 			if (!submissionResult.isBeforeFirst()) {
-				throw new NotFoundException("Could not find submission '" + submissionId + "'");
+				throw new NotFoundException("Submission with ID '" + submissionId + "' does not exist.");
 			}
 
 			return submissionResult.getString("project_id");
@@ -1058,6 +1058,17 @@ public final class DatabaseAccess implements AutoCloseable {
 			submissionsStatement.setString(1, submissionId);
 			submissionsStatement.executeUpdate();
 
+			typeModrinthStatement.setString(1, submissionId);
+			typeModrinthStatement.executeUpdate();
+		}
+	}
+
+	public void deleteSubmissionData(String submissionId) throws SQLException {
+		try (var typeModrinthStatement = this.getConnection().prepareStatement("""
+					DELETE FROM submission_type_modrinth
+					WHERE submission_id = ?
+				""")
+				) {
 			typeModrinthStatement.setString(1, submissionId);
 			typeModrinthStatement.executeUpdate();
 		}

@@ -61,6 +61,7 @@ import net.modgarden.backend.endpoint.v2.roles.GetRoleEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.CreateSubmissionEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.DeleteSubmissionEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.GetSubmissionEndpoint;
+import net.modgarden.backend.endpoint.v2.submissions.ModifySubmissionEndpoint;
 import net.modgarden.backend.endpoint.v2.users.GetUserEndpoint;
 import net.modgarden.backend.util.AuthUtil;
 import org.jetbrains.annotations.NotNull;
@@ -174,6 +175,7 @@ public class ModGardenBackend {
 		get(ListEventsEndpoint::new);
 
 		post(CreateSubmissionEndpoint::new);
+		patch(ModifySubmissionEndpoint::new);
 		delete(DeleteSubmissionEndpoint::new);
 		get(GetSubmissionEndpoint::new);
 
