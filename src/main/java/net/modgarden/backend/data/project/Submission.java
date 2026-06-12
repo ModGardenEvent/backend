@@ -31,7 +31,7 @@ public record Submission(String id,
 	);
 	private static final Codec<String> PLATFORM_KEY_CODEC = Codec.STRING.validate(key -> {
 		if (!PLATFORM_MAP_CODECS.containsKey(key)) {
-			return DataResult.error(() -> "EventPlatform type '" + key + "' does not exist");
+			return DataResult.error(() -> "SubmissionPlatform type '" + key + "' does not exist");
 		}
 		return DataResult.success(key);
 	});
