@@ -58,7 +58,7 @@ public class ModifyProjectEndpoint extends AuthorizedProjectEndpoint {
 			String projectId,
 			Permissions scopePermissions
 	) throws HypertextException, SQLException {
-		RequestPermissions request = this.decodeBody(ctx, RequestPermissions.CODEC);
+		RequestPermissions request = this.decodeBody(ctx, RequestPermissions.CODEC.codec());
 
 		// This is a separate loop to make sure that no actions are made if there is one error.
 		for (String targetId : request.permissions().keySet()) {
@@ -158,34 +158,20 @@ public class ModifyProjectEndpoint extends AuthorizedProjectEndpoint {
 
 	@NotNull
 	@Override
-	protected String getProjectId(Context ctx) throws SQLException, HypertextException {
+	protected String getProjectId(Context ctx) {
 		return ctx.pathParam("project_id");
-	}
-
-	public record Request(
-			Map<String, NullableWrapper<String>> team,
-			Map<String, NullableWrapper<Permissions>> permissions
-	) {
-		public static final MapCodec<Request> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
-				Codec.unboundedMap(Codec.STRING, NullableCodec.nullable(Codec.STRING))
-						.optionalFieldOf("team", Collections.emptyMap())
-						.forGetter(Request::team),
-				Codec.unboundedMap(Codec.STRING, NullableCodec.nullable(Permission.STRING_PERMISSIONS_CODEC))
-						.optionalFieldOf("permissions", Collections.emptyMap())
-						.forGetter(Request::permissions)
-		).apply(inst, Request::new));
 	}
 
 	// TODO: dispatch these or something
 	public record RequestNoneMetadata(
-			NoneProjectMetadata.Modifiable metadata
+			@Nullable NoneProjectMetadata.Modifiable metadata
 	) {
 		public static final MapCodec<RequestNoneMetadata> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
 				NoneProjectMetadata.Modifiable.CODEC
 						.codec()
-						.fieldOf("metadata")
-						.forGetter(RequestNoneMetadata::metadata)
-		).apply(inst, RequestNoneMetadata::new));
+						.optionalFieldOf("metadata")
+						.forGetter(request -> Optional.ofNullable(request.metadata()))
+		).apply(inst, (metadata) -> new RequestNoneMetadata(metadata.orElse(null))));
 	}
 
 	public record RequestMetadata(
@@ -210,7 +196,10 @@ public class ModifyProjectEndpoint extends AuthorizedProjectEndpoint {
 	}
 
 	public record RequestPermissions(Map<String, Permissions> permissions) {
-		public static final Codec<RequestPermissions> CODEC = Codec.unboundedMap(User.ID_CODEC, Permission.STRING_PERMISSIONS_CODEC)
-				.xmap(RequestPermissions::new, RequestPermissions::permissions);
+		public static final MapCodec<RequestPermissions> CODEC = RecordCodecBuilder.mapCodec(inst -> inst.group(
+				Codec.unboundedMap(User.ID_CODEC, Permission.STRING_PERMISSIONS_CODEC)
+						.optionalFieldOf("permissions", Collections.emptyMap())
+						.forGetter(RequestPermissions::permissions)
+		).apply(inst, RequestPermissions::new));
 	}
 }
