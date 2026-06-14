@@ -521,6 +521,25 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
+	public String getUserRoleIdFromDiscordRoleId(String discordRoleId) throws SQLException, HypertextException {
+		try (var userRoleIntegrationDiscordStatement = this.getConnection()
+						.prepareStatement("""
+							SELECT role_id
+							FROM user_role_integration_discord
+							WHERE discord_role_id = ?
+						""");
+		) {
+			userRoleIntegrationDiscordStatement.setString(1, discordRoleId);
+			ResultSet userRolesIntegrationDiscordResult = userRoleIntegrationDiscordStatement.executeQuery();
+
+			if (!userRolesIntegrationDiscordResult.isBeforeFirst()) {
+				throw new NotFoundException("Could not find user role from Discord role ID '" + discordRoleId + "'");
+			}
+
+			return userRolesIntegrationDiscordResult.getString("role_id");
+		}
+	}
+
 	public void setUsername(String userId, String newUsername) throws SQLException {
 		try (
 				var statement = this.getConnection().prepareStatement("""
