@@ -138,8 +138,8 @@ public class ModifyUserEndpoint extends InternalEndpoint {
 						.optionalFieldOf("bio")
 						.forGetter(request -> Optional.ofNullable(request.bio)),
 				User.MODIFIABLE_INTEGRATION_CODEC
-						.optionalFieldOf("integrations", Collections.emptyMap()).
-						forGetter(Request::integrations),
+						.optionalFieldOf("integrations", Collections.emptyMap())
+						.forGetter(Request::integrations),
 				RemovableValueCodec.removable(UserRole.ID_CODEC)
 						.listOf()
 						.optionalFieldOf("roles", Collections.emptyList())
