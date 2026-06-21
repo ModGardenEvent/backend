@@ -6,6 +6,7 @@ import java.util.function.Consumer;
 
 import net.modgarden.backend.data.project.metadata.ModProjectMetadata;
 import net.modgarden.backend.data.fixer.DatabaseFix;
+import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.util.MetadataUtils;
 import org.jetbrains.annotations.Nullable;
 import org.sqlite.Function;
@@ -297,7 +298,7 @@ public class V5ToV6 extends DatabaseFix {
 		""");
 
 		statement.addBatch("""
-		CREATE TABLE IF NOT EXISTS submission_type_modrinth (
+		CREATE TABLE IF NOT EXISTS submission_platform_modrinth (
 			submission_id TEXT NOT NULL,
 			modrinth_id TEXT NOT NULL,
 			version_id TEXT NOT NULL,
@@ -306,9 +307,17 @@ public class V5ToV6 extends DatabaseFix {
 		)
 		""");
 		statement.addBatch("""
-		INSERT INTO submission_type_modrinth (submission_id, modrinth_id, version_id)
+		INSERT INTO submission_platform_modrinth (submission_id, modrinth_id, version_id)
 		SELECT id, modrinth_id, modrinth_version_id FROM submissions_mr
 		WHERE modrinth_id NOT NULL
+		""");
+
+		statement.addBatch("""
+		CREATE TABLE IF NOT EXISTS submission_platform_download_url (
+			submission_id TEXT NOT NULL,
+			download_url TEXT NOT NULL,
+			FOREIGN KEY (submission_id) REFERENCES submissions(id) ON UPDATE CASCADE ON DELETE CASCADE,
+			PRIMARY KEY (submission_id)
 		""");
 
 		statement.addBatch("""
@@ -550,7 +559,7 @@ public class V5ToV6 extends DatabaseFix {
 
 		var modrinthSubmissionsStatement = connection.prepareStatement("""
 			SELECT s.project_id, mr.modrinth_id, mr.version_id
-			FROM submission_type_modrinth mr
+			FROM submission_platform_modrinth mr
 			INNER JOIN submissions s ON s.id = mr.submission_id
 		""");
 		var projectMetadataInsertStatement = connection.prepareStatement("""
@@ -578,7 +587,7 @@ public class V5ToV6 extends DatabaseFix {
 					projectMetadataInsertStatement.setString(4, description);
 					projectMetadataInsertStatement.setString(5, sourceUrl);
 					projectMetadataInsertStatement.executeUpdate();
-				} catch (Exception e) {
+				} catch (HypertextException e) {
 					throw new RuntimeException(e);
 				}
 			}

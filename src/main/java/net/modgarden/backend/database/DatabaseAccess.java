@@ -18,6 +18,7 @@ import net.modgarden.backend.data.project.ProjectMetadata;
 import net.modgarden.backend.data.event.*;
 import net.modgarden.backend.data.project.metadata.NoneProjectMetadata;
 import net.modgarden.backend.data.project.metadata.ModProjectMetadata;
+import net.modgarden.backend.data.project.platform.DownloadUrlSubmissionPlatform;
 import net.modgarden.backend.data.project.platform.ModrinthSubmissionPlatform;
 import net.modgarden.backend.data.project.SubmissionPlatform;
 import net.modgarden.backend.data.project.Project;
@@ -34,6 +35,7 @@ import net.modgarden.backend.endpoint.exception.InternalServerException;
 import net.modgarden.backend.endpoint.exception.NotFoundException;
 import net.modgarden.backend.util.FallibleSupplier;
 import net.modgarden.backend.util.LazyValue;
+import net.modgarden.backend.util.MetadataUtils;
 import net.modgarden.backend.util.UuidUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -527,7 +529,7 @@ public final class DatabaseAccess implements AutoCloseable {
 							SELECT role_id
 							FROM user_role_integration_discord
 							WHERE discord_role_id = ?
-						""");
+						""")
 		) {
 			userRoleIntegrationDiscordStatement.setString(1, discordRoleId);
 			ResultSet userRolesIntegrationDiscordResult = userRoleIntegrationDiscordStatement.executeQuery();
@@ -803,7 +805,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			String projectId,
 			String targetUserIdToModify,
 			Permissions selfPermissions
-	) throws SQLException, HypertextException {
+	) throws SQLException {
 		try (var memberPermissionsStatement = this.getConnection().prepareStatement("""
 					SELECT permissions
 					FROM project_roles
@@ -914,7 +916,7 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	public boolean hasProjectMemberPermissions(String userId, String projectId) throws SQLException, HypertextException {
+	public boolean hasProjectMemberPermissions(String userId, String projectId) throws SQLException {
 		Connection connection = this.getConnection();
 
 		try (var userStatement = connection.prepareStatement("""
@@ -1044,7 +1046,7 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	public String createEmptySubmission(String eventId, String projectId) throws SQLException, HypertextException {
+	public String createEmptySubmission(String eventId, String projectId) throws SQLException {
 		try (
 				var submissionsStatement = this.getConnection().prepareStatement("""
 					INSERT INTO submissions (id, event_id, project_id, submitted)
@@ -1061,6 +1063,74 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
+	public void populateSubmission(String projectId, String submissionId, SubmissionPlatform platform) throws SQLException, HypertextException {
+		try (
+				var projectModMetadataStatement = this.getConnection().prepareStatement("""
+					INSERT INTO project_mod_metadata (project_id, mod_id, name, description, source_url)
+					VALUES (?, ?, ?, ?, ?)
+					ON CONFLICT(project_id) DO UPDATE SET mod_id = excluded.mod_id, name = excluded.name, description = excluded.description, source_url = excluded.source_url
+				""")
+		) {
+			ProjectMetadata metadata = null;
+
+			if (platform instanceof ModrinthSubmissionPlatform modrinth) {
+				metadata = populateModrinthSubmission(submissionId, modrinth);
+			}
+			if (platform instanceof DownloadUrlSubmissionPlatform downloadUrl) {
+				metadata = populateDownloadUrlSubmission(submissionId, downloadUrl);
+			}
+
+			if (metadata == null) {
+				throw new InternalServerException("Platform '" + platform.typeName() + "' not implemented.");
+			}
+
+			if (metadata instanceof ModProjectMetadata(
+					String modId, String name, String description, String sourceUrl
+			)) {
+				projectModMetadataStatement.setString(1, projectId);
+				projectModMetadataStatement.setString(2, modId);
+				projectModMetadataStatement.setString(3, name);
+				projectModMetadataStatement.setString(4, description);
+				projectModMetadataStatement.setString(5, sourceUrl);
+				projectModMetadataStatement.executeUpdate();
+				return;
+			}
+
+			throw new UnsupportedOperationException("Unsupported metadata type '" + metadata.typeName() + "'");
+		}
+	}
+
+	private ProjectMetadata populateModrinthSubmission(String submissionId, ModrinthSubmissionPlatform platform) throws SQLException, HypertextException {
+		try (
+				var submissionTypeModrinthStatement = this.getConnection().prepareStatement("""
+					INSERT INTO submission_platform_modrinth (submission_id, modrinth_id, version_id)
+					VALUES (?, ?, ?)
+				""")
+		) {
+			submissionTypeModrinthStatement.setString(1, submissionId);
+			submissionTypeModrinthStatement.setString(2, platform.projectId());
+			submissionTypeModrinthStatement.setString(3, platform.versionId());
+			submissionTypeModrinthStatement.executeUpdate();
+
+			return MetadataUtils.getMetadataFromModrinth(platform.projectId(), platform.versionId());
+		}
+	}
+
+	private ProjectMetadata populateDownloadUrlSubmission(String submissionId, DownloadUrlSubmissionPlatform platform) throws SQLException, HypertextException {
+		try (
+				var submissionTypeDownloadStatement = this.getConnection().prepareStatement("""
+					INSERT INTO submission_platform_download_url (submission_id, download_url)
+					VALUES (?, ?, ?)
+				""")
+		) {
+			submissionTypeDownloadStatement.setString(1, submissionId);
+			submissionTypeDownloadStatement.setString(2, platform.downloadUrl());
+			submissionTypeDownloadStatement.executeUpdate();
+
+			return MetadataUtils.getMetadataFromDownloadUrl(platform.downloadUrl());
+		}
+	}
+
 	public void deleteSubmission(String submissionId) throws SQLException {
 		Connection connection = this.getConnection();
 
@@ -1070,7 +1140,7 @@ public final class DatabaseAccess implements AutoCloseable {
 					WHERE id = ?
 				""");
 				var typeModrinthStatement = connection.prepareStatement("""
-					DELETE FROM submission_type_modrinth
+					DELETE FROM submission_platform_modrinth
 					WHERE submission_id = ?
 				""")
 		) {
@@ -1084,7 +1154,7 @@ public final class DatabaseAccess implements AutoCloseable {
 
 	public void deleteSubmissionData(String submissionId) throws SQLException {
 		try (var typeModrinthStatement = this.getConnection().prepareStatement("""
-					DELETE FROM submission_type_modrinth
+					DELETE FROM submission_platform_modrinth
 					WHERE submission_id = ?
 				""")
 				) {
@@ -1106,7 +1176,7 @@ public final class DatabaseAccess implements AutoCloseable {
 				""");
 				var modrinthSubmissionTypeStatement = connection.prepareStatement("""
 					SELECT modrinth_id, version_id
-					FROM submission_type_modrinth
+					FROM submission_platform_modrinth
 					WHERE submission_id = ?
 				""")
 		) {
@@ -1401,7 +1471,7 @@ public final class DatabaseAccess implements AutoCloseable {
 				""");
 				var modrinthSubmissionTypeStatement = this.getConnection().prepareStatement("""
 					SELECT modrinth_id, version_id
-					FROM submission_type_modrinth
+					FROM submission_platform_modrinth
 					WHERE submission_id = ?
 				""")
 		) {

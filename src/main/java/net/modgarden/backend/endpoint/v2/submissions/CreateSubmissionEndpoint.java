@@ -35,7 +35,7 @@ public class CreateSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
 		}
 
 		String submissionId = db.createEmptySubmission(request.eventId(), request.projectId());
-		request.platform().addToDatabase(db, request.projectId(), submissionId);
+		db.populateSubmission(request.projectId(), submissionId, request.platform());
 		return Response.created("/v2/submissions/" + submissionId);
 	}
 

@@ -33,9 +33,4 @@ public record DownloadUrlSubmissionPlatform(String downloadUrl) implements Submi
 	public MapCodec<DownloadUrlSubmissionPlatform> getCodec() {
 		return CODEC;
 	}
-
-	@Override
-	public void addToDatabase(DatabaseAccess db, String gardenProjectId, String submissionId) throws Exception {
-		throw new UnsupportedOperationException("DownloadUrlSubmissionPlatform#addToDatabase not implemented");
-	}
 }

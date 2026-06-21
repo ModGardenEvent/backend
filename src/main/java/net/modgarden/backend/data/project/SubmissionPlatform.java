@@ -7,8 +7,6 @@ public interface SubmissionPlatform {
 	String typeName();
 	MapCodec<? extends SubmissionPlatform> getCodec();
 
-	void addToDatabase(DatabaseAccess db, String gardenProjectId, String submissionId) throws Exception;
-
 	static <T extends SubmissionPlatform> MapCodec<SubmissionPlatform> fromMapCodec(MapCodec<T> codec) {
 		//noinspection unchecked
 		return codec.xmap(

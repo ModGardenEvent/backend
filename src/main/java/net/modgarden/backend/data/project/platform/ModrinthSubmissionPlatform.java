@@ -50,45 +50,4 @@ public record ModrinthSubmissionPlatform(String projectId, String versionId) imp
 	public MapCodec<ModrinthSubmissionPlatform> getCodec() {
 		return CODEC;
 	}
-
-	@Override
-	public void addToDatabase(DatabaseAccess db, String gardenProjectId, String submissionId) throws Exception {
-		// TODO: migrate to DatabaseAccess
-		Connection connection;
-
-		try {
-			connection = (Connection) GET_CONNECTION.invokeExact(db);
-		} catch (Throwable e) {
-			throw new RuntimeException(e);
-		}
-
-		try (
-				var submissionTypeModrinthStatement = connection.prepareStatement("""
-					INSERT INTO submission_type_modrinth (submission_id, modrinth_id, version_id)
-					VALUES (?, ?, ?)
-				""");
-				var projectModMetadataStatement = connection.prepareStatement("""
-					INSERT INTO project_mod_metadata (project_id, mod_id, name, description, source_url)
-					VALUES (?, ?, ?, ?, ?)
-					ON CONFLICT(project_id) DO UPDATE SET mod_id = excluded.mod_id, name = excluded.name, description = excluded.description, source_url = excluded.source_url
-				""")
-		) {
-			submissionTypeModrinthStatement.setString(1, submissionId);
-			submissionTypeModrinthStatement.setString(2, projectId);
-			submissionTypeModrinthStatement.setString(3, versionId);
-			submissionTypeModrinthStatement.executeUpdate();
-
-			ProjectMetadata metadata = MetadataUtils.getMetadataFromModrinth(projectId, versionId);
-			if (metadata instanceof ModProjectMetadata(String modId, String name, String description, String sourceUrl)) {
-				projectModMetadataStatement.setString(1, gardenProjectId);
-				projectModMetadataStatement.setString(2, modId);
-				projectModMetadataStatement.setString(3, name);
-				projectModMetadataStatement.setString(4, description);
-				projectModMetadataStatement.setString(5, sourceUrl);
-				projectModMetadataStatement.executeUpdate();
-			} else {
-				throw new UnsupportedOperationException("Unsupported metadata type for Modrinth platform '" + metadata.typeName() + "'");
-			}
-		}
-	}
 }

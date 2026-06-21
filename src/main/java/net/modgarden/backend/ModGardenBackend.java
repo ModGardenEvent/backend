@@ -465,13 +465,20 @@ public class ModGardenBackend {
 			)
 			""");
 			statement.addBatch("""
-			CREATE TABLE IF NOT EXISTS submission_type_modrinth (
+			CREATE TABLE IF NOT EXISTS submission_platform_modrinth (
 				submission_id TEXT NOT NULL,
 				modrinth_id TEXT NOT NULL,
 				version_id TEXT NOT NULL,
 				FOREIGN KEY (submission_id) REFERENCES submissions(id) ON UPDATE CASCADE ON DELETE CASCADE,
 				PRIMARY KEY (submission_id)
 			)
+			""");
+			statement.addBatch("""
+			CREATE TABLE IF NOT EXISTS submission_platform_download_url (
+				submission_id TEXT NOT NULL,
+				download_url TEXT NOT NULL,
+				FOREIGN KEY (submission_id) REFERENCES submissions(id) ON UPDATE CASCADE ON DELETE CASCADE,
+				PRIMARY KEY (submission_id)
 			""");
 			statement.addBatch("""
 			CREATE TABLE IF NOT EXISTS awards (
