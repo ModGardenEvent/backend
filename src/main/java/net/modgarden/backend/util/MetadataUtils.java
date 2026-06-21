@@ -11,6 +11,7 @@ import java.net.http.HttpResponse;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 
@@ -82,6 +83,7 @@ public class MetadataUtils {
 					tempFile = download(primaryUri);
 					ProjectMetadata metadata = getMetadataFromFabricModJson(tempFile, externalData);
 					cleanupTmpFolder(tempFile.toPath());
+					return metadata;
 				}
 			}
 			throw new UnprocessableEntityException("All mod-loaders associated with the specified version are unsupported.");
@@ -174,7 +176,12 @@ public class MetadataUtils {
 				.header("User-Agent", USER_AGENT)
 				.uri(uri)
 				.build();
-		Path temporaryFolder = Path.of("./.tmp");
+		String fileName = getFileName(uri);
+
+		Path temporaryFolder = Path.of("./.tmp/")
+				.resolve(fileName);
+
+		Files.createDirectories(temporaryFolder.getParent());
 
 		HttpResponse<Path> response = ModGardenBackend.HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(temporaryFolder));
 
@@ -187,7 +194,7 @@ public class MetadataUtils {
 		int i = fileName.lastIndexOf('.');
 
 		if (i > 0) {
-			String fileExtension = fileName.substring(i);
+			String fileExtension = fileName.substring(i + 1);
 			return fileExtension.equals("jar");
 		}
 
@@ -236,6 +243,10 @@ public class MetadataUtils {
 		} catch (IOException e) {
 			throw new InternalServerException("Failed to clean-up temporary folder for checking the submitted JAR.");
 		}
+	}
+
+	private static String getFileName(URI uri) {
+		return Paths.get(uri.getPath()).getFileName().toString();
 	}
 
 	public record ExternalData(@Nullable String externalSourceUrl) {}

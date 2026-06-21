@@ -318,7 +318,7 @@ public class V5ToV6 extends DatabaseFix {
 			download_url TEXT NOT NULL,
 			FOREIGN KEY (submission_id) REFERENCES submissions(id) ON UPDATE CASCADE ON DELETE CASCADE,
 			PRIMARY KEY (submission_id)
-		""");
+		)""");
 
 		statement.addBatch("""
 		CREATE TABLE IF NOT EXISTS api_keys (

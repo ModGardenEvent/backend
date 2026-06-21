@@ -1120,7 +1120,7 @@ public final class DatabaseAccess implements AutoCloseable {
 		try (
 				var submissionTypeDownloadStatement = this.getConnection().prepareStatement("""
 					INSERT INTO submission_platform_download_url (submission_id, download_url)
-					VALUES (?, ?, ?)
+					VALUES (?, ?)
 				""")
 		) {
 			submissionTypeDownloadStatement.setString(1, submissionId);
@@ -1140,6 +1140,10 @@ public final class DatabaseAccess implements AutoCloseable {
 				var typeModrinthStatement = connection.prepareStatement("""
 					DELETE FROM submission_platform_modrinth
 					WHERE submission_id = ?
+				""");
+				var typeDownloadUrlStatement = connection.prepareStatement("""
+					DELETE FROM submission_platform_download_url
+					WHERE submission_id = ?
 				""")
 		) {
 			submissionsStatement.setString(1, submissionId);
@@ -1147,6 +1151,9 @@ public final class DatabaseAccess implements AutoCloseable {
 
 			typeModrinthStatement.setString(1, submissionId);
 			typeModrinthStatement.executeUpdate();
+
+			typeDownloadUrlStatement.setString(1, submissionId);
+			typeDownloadUrlStatement.executeUpdate();
 		}
 	}
 
@@ -1154,10 +1161,17 @@ public final class DatabaseAccess implements AutoCloseable {
 		try (var typeModrinthStatement = this.getConnection().prepareStatement("""
 					DELETE FROM submission_platform_modrinth
 					WHERE submission_id = ?
+				""");
+		     var typeDownloadUrlStatement = this.getConnection().prepareStatement("""
+					DELETE FROM submission_platform_download_url
+					WHERE submission_id = ?
 				""")
-				) {
+		) {
 			typeModrinthStatement.setString(1, submissionId);
 			typeModrinthStatement.executeUpdate();
+
+			typeDownloadUrlStatement.setString(1, submissionId);
+			typeDownloadUrlStatement.executeUpdate();
 		}
 	}
 
@@ -1171,7 +1185,7 @@ public final class DatabaseAccess implements AutoCloseable {
 					SELECT event_id, project_id, submitted
 					FROM submissions
 					WHERE id = ?
-				""");
+				""")
 		) {
 			submissionStatement.setString(1, submissionId);
 			ResultSet submissionResult = submissionStatement.executeQuery();
@@ -1485,7 +1499,7 @@ public final class DatabaseAccess implements AutoCloseable {
 					SELECT id, project_id, submitted
 					FROM submissions
 					WHERE event_id = ?
-				""");
+				""")
 		) {
 			submissionStatement.setString(1, eventId);
 			ResultSet submissionResult = submissionStatement.executeQuery();
