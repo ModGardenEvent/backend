@@ -1074,10 +1074,12 @@ public final class DatabaseAccess implements AutoCloseable {
 			ProjectMetadata metadata = null;
 
 			if (platform instanceof ModrinthSubmissionPlatform modrinth) {
-				metadata = populateModrinthSubmission(submissionId, modrinth);
+				metadata = MetadataUtils.getMetadataFromModrinth(modrinth.projectId(), modrinth.versionId());
+				populateModrinthSubmission(submissionId, modrinth);
 			}
 			if (platform instanceof DownloadUrlSubmissionPlatform downloadUrl) {
-				metadata = populateDownloadUrlSubmission(submissionId, downloadUrl);
+				metadata = MetadataUtils.getMetadataFromDownloadUrl(downloadUrl.downloadUrl());
+				populateDownloadUrlSubmission(submissionId, downloadUrl);
 			}
 
 			if (metadata == null) {
@@ -1100,7 +1102,7 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
-	private ProjectMetadata populateModrinthSubmission(String submissionId, ModrinthSubmissionPlatform platform) throws SQLException, HypertextException {
+	private void populateModrinthSubmission(String submissionId, ModrinthSubmissionPlatform platform) throws SQLException {
 		try (
 				var submissionTypeModrinthStatement = this.getConnection().prepareStatement("""
 					INSERT INTO submission_platform_modrinth (submission_id, modrinth_id, version_id)
@@ -1111,12 +1113,10 @@ public final class DatabaseAccess implements AutoCloseable {
 			submissionTypeModrinthStatement.setString(2, platform.projectId());
 			submissionTypeModrinthStatement.setString(3, platform.versionId());
 			submissionTypeModrinthStatement.executeUpdate();
-
-			return MetadataUtils.getMetadataFromModrinth(platform.projectId(), platform.versionId());
 		}
 	}
 
-	private ProjectMetadata populateDownloadUrlSubmission(String submissionId, DownloadUrlSubmissionPlatform platform) throws SQLException, HypertextException {
+	private void populateDownloadUrlSubmission(String submissionId, DownloadUrlSubmissionPlatform platform) throws SQLException {
 		try (
 				var submissionTypeDownloadStatement = this.getConnection().prepareStatement("""
 					INSERT INTO submission_platform_download_url (submission_id, download_url)
@@ -1126,8 +1126,6 @@ public final class DatabaseAccess implements AutoCloseable {
 			submissionTypeDownloadStatement.setString(1, submissionId);
 			submissionTypeDownloadStatement.setString(2, platform.downloadUrl());
 			submissionTypeDownloadStatement.executeUpdate();
-
-			return MetadataUtils.getMetadataFromDownloadUrl(platform.downloadUrl());
 		}
 	}
 
@@ -1165,7 +1163,7 @@ public final class DatabaseAccess implements AutoCloseable {
 
 	public Submission getSubmission(
 			@NotNull String submissionId
-	) throws Exception {
+	) throws SQLException, HypertextException {
 		Connection connection = this.getConnection();
 
 		try (
@@ -1174,11 +1172,6 @@ public final class DatabaseAccess implements AutoCloseable {
 					FROM submissions
 					WHERE id = ?
 				""");
-				var modrinthSubmissionTypeStatement = connection.prepareStatement("""
-					SELECT modrinth_id, version_id
-					FROM submission_platform_modrinth
-					WHERE submission_id = ?
-				""")
 		) {
 			submissionStatement.setString(1, submissionId);
 			ResultSet submissionResult = submissionStatement.executeQuery();
@@ -1186,19 +1179,7 @@ public final class DatabaseAccess implements AutoCloseable {
 				throw new NotFoundException("Could not find submission '" + submissionId + "'");
 			}
 
-			modrinthSubmissionTypeStatement.setString(1, submissionId);
-			ResultSet modrinthSubmissionTypeResult = modrinthSubmissionTypeStatement.executeQuery();
-
-			SubmissionPlatform platform;
-			// TODO: Implement download URL submission type.
-			if (modrinthSubmissionTypeResult.isBeforeFirst()) {
-				platform = new ModrinthSubmissionPlatform(
-						modrinthSubmissionTypeResult.getString("modrinth_id"),
-						modrinthSubmissionTypeResult.getString("version_id")
-				);
-			} else {
-				throw new InternalServerException("Submission does not have a valid 'platform'");
-			}
+			SubmissionPlatform platform = getSubmissionPlatform(submissionId);
 
 			return new Submission(
 					submissionId,
@@ -1207,6 +1188,42 @@ public final class DatabaseAccess implements AutoCloseable {
 					this.getProjectFromId(submissionResult.getString("project_id")),
 					platform
 			);
+		}
+	}
+
+	private SubmissionPlatform getSubmissionPlatform(String submissionId) throws SQLException, HypertextException {
+		try (
+				var modrinthSubmissionTypeStatement = this.getConnection().prepareStatement("""
+					SELECT modrinth_id, version_id
+					FROM submission_platform_modrinth
+					WHERE submission_id = ?
+				""");
+				var downloadUrlSubmissionTypeStatement = this.getConnection().prepareStatement("""
+					SELECT download_url
+					FROM submission_platform_download_url
+					WHERE submission_id = ?
+				""")
+		) {
+			modrinthSubmissionTypeStatement.setString(1, submissionId);
+			ResultSet modrinthSubmissionTypeResult = modrinthSubmissionTypeStatement.executeQuery();
+
+			downloadUrlSubmissionTypeStatement.setString(1, submissionId);
+			ResultSet downloadUrlSubmissionTypeResult = downloadUrlSubmissionTypeStatement.executeQuery();
+
+			if (modrinthSubmissionTypeResult.isBeforeFirst()) {
+				return new ModrinthSubmissionPlatform(
+						modrinthSubmissionTypeResult.getString("modrinth_id"),
+						modrinthSubmissionTypeResult.getString("version_id")
+				);
+			}
+
+			if (downloadUrlSubmissionTypeResult.isBeforeFirst()) {
+				return new DownloadUrlSubmissionPlatform(
+						downloadUrlSubmissionTypeResult.getString("download_url")
+				);
+			}
+
+			throw new InternalServerException("Submission does not have a valid 'platform'");
 		}
 	}
 
@@ -1469,11 +1486,6 @@ public final class DatabaseAccess implements AutoCloseable {
 					FROM submissions
 					WHERE event_id = ?
 				""");
-				var modrinthSubmissionTypeStatement = this.getConnection().prepareStatement("""
-					SELECT modrinth_id, version_id
-					FROM submission_platform_modrinth
-					WHERE submission_id = ?
-				""")
 		) {
 			submissionStatement.setString(1, eventId);
 			ResultSet submissionResult = submissionStatement.executeQuery();
@@ -1484,22 +1496,11 @@ public final class DatabaseAccess implements AutoCloseable {
 			List<Submission> submissions = new ArrayList<>();
 
 			while (submissionResult.next()) {
-				modrinthSubmissionTypeStatement.setString(1, submissionResult.getString("id"));
-				ResultSet modrinthSubmissionTypeResult = modrinthSubmissionTypeStatement.executeQuery();
-
-				SubmissionPlatform platform;
-				// TODO: Implement download URL submission type.
-				if (modrinthSubmissionTypeResult.isBeforeFirst()) {
-					platform = new ModrinthSubmissionPlatform(
-							modrinthSubmissionTypeResult.getString("modrinth_id"),
-							modrinthSubmissionTypeResult.getString("version_id")
-					);
-				} else {
-					throw new InternalServerException("Submission does not have a valid 'platform'");
-				}
+				String submissionId = submissionResult.getString("id");
+				SubmissionPlatform platform = getSubmissionPlatform(submissionId);
 
 				submissions.add(new Submission(
-						submissionResult.getString("id"),
+						submissionId,
 						eventId,
 						Instant.ofEpochMilli(submissionResult.getLong("submitted")),
 						this.getProjectFromId(submissionResult.getString("project_id")),
