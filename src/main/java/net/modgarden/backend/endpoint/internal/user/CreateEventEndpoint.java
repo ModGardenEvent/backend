@@ -5,16 +5,12 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.data.event.*;
 import net.modgarden.backend.data.permission.Permissions;
-import net.modgarden.backend.data.user.role.UserRole;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.Response;
 import net.modgarden.backend.endpoint.internal.InternalEndpoint;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.Collections;
-import java.util.Map;
 
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
 
@@ -38,7 +34,7 @@ public class CreateEventEndpoint extends InternalEndpoint {
 				request.platform()
 		);
 
-		return Response.created("/v2/events/" + newEventId);
+		return Response.created("/v2/events/" + request.genre + "/" + newEventId);
 	}
 
 	public record Request(String genre,
