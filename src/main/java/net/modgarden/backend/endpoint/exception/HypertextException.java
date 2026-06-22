@@ -1,0 +1,19 @@
+package net.modgarden.backend.endpoint.exception;
+
+public abstract class HypertextException extends Exception {
+	private final int status;
+
+	public HypertextException(int status, String message) {
+		super(message);
+		this.status = status;
+	}
+
+	public HypertextException(int status, String message, Exception cause) {
+		super(message, cause);
+		this.status = status;
+	}
+
+	public int getStatus() {
+		return status;
+	}
+}

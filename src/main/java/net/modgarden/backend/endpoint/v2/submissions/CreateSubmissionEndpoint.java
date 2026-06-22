@@ -1,0 +1,63 @@
+package net.modgarden.backend.endpoint.v2.submissions;
+
+import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
+
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
+import io.javalin.http.Context;
+import net.modgarden.backend.data.permission.Permission;
+import net.modgarden.backend.data.permission.PermissionPredicate;
+import net.modgarden.backend.data.permission.Permissions;
+import net.modgarden.backend.data.project.SubmissionPlatform;
+import net.modgarden.backend.data.event.Event;
+import net.modgarden.backend.data.project.Project;
+import net.modgarden.backend.data.project.Submission;
+import net.modgarden.backend.database.DatabaseAccess;
+import net.modgarden.backend.endpoint.EndpointMethod;
+import net.modgarden.backend.endpoint.EndpointPath;
+import net.modgarden.backend.endpoint.Response;
+import net.modgarden.backend.endpoint.exception.ForbiddenException;
+import net.modgarden.backend.endpoint.exception.HypertextException;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+@EndpointMethod(POST)
+@EndpointPath("/v2/submissions")
+public class CreateSubmissionEndpoint extends AuthorizedSubmissionEndpoint {
+	@Override
+	public Response onRequest(@NotNull Context ctx, String userId, Permissions scopePermissions) throws Exception {
+		Request request = decodeBody(ctx, Request.CODEC);
+
+		DatabaseAccess db = DatabaseAccess.get();
+
+		if (!db.areSubmissionsOpenForEvent(request.eventId)) {
+			throw new ForbiddenException("Event '" + request.eventId + "' is not open to submissions");
+		}
+
+		String submissionId = db.createEmptySubmission(request.eventId(), request.projectId());
+		db.populateSubmission(request.projectId(), submissionId, request.platform());
+		return Response.created("/v2/submissions/" + submissionId);
+	}
+
+	@Nullable
+	@Override
+	protected PermissionPredicate requiredPermissions() {
+		return PermissionPredicate.all(Permission.EDIT_PROJECT);
+	}
+
+	@NotNull
+	@Override
+	protected String getProjectId(Context ctx) throws HypertextException {
+		Request request = decodeBody(ctx, Request.CODEC);
+
+		return request.projectId();
+	}
+
+	public record Request(String projectId, String eventId, SubmissionPlatform platform) {
+		public static final Codec<Request> CODEC = RecordCodecBuilder.create(inst -> inst.group(
+				Project.ID_CODEC.fieldOf("project_id").forGetter(Request::projectId),
+				Event.ID_CODEC.fieldOf("event_id").forGetter(Request::eventId),
+				Submission.PLATFORM_CODEC.fieldOf("platform").forGetter(Request::platform)
+		).apply(inst, Request::new));
+	}
+}

@@ -2,6 +2,9 @@ package net.modgarden.backend.data.fixer;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.function.Consumer;
+
+import org.jetbrains.annotations.Nullable;
 
 public abstract class DatabaseFix {
 	private final int versionToFixFrom;
@@ -10,11 +13,19 @@ public abstract class DatabaseFix {
 		this.versionToFixFrom = versionToFixFrom;
 	}
 
-	public abstract void fix(Connection connection) throws SQLException;
+	/// Data-fix the database.
+	///
+	/// @param connection a common connection between datafixers.
+	/// @return a consumer with a fresh, datafixer-specific connection useful only for dropping tables.
+	public abstract @Nullable Consumer<Connection> fix(Connection connection) throws SQLException;
 
-	protected void fixInternal(Connection connection, int currentSchemaVersion) throws SQLException {
+	protected Consumer<Connection> fixInternal(Connection connection, int currentSchemaVersion) throws SQLException {
 		if (versionToFixFrom < currentSchemaVersion)
-			return;
-		fix(connection);
+			return null;
+		return fix(connection);
+	}
+
+	public int getVersionToFixFrom() {
+		return this.versionToFixFrom;
 	}
 }

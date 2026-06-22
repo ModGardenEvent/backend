@@ -1,11 +1,11 @@
 package net.modgarden.backend.oauth.client;
 
-import net.modgarden.backend.ModGardenBackend;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+
+import net.modgarden.backend.ModGardenBackend;
 
 public record GithubOAuthClient(String jwt) implements OAuthClient {
 	public static final String API_URL = "https://api.github.com/";
@@ -36,4 +36,9 @@ public record GithubOAuthClient(String jwt) implements OAuthClient {
 
         return ModGardenBackend.HTTP_CLIENT.send(req.build(), bodyHandler);
     }
+
+	@Override
+	public <T> HttpResponse<T> put(String endpoint, HttpRequest.BodyPublisher bodyPublisher, HttpResponse.BodyHandler<T> bodyHandler, String... headers) throws IOException, InterruptedException {
+		throw new UnsupportedOperationException("PUT endpoints are not implemented for GitHubOAuthClient.");
+	}
 }

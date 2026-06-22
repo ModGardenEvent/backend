@@ -1,16 +1,16 @@
 package net.modgarden.backend.oauth.client;
 
-import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.data.Landing;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
+import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.data.LandingPage;
+
 public record ModrinthOAuthClient() implements OAuthClient {
 	public static final String API_URL = "https://api.modrinth.com/";
-	private static final String USER_AGENT = "ModGardenEvent/backend/" + Landing.getInstance().version() + " (modgarden.net)";
+	private static final String USER_AGENT = "ModGardenEvent/backend/" + LandingPage.getInstance().version() + " (modgarden.net)";
 
     @Override
 	public <T> HttpResponse<T> get(String endpoint, HttpResponse.BodyHandler<T> bodyHandler, String... headers) throws IOException, InterruptedException {
@@ -32,4 +32,9 @@ public record ModrinthOAuthClient() implements OAuthClient {
 
         return ModGardenBackend.HTTP_CLIENT.send(req.build(), bodyHandler);
     }
+
+	@Override
+	public <T> HttpResponse<T> put(String endpoint, HttpRequest.BodyPublisher bodyPublisher, HttpResponse.BodyHandler<T> bodyHandler, String... headers) throws IOException, InterruptedException {
+		throw new UnsupportedOperationException("PUT endpoints are not implemented for ModrinthOAuthClient.");
+	}
 }

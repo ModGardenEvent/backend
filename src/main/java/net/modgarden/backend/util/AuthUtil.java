@@ -1,10 +1,5 @@
 package net.modgarden.backend.util;
 
-import io.javalin.http.Context;
-import io.seruco.encoding.base62.Base62;
-import net.modgarden.backend.ModGardenBackend;
-import net.modgarden.backend.data.LinkCode;
-
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -18,7 +13,15 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import io.javalin.http.Context;
+import net.modgarden.backend.ModGardenBackend;
+import net.modgarden.backend.data.LinkCode;
+import net.modgarden.backend.endpoint.AuthorizedEndpoint;
+
 public class AuthUtil {
+	private static final String RANDOM_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_/+=;!@#$%^&*()";
+	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
     public static String createBody(Map<String, String> params) {
         return params.entrySet()
                 .stream()
@@ -26,7 +29,7 @@ public class AuthUtil {
                 .collect(Collectors.joining("&"));
     }
 
-    public static String insertTokenIntoDatabase(Context ctx, String accountId, LinkCode.Service service) {
+    public static String insertTokenIntoDatabase(Context ctx, String accountId, LinkCode.Service service) throws SQLException {
         try (Connection connection = ModGardenBackend.createDatabaseConnection();
              var checkAccountIdStatement = connection.prepareStatement("SELECT code FROM link_codes WHERE account_id = ?");
              var checkCodeStatement = connection.prepareStatement("SELECT 1 FROM link_codes WHERE code = ?");
@@ -38,34 +41,25 @@ public class AuthUtil {
                 return token;
             while (token == null) {
                 checkCodeStatement.clearParameters();
-                String potential = generateRandomToken();
+                String potential = AuthorizedEndpoint.generateRandomToken();
                 checkCodeStatement.setString(1, potential);
                 ResultSet result = checkCodeStatement.executeQuery();
                 if (!result.getBoolean(1))
                     token = potential;
             }
+			// this almost gave me a heart attack, but no
+	        // it's not a token. this is actually a link code.
+	        // happy april fools
             insertStatement.setString(1, token);
             insertStatement.setString(2, accountId);
             insertStatement.setString(3, service.serializedName());
             insertStatement.setLong(4, AuthUtil.getTokenExpirationTime());
             insertStatement.execute();
             return token;
-        } catch (SQLException ex) {
-            ModGardenBackend.LOG.error("Exception in SQL query.", ex);
-            ctx.result("Internal Error.");
-            ctx.status(500);
         }
-        return null;
     }
 
-    public static String generateRandomToken() {
-        byte[] bytes = new byte[10];
-        new SecureRandom().nextBytes(bytes);
-        var token = new String(Base62.createInstance().encode(bytes), StandardCharsets.UTF_8);
-        return token.substring(0, 6);
-    }
-
-    public static long getTokenExpirationTime() {
+	public static long getTokenExpirationTime() {
         return (long) (Math.floor((double) (System.currentTimeMillis() + 900000) / 900000) * 900000); // 15 minutes later
     }
 

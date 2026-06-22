@@ -1,4 +1,3 @@
-import org.jetbrains.gradle.ext.Application
 import org.jetbrains.gradle.ext.runConfigurations
 import org.jetbrains.gradle.ext.settings
 
@@ -14,12 +13,15 @@ group = "net.modgarden"
 version = project.properties["version"].toString()
 
 java {
-	toolchain.languageVersion.set(JavaLanguageVersion.of(21))
+	toolchain.languageVersion.set(JavaLanguageVersion.of(25))
 	withJavadocJar()
 }
 
 repositories {
     mavenCentral()
+	maven("https://libraries.minecraft.net") {
+		name = "Minecraft Libraries"
+	}
     maven("https://repo.glaremasters.me/repository/public/") {
         name = "GlareMasters"
     }
@@ -30,13 +32,13 @@ dependencies {
 	implementation(libs.javalin)
     implementation(libs.logback)
     implementation(libs.sqlite)
-    implementation(libs.snowflakeid)
 	implementation(libs.dotenv)
 	implementation(libs.jwt.api)
 	implementation(libs.jwt.impl)
 	implementation(libs.jwt.gson)
-    implementation(libs.base62)
 	implementation(libs.jetbrains.annotations)
+
+	implementation(libs.argon2.jvm)
 }
 
 tasks {
@@ -81,18 +83,23 @@ application {
     mainClass = "net.modgarden.backend.ModGardenBackend"
 }
 
+// When refreshing the project, the entire build.gradle.kts may visually error because of IDEA Ext.
+// Refresh the project again to fix this. We'll likely have to report this to JetBrains.
 idea {
-    project {
-        settings.runConfigurations {
-            create("Run", Application::class.java) {
-                workingDirectory = "${rootProject.projectDir}/run"
-                mainClass = "net.modgarden.backend.ModGardenBackend"
-                moduleName = project.idea.module.name + ".main"
-                includeProvidedDependencies = true
-				envs = mapOf(
-					"env" to "development"
-				)
-            }
-        }
-    }
+	project {
+		settings {
+			runConfigurations {
+				create("Run Backend", org.jetbrains.gradle.ext.Application::class.java) {
+					workingDirectory = "${rootProject.projectDir}/run"
+					mainClass = "net.modgarden.backend.ModGardenBackend"
+					moduleName = project.idea.module.name + ".main"
+					includeProvidedDependencies = true
+					envs = mapOf(
+						"env" to "development",
+					)
+					jvmArgs = "--enable-native-access=ALL-UNNAMED"
+				}
+			}
+		}
+	}
 }
