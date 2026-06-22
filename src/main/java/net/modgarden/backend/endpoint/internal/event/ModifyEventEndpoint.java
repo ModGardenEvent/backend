@@ -4,12 +4,14 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.data.event.*;
+import net.modgarden.backend.data.event.game.MinecraftEventPlatform;
 import net.modgarden.backend.data.permission.Permissions;
 import net.modgarden.backend.data.user.role.UserRole;
 import net.modgarden.backend.database.DatabaseAccess;
 import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.Response;
+import net.modgarden.backend.endpoint.exception.BadRequestException;
 import net.modgarden.backend.endpoint.internal.InternalEndpoint;
 import net.modgarden.backend.util.NullableWrapper;
 import net.modgarden.backend.util.codec.NullableCodec;
@@ -69,7 +71,17 @@ public class ModifyEventEndpoint extends InternalEndpoint {
 			}
 		}
 
-		// TODO: Implement event platform for updating game version.
+		if (request.platform() != null) {
+			//noinspection SwitchStatementWithTooFewBranches // future proofing
+			switch (request.platform().game()) {
+				case MinecraftEventPlatform.ID -> {
+					MinecraftEventPlatform platform = (MinecraftEventPlatform) request.platform();
+					db.setEventMcModLoader(eventId, platform.modLoader());
+					db.setEventMcGameVersion(eventId, platform.gameVersion());
+				}
+				default -> throw new BadRequestException("Unsupported event platform '" + request.platform().game() + "'");
+			}
+		}
 
 		for (Map.Entry<String, NullableWrapper<String>> entry : request.roles().entrySet()) {
 			String roleKey = entry.getKey();
@@ -78,7 +90,7 @@ public class ModifyEventEndpoint extends InternalEndpoint {
 			if (roleId.isPresent()) {
 				db.addUserRoleToEvent(eventId, roleKey, roleId.value());
 			} else {
-				// TODO: Remove user role from event.
+				db.removeUserRoleFromEvent(eventId, roleKey);
 			}
 		}
 

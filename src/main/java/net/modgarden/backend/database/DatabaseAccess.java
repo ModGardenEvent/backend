@@ -1436,6 +1436,19 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
+	public void removeUserRoleFromEvent(String eventId, String roleKey) throws SQLException {
+		try (
+				var eventRolesStatement = this.getConnection().prepareStatement("""
+					DELETE FROM event_roles
+					WHERE event_id = ? AND role_key = ?
+				""")
+		) {
+			eventRolesStatement.setString(1, eventId);
+			eventRolesStatement.setString(2, roleKey);
+			eventRolesStatement.executeUpdate();
+		}
+	}
+
 	public void setEventName(String eventId, String name) throws SQLException {
 		try (
 				var statement = this.getConnection().prepareStatement("""
@@ -1463,6 +1476,34 @@ public final class DatabaseAccess implements AutoCloseable {
 			} else {
 				statement.setNull(1, Types.NULL);
 			}
+			statement.setString(2, eventId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void setEventMcModLoader(String eventId, String modLoader) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					UPDATE event_platform_minecraft
+					SET mod_loader = ?
+					WHERE event_id = ?
+				""")
+		) {
+			statement.setString(1, modLoader);
+			statement.setString(2, eventId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void setEventMcGameVersion(String eventId, String gameVersion) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					UPDATE event_platform_minecraft
+					SET game_version = ?
+					WHERE event_id = ?
+				""")
+		) {
+			statement.setString(1, gameVersion);
 			statement.setString(2, eventId);
 			statement.executeUpdate();
 		}
