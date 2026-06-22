@@ -1,4 +1,4 @@
-package net.modgarden.backend.endpoint.internal.user;
+package net.modgarden.backend.endpoint.internal.event;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;

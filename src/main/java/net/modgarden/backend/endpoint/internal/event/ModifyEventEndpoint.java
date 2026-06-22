@@ -1,4 +1,4 @@
-package net.modgarden.backend.endpoint.internal.user;
+package net.modgarden.backend.endpoint.internal.event;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -12,9 +12,7 @@ import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.Response;
 import net.modgarden.backend.endpoint.internal.InternalEndpoint;
 import net.modgarden.backend.util.NullableWrapper;
-import net.modgarden.backend.util.RemovableValue;
 import net.modgarden.backend.util.codec.NullableCodec;
-import net.modgarden.backend.util.codec.RemovableValueCodec;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

@@ -1,10 +1,9 @@
-package net.modgarden.backend.endpoint.internal.user;
+package net.modgarden.backend.endpoint.internal.role;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.javalin.http.Context;
 import net.modgarden.backend.data.Integration;
-import net.modgarden.backend.data.event.*;
 import net.modgarden.backend.data.permission.Permission;
 import net.modgarden.backend.data.permission.Permissions;
 import net.modgarden.backend.data.user.role.DiscordUserRoleIntegration;
