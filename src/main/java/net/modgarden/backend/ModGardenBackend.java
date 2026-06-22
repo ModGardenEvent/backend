@@ -43,8 +43,7 @@ import net.modgarden.backend.database.function.HasPermissionsFunction;
 import net.modgarden.backend.database.function.UnixMillisFunction;
 import net.modgarden.backend.endpoint.Endpoint;
 import net.modgarden.backend.endpoint.exception.HypertextException;
-import net.modgarden.backend.endpoint.internal.user.CreateUserEndpoint;
-import net.modgarden.backend.endpoint.internal.user.ModifyUserEndpoint;
+import net.modgarden.backend.endpoint.internal.user.*;
 import net.modgarden.backend.endpoint.v2.auth.api_keys.DeleteKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.api_keys.GenerateKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.api_keys.ListKeysEndpoint;
@@ -185,7 +184,10 @@ public class ModGardenBackend {
 	}
 
 	public void internal() {
+		post(CreateEventEndpoint::new);
+		post(CreateRoleEndpoint::new);
 		post(CreateUserEndpoint::new);
+		post(ModifyEventEndpoint::new);
 		patch(ModifyUserEndpoint::new);
 	}
 

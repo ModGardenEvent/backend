@@ -33,6 +33,7 @@ import net.modgarden.backend.data.user.role.UserRole;
 import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.exception.InternalServerException;
 import net.modgarden.backend.endpoint.exception.NotFoundException;
+import net.modgarden.backend.endpoint.exception.UnprocessableEntityException;
 import net.modgarden.backend.util.FallibleSupplier;
 import net.modgarden.backend.util.LazyValue;
 import net.modgarden.backend.util.MetadataUtils;
@@ -475,6 +476,49 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
+	public String createUserRole(String name, Permissions permission) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					INSERT INTO user_role_definitions (id, name, permissions, created)
+					VALUES (?, ?, ?, unix_millis())
+				""")
+		) {
+			String roleId = NaturalId.generate("user_role_definitions", "id", null, 5);
+
+			statement.setString(1, roleId);
+			statement.setString(2, name);
+			statement.setString(3, permission.toLongString());
+			statement.executeUpdate();
+
+			return roleId;
+		}
+	}
+
+	public void setUserRoleDiscordIntegration(String userRoleId, String discordRoleId) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					INSERT OR REPLACE INTO user_role_integration_discord (role_id, discord_role_id)
+					VALUES (?, ?)
+				""")
+		) {
+			statement.setString(1, userRoleId);
+			statement.setString(2, discordRoleId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void removeUserRoleDiscordIntegration(String userRoleId) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					DELETE FROM user_role_integration_discord
+					WHERE role_id = ?
+				""")
+		) {
+			statement.setString(1, userRoleId);
+			statement.executeUpdate();
+		}
+	}
+
 	public UserRole getUserRoleFromId(String roleId) throws SQLException, HypertextException {
 		try (var userRoleDefinitionStatement = this.getConnection()
 				.prepareStatement("""
@@ -564,7 +608,11 @@ public final class DatabaseAccess implements AutoCloseable {
 					WHERE user_id = ?
 				""")
 		) {
-			statement.setString(1, displayName);
+			if (displayName != null) {
+				statement.setString(1, displayName);
+			} else {
+				statement.setNull(1, Types.NULL);
+			}
 			statement.setString(2, userId);
 			statement.executeUpdate();
 		}
@@ -578,7 +626,11 @@ public final class DatabaseAccess implements AutoCloseable {
 					WHERE user_id = ?
 				""")
 		) {
-			statement.setString(1, pronouns);
+			if (pronouns != null) {
+				statement.setString(1, pronouns);
+			} else {
+				statement.setNull(1, Types.NULL);
+			}
 			statement.setString(2, userId);
 			statement.executeUpdate();
 		}
@@ -592,7 +644,11 @@ public final class DatabaseAccess implements AutoCloseable {
 					WHERE user_id = ?
 				""")
 		) {
-			statement.setString(1, description);
+			if (description != null) {
+				statement.setString(1, description);
+			} else {
+				statement.setNull(1, Types.NULL);
+			}
 			statement.setString(2, userId);
 			statement.executeUpdate();
 		}
@@ -606,7 +662,11 @@ public final class DatabaseAccess implements AutoCloseable {
 					WHERE user_id = ?
 				""")
 		) {
-			statement.setString(1, avatarUrl);
+			if (avatarUrl != null) {
+				statement.setString(1, avatarUrl);
+			} else {
+				statement.setNull(1, Types.NULL);
+			}
 			statement.setString(2, userId);
 			statement.executeUpdate();
 		}
@@ -1304,6 +1364,178 @@ public final class DatabaseAccess implements AutoCloseable {
 
 	public List<String> getGenreSlugs() throws SQLException {
 		return List.of("mod-garden");
+	}
+
+
+	public String createEvent(String genreId,
+							  String slug,
+							  String name,
+							  EventTimes times,
+							  EventPlatform platform) throws SQLException, HypertextException {
+		try (var eventStatement = this.getConnection().prepareStatement("""
+				INSERT INTO events (id, slug, genre_slug, genre_id)
+				VALUES (?, ?, ?, ?)
+			""");
+		     var eventMetadataStatement = this.getConnection().prepareStatement("""
+				INSERT INTO event_metadata (event_id, name, description)
+				VALUES (?, ?, NULL)
+			""");
+		     var eventTimesStatement = this.getConnection().prepareStatement("""
+				INSERT INTO event_times (event_id, registration_open, registration_close, development_start, development_end, pack_freeze)
+				VALUES (?, ?, ?, ?, ?, ?)
+			""");
+			 var eventPlatformMinecraftStatement = this.getConnection().prepareStatement("""
+				INSERT INTO event_platform_minecraft (event_id, mod_loader, game_version)
+				VALUES (?, ?, ?)
+			""");
+		) {
+			String eventId = NaturalId.generate("events", "id", null, 5);
+
+			eventStatement.setString(1, eventId);
+			eventStatement.setString(2, slug);
+			eventStatement.setString(3, getGenreSlug(genreId));
+			eventStatement.setString(4, genreId);
+			eventStatement.executeUpdate();
+
+			eventMetadataStatement.setString(1, eventId);
+			eventMetadataStatement.setString(2, name);
+			eventMetadataStatement.executeUpdate();
+
+			eventTimesStatement.setString(1, eventId);
+			eventTimesStatement.setLong(2, times.registrationOpen().toEpochMilli());
+			eventTimesStatement.setLong(3, times.registrationClose().toEpochMilli());
+			eventTimesStatement.setLong(4, times.developmentStart().toEpochMilli());
+			eventTimesStatement.setLong(5, times.developmentEnd().toEpochMilli());
+			eventTimesStatement.setLong(6, times.packFreeze().toEpochMilli());
+			eventTimesStatement.executeUpdate();
+
+			if (platform instanceof MinecraftEventPlatform(String modLoader, String gameVersion)) {
+				eventPlatformMinecraftStatement.setString(1, eventId);
+				eventPlatformMinecraftStatement.setString(2, modLoader);
+				eventPlatformMinecraftStatement.setString(3, gameVersion);
+				eventPlatformMinecraftStatement.executeUpdate();
+			} else {
+				throw new UnprocessableEntityException("Unknown event platform");
+			}
+
+			return eventId;
+		}
+	}
+
+	public void addUserRoleToEvent(String eventId, String roleKey, String roleId) throws SQLException {
+		try (
+				var eventRolesStatement = this.getConnection().prepareStatement("""
+					INSERT INTO event_roles (event_id, role_key, role_id)
+					VALUES (?, ?, ?)
+				""")
+		) {
+			eventRolesStatement.setString(1, eventId);
+			eventRolesStatement.setString(2, roleKey);
+			eventRolesStatement.setString(3, roleId);
+			eventRolesStatement.executeUpdate();
+		}
+	}
+
+	public void setEventName(String eventId, String name) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					UPDATE event_metadata
+					SET name = ?
+					WHERE event_id = ?
+				""")
+		) {
+			statement.setString(1, name);
+			statement.setString(2, eventId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void setEventDescription(String eventId, @Nullable String description) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					UPDATE event_metadata
+					SET description = ?
+					WHERE event_id = ?
+				""")
+		) {
+			if (description != null) {
+				statement.setString(1, description);
+			} else {
+				statement.setNull(1, Types.NULL);
+			}
+			statement.setString(2, eventId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void setEventRegistrationOpen(String eventId, Instant time) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					UPDATE event_times
+					SET registration_open = ?
+					WHERE event_id = ?
+				""");
+		) {
+			statement.setLong(1, time.toEpochMilli());
+			statement.setString(2, eventId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void setEventRegistrationClose(String eventId, Instant time) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					UPDATE event_times
+					SET registration_close = ?
+					WHERE event_id = ?
+				""")
+		) {
+			statement.setLong(1, time.toEpochMilli());
+			statement.setString(2, eventId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void setEventDevelopmentStart(String eventId, Instant time) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					UPDATE event_times
+					SET development_start = ?
+					WHERE event_id = ?
+				""")
+		) {
+			statement.setLong(1, time.toEpochMilli());
+			statement.setString(2, eventId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void setEventDevelopmentEnd(String eventId, Instant time) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					UPDATE event_times
+					SET development_end = ?
+					WHERE event_id = ?
+				""")
+		) {
+			statement.setLong(1, time.toEpochMilli());
+			statement.setString(2, eventId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void setEventPackFreeze(String eventId, Instant time) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					UPDATE event_times
+					SET pack_freeze = ?
+					WHERE event_id = ?
+				""")
+		) {
+			statement.setLong(1, time.toEpochMilli());
+			statement.setString(2, eventId);
+			statement.executeUpdate();
+		}
 	}
 
 	public List<Event> getEvents() throws SQLException, HypertextException {

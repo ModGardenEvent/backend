@@ -17,7 +17,9 @@ import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.Integration;
 import net.modgarden.backend.data.permission.Permission;
 import net.modgarden.backend.data.permission.Permissions;
+import net.modgarden.backend.util.NullableWrapper;
 import net.modgarden.backend.util.codec.ExtraCodecs;
+import net.modgarden.backend.util.codec.NullableCodec;
 
 public record UserRole(
 		String id,
@@ -36,6 +38,14 @@ public record UserRole(
 		}
 		return DataResult.success(key);
 	});
+	public static final Codec<Map<String, Integration>> INTEGRATION_CODEC = Codec.dispatchedMap(
+			UserRole.INTEGRATION_CODEC_KEY,
+			INTEGRATION_CODECS::get
+	);
+	public static final Codec<Map<String, NullableWrapper<Integration>>> MODIFIABLE_INTEGRATION_CODEC = Codec.dispatchedMap(
+			UserRole.INTEGRATION_CODEC_KEY,
+			s -> NullableCodec.nullable(INTEGRATION_CODECS.get(s))
+	);
 	public static final Codec<UserRole> DIRECT_CODEC = RecordCodecBuilder.create(inst -> inst.group(
 			Codec.STRING.fieldOf("id").forGetter(UserRole::id),
 			Codec.STRING.fieldOf("name").forGetter(UserRole::name),
