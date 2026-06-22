@@ -1777,7 +1777,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			submissionStatement.setString(1, eventId);
 			ResultSet submissionResult = submissionStatement.executeQuery();
 			if (!submissionResult.isBeforeFirst()) {
-				throw new NotFoundException("Could not find submission for event ID '" + eventId + "'");
+				return List.of();
 			}
 
 			List<Submission> submissions = new ArrayList<>();
@@ -1810,7 +1810,7 @@ public final class DatabaseAccess implements AutoCloseable {
 			submissionStatement.setString(1, eventId);
 			ResultSet submissionResult = submissionStatement.executeQuery();
 			if (!submissionResult.isBeforeFirst()) {
-				throw new NotFoundException("Could not find submission for event ID '" + eventId + "'");
+				return List.of();
 			}
 
 			List<String> submissionIds = new ArrayList<>();
