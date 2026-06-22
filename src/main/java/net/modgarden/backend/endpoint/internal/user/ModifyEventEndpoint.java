@@ -11,11 +11,16 @@ import net.modgarden.backend.endpoint.EndpointMethod;
 import net.modgarden.backend.endpoint.EndpointPath;
 import net.modgarden.backend.endpoint.Response;
 import net.modgarden.backend.endpoint.internal.InternalEndpoint;
+import net.modgarden.backend.util.NullableWrapper;
+import net.modgarden.backend.util.RemovableValue;
+import net.modgarden.backend.util.codec.NullableCodec;
+import net.modgarden.backend.util.codec.RemovableValueCodec;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
 
@@ -68,11 +73,15 @@ public class ModifyEventEndpoint extends InternalEndpoint {
 
 		// TODO: Implement event platform for updating game version.
 
-		for (Map.Entry<String, String> entry : request.roles().entrySet()) {
+		for (Map.Entry<String, NullableWrapper<String>> entry : request.roles().entrySet()) {
 			String roleKey = entry.getKey();
-			String roleId = entry.getValue();
+			NullableWrapper<String> roleId = entry.getValue();
 
-			db.addUserRoleToEvent(eventId, roleKey, roleId);
+			if (roleId.isPresent()) {
+				db.addUserRoleToEvent(eventId, roleKey, roleId.value());
+			} else {
+				// TODO: Remove user role from event.
+			}
 		}
 
 		return Response.ok();
@@ -81,20 +90,21 @@ public class ModifyEventEndpoint extends InternalEndpoint {
 	public record Request(@Nullable EventMetadata.Modifiable metadata,
 	                      @Nullable EventTimes.Modifiable times,
 	                      @Nullable EventPlatform platform,
-	                      Map<String, String> roles) {
+	                      Map<String, NullableWrapper<String>> roles) {
 		public static final Codec<Request> CODEC = RecordCodecBuilder.create(inst -> inst.group(
 				EventMetadata.Modifiable.CODEC
-						.fieldOf("metadata")
-						.forGetter(Request::metadata),
+						.optionalFieldOf("metadata")
+						.forGetter(o -> Optional.ofNullable(o.metadata)),
 				EventTimes.Modifiable.CODEC
-						.fieldOf("times")
-						.forGetter(Request::times),
+						.optionalFieldOf("times")
+						.forGetter(o -> Optional.ofNullable(o.times)),
 				Event.PLATFORM_CODEC
-						.fieldOf("platform")
-						.forGetter(Request::platform),
-				Codec.unboundedMap(Codec.STRING, UserRole.ID_CODEC)
+						.optionalFieldOf("platform")
+						.forGetter(o -> Optional.ofNullable(o.platform)),
+				Codec.unboundedMap(Codec.STRING, NullableCodec.nullable(UserRole.ID_CODEC))
 						.optionalFieldOf("roles", Collections.emptyMap())
 						.forGetter(Request::roles)
-		).apply(inst, Request::new));
+		).apply(inst, (metadata, times, platform, roles) ->
+				new Request(metadata.orElse(null), times.orElse(null), platform.orElse(null), roles)));
 	}
 }
