@@ -380,9 +380,6 @@ public final class DatabaseAccess implements AutoCloseable {
 				}
 			}
 
-			// TODO: Awards at a later date.
-			Set<String> awards = new LinkedHashSet<>();
-
 			Set<String> roles = new LinkedHashSet<>();
 
 			userRolesStatement.setString(1, userId);
@@ -401,7 +398,6 @@ public final class DatabaseAccess implements AutoCloseable {
 					integrations,
 					projects,
 					events,
-					awards,
 					roles
 			);
 		}

@@ -33,7 +33,6 @@ public record User(
 		Map<String, Integration> integrations,
 		Set<String> projects,
 		Set<String> events,
-		Set<String> awards,
 		Set<String> roles
 ) {
 	private static final Map<String, Codec<Integration>> INTEGRATION_CODECS = Map.ofEntries(
@@ -66,10 +65,6 @@ public record User(
 				    .xmap(list -> (Set<String>) new HashSet<>(list), set -> List.of(set.toArray(String[]::new)))
 				    .fieldOf("events")
 				    .forGetter(User::events),
-		    Award.ID_CODEC.listOf()
-				    .xmap(list -> (Set<String>) new HashSet<>(list), set -> List.of(set.toArray(String[]::new)))
-				    .fieldOf("awards")
-				    .forGetter(User::awards),
 		    UserRole.ID_CODEC.listOf()
 				    .xmap(list -> (Set<String>) new HashSet<>(list), set -> List.of(set.toArray(String[]::new)))
 				    .fieldOf("roles")
