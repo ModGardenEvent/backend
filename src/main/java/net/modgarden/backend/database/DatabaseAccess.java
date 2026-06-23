@@ -233,6 +233,212 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
+	public Collection<User> getUsers() throws SQLException, HypertextException {
+		try (PreparedStatement usersStatement = this.getConnection()
+				.prepareStatement("""
+						SELECT id, username, created, permissions
+						FROM users
+				""");
+		     PreparedStatement userBiosStatement = this.getConnection()
+				     .prepareStatement("""
+						SELECT display_name, pronouns, description, avatar_url
+						FROM user_bios
+						WHERE user_id = ?
+				""");
+		     PreparedStatement userBioFieldsStatement = this.getConnection()
+				     .prepareStatement("""
+						SELECT field_name, field_value
+						FROM user_bio_fields
+						WHERE user_id = ?
+						ORDER BY ROWID
+				""");
+		     PreparedStatement userIntegrationDiscordStatement = this.getConnection()
+				     .prepareStatement("""
+						SELECT discord_id
+						FROM user_integration_discord
+						WHERE user_id = ?
+				""");
+		     PreparedStatement userIntegrationMinecraftStatement = this.getConnection()
+				     .prepareStatement("""
+						SELECT uuid
+						FROM user_integration_minecraft
+						WHERE user_id = ?
+				""");
+		     PreparedStatement userIntegrationModrinthStatement = this.getConnection()
+				     .prepareStatement("""
+						SELECT modrinth_id
+						FROM user_integration_modrinth
+						WHERE user_id = ?
+				""");
+		     PreparedStatement projectRolesStatement = this.getConnection()
+				     .prepareStatement("""
+						SELECT project_id
+						FROM project_roles
+						WHERE user_id = ?
+				""");
+		     PreparedStatement eventsStatement = this.getConnection()
+				     .prepareStatement("""
+						SELECT event_id
+						FROM submissions
+						WHERE project_id = ?
+				""");
+		     PreparedStatement userRolesStatement = this.getConnection()
+				     .prepareStatement("""
+						SELECT role_id
+						FROM user_roles
+						WHERE user_id = ?
+				""")
+		) {
+			ResultSet usersResult = usersStatement.executeQuery();
+
+			if (!usersResult.isBeforeFirst()) {
+				return Collections.emptyList();
+			}
+
+			List<User> users = new ArrayList<>();
+
+			while (usersResult.next()) {
+				String userId = usersResult.getString("id");
+				String username = usersResult.getString("username");
+				Permissions permissions = new Permissions(usersResult.getLong("permissions"));
+				Instant created = Instant.ofEpochMilli(usersResult.getLong("created"));
+
+				userBiosStatement.setString(1, userId);
+				ResultSet userBiosResult = userBiosStatement.executeQuery();
+
+				String displayName;
+				String pronouns;
+				String description;
+				String avatarUrl;
+
+				if (userBiosResult.isBeforeFirst()) {
+					displayName = userBiosResult.getString("display_name");
+					pronouns = userBiosResult.getString("pronouns");
+					description = userBiosResult.getString("description");
+					avatarUrl = userBiosResult.getString("avatar_url");
+				} else {
+					displayName = null;
+					pronouns = null;
+					description = null;
+					avatarUrl = null;
+				}
+
+				Map<String, String> fields = new LinkedHashMap<>();
+
+				userBioFieldsStatement.setString(1, userId);
+				ResultSet userBioFieldsResult = userBioFieldsStatement.executeQuery();
+				while (userBioFieldsResult.next()) {
+					fields.put(
+							userBioFieldsResult.getString("field_name"),
+							userBioFieldsResult.getString("field_value")
+					);
+				}
+
+				Bio bio = new Bio(
+						displayName,
+						pronouns,
+						description,
+						avatarUrl,
+						fields
+				);
+
+				Map<String, Integration> integrations = new LinkedHashMap<>();
+
+				userIntegrationDiscordStatement.setString(1, userId);
+				ResultSet usersIntegrationDiscordResult = userIntegrationDiscordStatement.executeQuery();
+
+				if (usersIntegrationDiscordResult.isBeforeFirst()) {
+					integrations.put("discord", new DiscordUserIntegration(usersIntegrationDiscordResult.getString("discord_id")));
+				}
+
+				userIntegrationMinecraftStatement.setString(1, userId);
+				ResultSet userIntegrationMinecraftResult = userIntegrationMinecraftStatement.executeQuery();
+
+				if (userIntegrationMinecraftResult.isBeforeFirst()) {
+					List<String> accounts = new ArrayList<>();
+					while (userIntegrationMinecraftResult.next()) {
+						accounts.add(userIntegrationMinecraftResult.getString("uuid"));
+					}
+					integrations.put("minecraft", new MinecraftUserIntegration(accounts));
+				}
+
+				userIntegrationModrinthStatement.setString(1, userId);
+				ResultSet userIntegrationModrinthResult = userIntegrationModrinthStatement.executeQuery();
+
+				if (userIntegrationModrinthResult.isBeforeFirst()) {
+					integrations.put("modrinth", new ModrinthUserIntegration(userIntegrationModrinthResult.getString("modrinth_id")));
+				}
+
+				Set<String> projects = new LinkedHashSet<>();
+
+				projectRolesStatement.setString(1, userId);
+				ResultSet projectRolesResult = projectRolesStatement.executeQuery();
+
+				while (projectRolesResult.next()) {
+					projects.add(projectRolesResult.getString("project_id"));
+				}
+
+				Set<String> events = new LinkedHashSet<>();
+
+				for (String projectId : projects) {
+					eventsStatement.setString(1, projectId);
+					ResultSet eventsResult = eventsStatement.executeQuery();
+
+					while (eventsResult.next()) {
+						events.add(eventsResult.getString("event_id"));
+					}
+				}
+
+				Set<String> roles = new LinkedHashSet<>();
+
+				userRolesStatement.setString(1, userId);
+				ResultSet userRolesResult = userRolesStatement.executeQuery();
+
+				while (userRolesResult.next()) {
+					roles.add(userRolesResult.getString("role_id"));
+				}
+
+				users.add(new User(
+						userId,
+						username,
+						bio,
+						permissions,
+						created,
+						integrations,
+						projects,
+						events,
+						roles
+				));
+			}
+
+			return List.copyOf(users);
+		}
+	}
+
+	public Collection<String> getUserIds() throws SQLException {
+		try (PreparedStatement usersStatement = this.getConnection()
+				.prepareStatement("""
+						SELECT id, username, created, permissions
+						FROM users
+				""")
+		) {
+			ResultSet usersResult = usersStatement.executeQuery();
+
+			if (!usersResult.isBeforeFirst()) {
+				return Collections.emptyList();
+			}
+
+			List<String> userIds = new ArrayList<>();
+
+			while (usersResult.next()) {
+				String userId = usersResult.getString("id");
+				userIds.add(userId);
+			}
+
+			return List.copyOf(userIds);
+		}
+	}
+
 	public User getUserFromId(
 			@NotNull String userId
 	) throws SQLException, HypertextException {
@@ -306,14 +512,23 @@ public final class DatabaseAccess implements AutoCloseable {
 			userBiosStatement.setString(1, userId);
 			ResultSet userBiosResult = userBiosStatement.executeQuery();
 
-			if (!userBiosResult.isBeforeFirst()) {
-				throw new NotFoundException("Could not find bio for user '" + userId + "'");
+			String displayName;
+			String pronouns;
+			String description;
+			String avatarUrl;
+
+			if (userBiosResult.isBeforeFirst()) {
+				displayName = userBiosResult.getString("display_name");
+				pronouns = userBiosResult.getString("pronouns");
+				description = userBiosResult.getString("description");
+				avatarUrl = userBiosResult.getString("avatar_url");
+			} else {
+				displayName = null;
+				pronouns = null;
+				description = null;
+				avatarUrl = null;
 			}
 
-			String displayName = userBiosResult.getString("display_name");
-			String pronouns = userBiosResult.getString("pronouns");
-			String description = userBiosResult.getString("description");
-			String avatarUrl = userBiosResult.getString("avatar_url");
 			Map<String, String> fields = new LinkedHashMap<>();
 
 			userBioFieldsStatement.setString(1, userId);
@@ -490,6 +705,46 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
+	public void deleteUserRole(String roleId) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					DELETE FROM user_role_definitions
+					WHERE id = ?
+				""")
+		) {
+			statement.setString(1, roleId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void setUserRoleName(String userRoleId, String name) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					UPDATE user_role_definitions
+					SET name = ?
+					WHERE id = ?
+				""")
+		) {
+			statement.setString(1, name);
+			statement.setString(2, userRoleId);
+			statement.executeUpdate();
+		}
+	}
+
+	public void setUserRolePermissions(String userRoleId, Permissions permissions) throws SQLException {
+		try (
+				var statement = this.getConnection().prepareStatement("""
+					UPDATE user_role_definitions
+					SET permissions = ?
+					WHERE id = ?
+				""")
+		) {
+			statement.setLong(1, permissions.bits());
+			statement.setString(2, userRoleId);
+			statement.executeUpdate();
+		}
+	}
+
 	public void setUserRoleDiscordIntegration(String userRoleId, String discordRoleId) throws SQLException {
 		try (
 				var statement = this.getConnection().prepareStatement("""
@@ -512,6 +767,88 @@ public final class DatabaseAccess implements AutoCloseable {
 		) {
 			statement.setString(1, userRoleId);
 			statement.executeUpdate();
+		}
+	}
+
+	public Collection<String> getUserRoleIds() throws SQLException {
+		try (var userRoleDefinitionStatement = this.getConnection()
+				.prepareStatement("""
+						SELECT id
+						FROM user_role_definitions
+					""");
+		     var userRoleIntegrationDiscordStatement = this.getConnection()
+				     .prepareStatement("""
+							SELECT discord_role_id
+							FROM user_role_integration_discord
+							WHERE role_id = ?
+						""")
+		) {
+			ResultSet resultSet = userRoleDefinitionStatement.executeQuery();
+			if (!resultSet.isBeforeFirst()) {
+				return Collections.emptyList();
+			}
+
+			List<String> roleIds = new ArrayList<>();
+
+			while (resultSet.next()) {
+				String roleId = resultSet.getString("id");
+				roleIds.add(roleId);
+			}
+
+			return List.copyOf(roleIds);
+		}
+	}
+
+	public Collection<UserRole> getUserRoles() throws SQLException {
+		try (var userRoleDefinitionStatement = this.getConnection()
+				.prepareStatement("""
+						SELECT id, name, permissions, created
+						FROM user_role_definitions
+					""");
+		     var userRoleIntegrationDiscordStatement = this.getConnection()
+				     .prepareStatement("""
+							SELECT discord_role_id
+							FROM user_role_integration_discord
+							WHERE role_id = ?
+						""")
+		) {
+			ResultSet resultSet = userRoleDefinitionStatement.executeQuery();
+			if (!resultSet.isBeforeFirst()) {
+				return Collections.emptyList();
+			}
+
+			List<UserRole> roles = new ArrayList<>();
+
+			while (resultSet.next()) {
+				String roleId = resultSet.getString("id");
+				String name = resultSet.getString("name");
+				Permissions permissions = new Permissions(resultSet.getLong("permissions"));
+				Instant created = Instant.ofEpochMilli(resultSet.getLong("created"));
+
+				Map<String, Integration> integrations = new LinkedHashMap<>();
+
+				userRoleIntegrationDiscordStatement.setString(1, roleId);
+				ResultSet userRolesIntegrationDiscordResult = userRoleIntegrationDiscordStatement.executeQuery();
+
+				if (userRolesIntegrationDiscordResult.isBeforeFirst()) {
+					integrations.put(
+							"discord",
+							new DiscordUserRoleIntegration(
+									userRolesIntegrationDiscordResult.getString("discord_role_id")
+							)
+					);
+				}
+
+				roles.add(new UserRole(
+						roleId,
+						name,
+						permissions,
+						created,
+						integrations
+				));
+			}
+
+			return List.copyOf(roles);
 		}
 	}
 

@@ -20,7 +20,7 @@ import java.util.Map;
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
 
 @EndpointMethod(POST)
-@EndpointPath("/internal/role/create")
+@EndpointPath("/internal/role/create") // FIXME: this doesn't follow REST principles. remove the /create part of this.
 public class CreateRoleEndpoint extends InternalEndpoint {
 	public CreateRoleEndpoint() {
 		super("role/create");
@@ -44,7 +44,7 @@ public class CreateRoleEndpoint extends InternalEndpoint {
 		return Response.created("/v2/roles/" + newRoleId);
 	}
 
-	// TODO: Move 'integrations' into ModifyRoleEndpoint, use modifiable codec in UserRole class.
+	// TODO: Move 'integrations' into ModifyRoleEndpoint.
 	public record Request(String name,
 						  Permissions permissions,
 						  Map<String, Integration> integrations) {

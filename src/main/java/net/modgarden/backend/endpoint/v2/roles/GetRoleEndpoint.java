@@ -37,4 +37,3 @@ public class GetRoleEndpoint extends RolesEndpoint {
 		return Response.ok(db.getUserRoleFromId(roleId));
 	}
 }
-

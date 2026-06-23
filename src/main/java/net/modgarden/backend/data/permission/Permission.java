@@ -32,7 +32,14 @@ public enum Permission {
 	/// List, modify, and delete files in the CDN.
 	MANAGE_CDN(0x100, "manage_cdn", USER),
 	/// Generate and delete API keys on behalf of this user or project.
-	MODIFY_API_KEY(0x200, "modify_api_key", ALL),;
+	MODIFY_API_KEY(0x200, "modify_api_key", ALL),
+	/// List information about users, user roles, or any other user-related data.
+	///
+	/// This permission exists to prevent user enumeration, primarily
+	/// to prevent [brute force attacks](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#protect-against-automated-attacks).
+	/// See [OWASP's Authentication Cheatsheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#authentication-responses)
+	/// for more information.
+	LIST_USER_INFO(0x400, "list_user_info", USER);
 
 	public static final Codec<Permission> CODEC = Codec.STRING.flatXmap(string -> {
 		try {

@@ -46,6 +46,8 @@ import net.modgarden.backend.endpoint.exception.HypertextException;
 import net.modgarden.backend.endpoint.internal.event.CreateEventEndpoint;
 import net.modgarden.backend.endpoint.internal.event.ModifyEventEndpoint;
 import net.modgarden.backend.endpoint.internal.role.CreateRoleEndpoint;
+import net.modgarden.backend.endpoint.internal.role.DeleteRoleEndpoint;
+import net.modgarden.backend.endpoint.internal.role.ModifyRoleEndpoint;
 import net.modgarden.backend.endpoint.internal.user.*;
 import net.modgarden.backend.endpoint.v2.auth.api_keys.DeleteKeyEndpoint;
 import net.modgarden.backend.endpoint.v2.auth.api_keys.GenerateKeyEndpoint;
@@ -60,11 +62,13 @@ import net.modgarden.backend.endpoint.v2.projects.DeleteProjectEndpoint;
 import net.modgarden.backend.endpoint.v2.projects.GetProjectEndpoint;
 import net.modgarden.backend.endpoint.v2.projects.ModifyProjectEndpoint;
 import net.modgarden.backend.endpoint.v2.roles.GetRoleEndpoint;
+import net.modgarden.backend.endpoint.v2.roles.ListRolesEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.CreateSubmissionEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.DeleteSubmissionEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.GetSubmissionEndpoint;
 import net.modgarden.backend.endpoint.v2.submissions.ModifySubmissionEndpoint;
 import net.modgarden.backend.endpoint.v2.users.GetUserEndpoint;
+import net.modgarden.backend.endpoint.v2.users.ListUsersEndpoint;
 import net.modgarden.backend.util.AuthUtil;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -182,13 +186,17 @@ public class ModGardenBackend {
 		get(GetSubmissionEndpoint::new);
 
 		get(GetUserEndpoint::new);
+		get(ListUsersEndpoint::new);
 
 		get(GetRoleEndpoint::new);
+		get(ListRolesEndpoint::new);
 	}
 
 	public void internal() {
 		post(CreateEventEndpoint::new);
 		post(CreateRoleEndpoint::new);
+		patch(ModifyRoleEndpoint::new);
+		delete(DeleteRoleEndpoint::new);
 		post(CreateUserEndpoint::new);
 		post(ModifyEventEndpoint::new);
 		patch(ModifyUserEndpoint::new);
