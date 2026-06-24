@@ -29,10 +29,10 @@ public record EventMetadata(
 		public static final Codec<EventMetadata.Modifiable> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 				Codec.STRING
 						.optionalFieldOf("name")
-						.forGetter(md -> Optional.ofNullable(md.name)),
+						.forGetter(md -> Optional.ofNullable(md.name())),
 				NullableCodec.nullable(Codec.STRING)
 						.optionalFieldOf("description")
-						.forGetter(md -> Optional.ofNullable(md.description))
+						.forGetter(md -> Optional.ofNullable(md.description()))
 		).apply(instance, (name, description) ->
 				new EventMetadata.Modifiable(name.orElse(null), description.orElse(null))));
 	}

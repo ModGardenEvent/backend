@@ -22,13 +22,13 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 
-import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
+import static net.modgarden.backend.endpoint.EndpointMethod.Method.PATCH;
 
-@EndpointMethod(POST)
-@EndpointPath("/internal/event/modify/{genre_id}/{event_id}")
+@EndpointMethod(PATCH)
+@EndpointPath("/internal/event/{genre_id}/{event_id}")
 public class ModifyEventEndpoint extends InternalEndpoint {
 	public ModifyEventEndpoint() {
-		super("event/modify/{genre_id}/{event_id}");
+		super("event/{genre_id}/{event_id}");
 	}
 
 	@Override
@@ -47,6 +47,7 @@ public class ModifyEventEndpoint extends InternalEndpoint {
 			if (metadata.name() != null) {
 				db.setEventName(eventId, metadata.name());
 			}
+
 			if (metadata.description() != null) {
 				db.setEventDescription(eventId, metadata.description().value());
 			}
@@ -75,9 +76,15 @@ public class ModifyEventEndpoint extends InternalEndpoint {
 			//noinspection SwitchStatementWithTooFewBranches // future proofing
 			switch (request.platform().game()) {
 				case MinecraftEventPlatform.ID -> {
-					MinecraftEventPlatform platform = (MinecraftEventPlatform) request.platform();
-					db.setEventMcModLoader(eventId, platform.modLoader());
-					db.setEventMcGameVersion(eventId, platform.gameVersion());
+					MinecraftEventPlatform.Modifiable platform = (MinecraftEventPlatform.Modifiable) request.platform();
+
+					if (platform.modLoader() != null) {
+						db.setEventMcModLoader(eventId, platform.modLoader());
+					}
+
+					if (platform.gameVersion() != null) {
+						db.setEventMcGameVersion(eventId, platform.gameVersion());
+					}
 				}
 				default -> throw new BadRequestException("Unsupported event platform '" + request.platform().game() + "'");
 			}
@@ -108,7 +115,7 @@ public class ModifyEventEndpoint extends InternalEndpoint {
 				EventTimes.Modifiable.CODEC
 						.optionalFieldOf("times")
 						.forGetter(o -> Optional.ofNullable(o.times)),
-				Event.PLATFORM_CODEC
+				Event.MODIFIABLE_CODEC
 						.optionalFieldOf("platform")
 						.forGetter(o -> Optional.ofNullable(o.platform)),
 				Codec.unboundedMap(Codec.STRING, NullableCodec.nullable(UserRole.ID_CODEC))

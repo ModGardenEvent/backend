@@ -26,7 +26,11 @@ public record Event(String id,
 	private static final Map<String, MapCodec<EventPlatform>> PLATFORM_MAP_CODECS = Map.ofEntries(
 			entry(MinecraftEventPlatform.ID, EventPlatform.fromMapCodec(MinecraftEventPlatform.CODEC))
 	);
+	private static final Map<String, MapCodec<EventPlatform>> MODIFIABLE_MAP_CODECS = Map.ofEntries(
+			entry(MinecraftEventPlatform.ID, EventPlatform.fromMapCodec(MinecraftEventPlatform.Modifiable.CODEC))
+	);
 	public static final Codec<EventPlatform> PLATFORM_CODEC = Codec.STRING.dispatch("game", EventPlatform::game, PLATFORM_MAP_CODECS::get);
+	public static final Codec<EventPlatform> MODIFIABLE_CODEC = Codec.STRING.dispatch("game", EventPlatform::game, MODIFIABLE_MAP_CODECS::get);
 	public static final Codec<Event> DIRECT_CODEC = Codec.lazyInitialized(() -> RecordCodecBuilder.create(inst -> inst.group(
             Codec.STRING
 					.fieldOf("id")

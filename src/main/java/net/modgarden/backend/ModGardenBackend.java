@@ -194,7 +194,7 @@ public class ModGardenBackend {
 
 	public void internal() {
 		post(CreateEventEndpoint::new);
-		post(ModifyEventEndpoint::new);
+		patch(ModifyEventEndpoint::new);
 		post(CreateRoleEndpoint::new);
 		patch(ModifyRoleEndpoint::new);
 		delete(DeleteRoleEndpoint::new);
