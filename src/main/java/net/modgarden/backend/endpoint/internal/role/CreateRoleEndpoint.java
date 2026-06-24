@@ -20,10 +20,10 @@ import java.util.Map;
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
 
 @EndpointMethod(POST)
-@EndpointPath("/internal/role/create") // FIXME: this doesn't follow REST principles. remove the /create part of this.
+@EndpointPath("/internal/role")
 public class CreateRoleEndpoint extends InternalEndpoint {
 	public CreateRoleEndpoint() {
-		super("role/create");
+		super("role");
 	}
 
 	@Override

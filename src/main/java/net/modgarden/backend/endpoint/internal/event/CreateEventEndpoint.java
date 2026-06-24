@@ -15,10 +15,10 @@ import org.jetbrains.annotations.NotNull;
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
 
 @EndpointMethod(POST)
-@EndpointPath("/internal/event/create")
+@EndpointPath("/internal/event")
 public class CreateEventEndpoint extends InternalEndpoint {
 	public CreateEventEndpoint() {
-		super("event/create");
+		super("event");
 	}
 
 	@Override

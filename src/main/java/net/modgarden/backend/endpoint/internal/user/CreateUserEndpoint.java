@@ -15,10 +15,10 @@ import org.jetbrains.annotations.NotNull;
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.POST;
 
 @EndpointMethod(POST)
-@EndpointPath("/internal/user/create")
+@EndpointPath("/internal/user")
 public class CreateUserEndpoint extends InternalEndpoint {
 	public CreateUserEndpoint() {
-		super("user/create");
+		super("user");
 	}
 
 	@Override

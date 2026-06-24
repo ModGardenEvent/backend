@@ -30,10 +30,10 @@ import java.util.Optional;
 import static net.modgarden.backend.endpoint.EndpointMethod.Method.PATCH;
 
 @EndpointMethod(PATCH)
-@EndpointPath("/internal/user/modify/{user_id}")
+@EndpointPath("/internal/user/{user_id}")
 public class ModifyUserEndpoint extends InternalEndpoint {
 	public ModifyUserEndpoint() {
-		super("user/modify/{user_id}");
+		super("user/{user_id}");
 	}
 
 	@Override
