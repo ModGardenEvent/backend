@@ -25,7 +25,7 @@ public record Permissions(long bits) {
 	}
 
 	public Permissions revokePermissions(Permissions permissions) {
-		return new Permissions(this.bits ^ permissions.bits);
+		return new Permissions(this.bits & ~permissions.bits);
 	}
 
 	public Permissions revokePermissions(Permission... permissions) {
