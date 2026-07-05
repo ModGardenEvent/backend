@@ -12,6 +12,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Optional;
 import java.util.jar.JarFile;
 import java.util.zip.ZipEntry;
 
@@ -172,11 +173,18 @@ public class MetadataUtils {
 	}
 
 	private static File download(URI uri) throws IOException, InterruptedException {
+		return download(uri, null);
+	}
+
+	private static File download(URI uri, @Nullable String fileName) throws IOException, InterruptedException {
 		HttpRequest request = HttpRequest.newBuilder()
 				.header("User-Agent", USER_AGENT)
 				.uri(uri)
 				.build();
-		String fileName = getFileName(uri);
+
+		if (fileName == null) {
+			fileName = getFileName(uri);
+		}
 
 		Path temporaryFolder = Path.of("./.tmp/")
 				.resolve(fileName);
@@ -184,6 +192,11 @@ public class MetadataUtils {
 		Files.createDirectories(temporaryFolder.getParent());
 
 		HttpResponse<Path> response = ModGardenBackend.HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofFile(temporaryFolder));
+		Optional<String> location = response.headers().firstValue("Location");
+
+		if (response.statusCode() - 300 > 1 && response.statusCode() - 300 < 100 && location.isPresent()) {
+			return download(URI.create(location.get()), fileName);
+		}
 
 		return response.body().toFile();
 	}
