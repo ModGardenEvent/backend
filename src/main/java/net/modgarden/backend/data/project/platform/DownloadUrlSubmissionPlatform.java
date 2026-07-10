@@ -26,7 +26,7 @@ public record DownloadUrlSubmissionPlatform(String downloadUrl) implements Submi
 
 	@Override
 	public String typeName() {
-		return "download_url";
+		return ID;
 	}
 
 	@Override

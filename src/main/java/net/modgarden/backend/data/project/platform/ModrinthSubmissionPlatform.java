@@ -43,7 +43,7 @@ public record ModrinthSubmissionPlatform(String projectId, String versionId) imp
 
 	@Override
 	public String typeName() {
-		return "modrinth";
+		return ID;
 	}
 
 	@Override

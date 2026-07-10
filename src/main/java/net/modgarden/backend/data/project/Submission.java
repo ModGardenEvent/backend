@@ -18,6 +18,7 @@ import net.modgarden.backend.ModGardenBackend;
 import net.modgarden.backend.data.event.Event;
 import net.modgarden.backend.data.project.platform.DownloadUrlSubmissionPlatform;
 import net.modgarden.backend.data.project.platform.ModrinthSubmissionPlatform;
+import net.modgarden.backend.data.project.platform.NoneSubmissionPlatform;
 import net.modgarden.backend.util.codec.ExtraCodecs;
 
 public record Submission(String id,
@@ -27,7 +28,8 @@ public record Submission(String id,
 						 SubmissionPlatform platform) {
 	private static final Map<String, MapCodec<SubmissionPlatform>> PLATFORM_MAP_CODECS = Map.ofEntries(
 			entry(ModrinthSubmissionPlatform.ID, fromMapCodec(ModrinthSubmissionPlatform.CODEC)),
-			entry(DownloadUrlSubmissionPlatform.ID, fromMapCodec(DownloadUrlSubmissionPlatform.CODEC))
+			entry(DownloadUrlSubmissionPlatform.ID, fromMapCodec(DownloadUrlSubmissionPlatform.CODEC)),
+			entry(NoneSubmissionPlatform.ID, fromMapCodec(NoneSubmissionPlatform.CODEC))
 	);
 	private static final Codec<String> PLATFORM_KEY_CODEC = Codec.STRING.validate(key -> {
 		if (!PLATFORM_MAP_CODECS.containsKey(key)) {

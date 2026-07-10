@@ -23,6 +23,7 @@ import net.modgarden.backend.data.project.platform.ModrinthSubmissionPlatform;
 import net.modgarden.backend.data.project.SubmissionPlatform;
 import net.modgarden.backend.data.project.Project;
 import net.modgarden.backend.data.project.Submission;
+import net.modgarden.backend.data.project.platform.NoneSubmissionPlatform;
 import net.modgarden.backend.data.user.User;
 import net.modgarden.backend.data.user.Bio;
 import net.modgarden.backend.data.user.integration.DiscordUserIntegration;
@@ -1456,6 +1457,17 @@ public final class DatabaseAccess implements AutoCloseable {
 		}
 	}
 
+	/// Prefer using [#populateSubmission(String, String, SubmissionPlatform)] unless using this after an error has occurred to restore data.
+	public void setSubmissionPlatformUnsafe(String submissionId, SubmissionPlatform platform) throws SQLException {
+		if (platform instanceof ModrinthSubmissionPlatform modrinth) {
+			populateModrinthSubmission(submissionId, modrinth);
+		}
+
+		if (platform instanceof DownloadUrlSubmissionPlatform downloadUrl) {
+			populateDownloadUrlSubmission(submissionId, downloadUrl);
+		}
+	}
+
 	public void populateSubmission(String projectId, String submissionId, SubmissionPlatform platform) throws SQLException, HypertextException {
 		try (
 				var projectModMetadataStatement = this.getConnection().prepareStatement("""
@@ -1470,9 +1482,14 @@ public final class DatabaseAccess implements AutoCloseable {
 				metadata = MetadataUtils.getMetadataFromModrinth(modrinth.projectId(), modrinth.versionId());
 				populateModrinthSubmission(submissionId, modrinth);
 			}
+
 			if (platform instanceof DownloadUrlSubmissionPlatform downloadUrl) {
 				metadata = MetadataUtils.getMetadataFromDownloadUrl(downloadUrl.downloadUrl());
 				populateDownloadUrlSubmission(submissionId, downloadUrl);
+			}
+
+			if (platform instanceof NoneSubmissionPlatform) {
+				metadata = this.getProjectFromId(projectId).metadata();
 			}
 
 			if (metadata == null) {
@@ -1630,7 +1647,7 @@ public final class DatabaseAccess implements AutoCloseable {
 				);
 			}
 
-			throw new InternalServerException("Submission does not have a valid 'platform'");
+			return NoneSubmissionPlatform.INSTANCE;
 		}
 	}
 

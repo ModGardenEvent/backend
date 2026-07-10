@@ -61,8 +61,15 @@ public class ModifySubmissionEndpoint extends AuthorizedSubmissionEndpoint {
 		}
 
 		if (request.platform() != null) {
+			Submission submission = db.getSubmission(submissionId);
 			db.deleteSubmissionData(submissionId);
-			db.populateSubmission(projectId, submissionId, request.platform());
+
+			try {
+				db.populateSubmission(projectId, submissionId, request.platform());
+			} catch (SQLException | HypertextException e) {
+				db.setSubmissionPlatformUnsafe(submissionId, submission.platform());
+				throw e;
+			}
 		}
 
 		return Response.ok();
